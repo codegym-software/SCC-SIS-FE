@@ -1,3 +1,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Force light theme regardless of browser/OS dark mode */
+:root {
+  color-scheme: light;
+}
+html, body, #root {
+  background-color: #ffffff !important;
+  color: rgb(252, 252, 252); /* gray-900 */
+}
