@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { BrowserRouter } from 'react-router-dom'
 import AppLayout from './app/layout/AppLayout'
 import AppRoutes from './app/routes/AppRoutes'
@@ -17,3 +18,5 @@ export default function App() {
     </BrowserRouter>
   )
 }
+=======
+>>>>>>> 11b6b402ee805b82b9cc0f0cebaccf9615834799
