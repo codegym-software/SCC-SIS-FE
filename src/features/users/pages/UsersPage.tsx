@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useToast } from '../../../shared/hooks/useToast'
 import { usePermission } from '../../../shared/components/PermissionProvider'
+import { Eye, Pencil, ShieldOff, ShieldCheck, MoreHorizontal } from 'lucide-react'
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
   if (!open) return null
@@ -16,8 +17,26 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
   )
 }
 
+type User = {
+  id: string
+  name: string
+  email: string
+  phone: string
+  role: string
+  center: string
+  major: string
+  exp: string
+  status: 'Hoạt động' | 'Không hoạt động'
+}
+
 export default function UsersPage() {
   const [openCreate, setOpenCreate] = useState(false)
+  const [openView, setOpenView] = useState<User | null>(null)
+  const [openEdit, setOpenEdit] = useState<User | null>(null)
+  const [query, setQuery] = useState('')
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const pageSize = 5
   const toast = useToast()
   const { can } = usePermission()
   const stats = [
@@ -27,13 +46,18 @@ export default function UsersPage() {
     { label: 'Giáo vụ', value: '2' },
   ]
 
-  const users = [
-    { name: 'Nguyễn Văn An', email: 'an.nguyen@education.vn', phone: '0901234567', role: 'Giáo vụ', center: 'Trung tâm Hà Nội 1', major: 'Giáo dục', exp: '5 năm', status: 'Hoạt động' },
-    { name: 'Trần Thị Bình', email: 'binh.tran@education.vn', phone: '0902345678', role: 'Giảng viên', center: 'Trung tâm HN 1', major: 'Toán học', exp: '3 năm', status: 'Hoạt động' },
-    { name: 'Lê Văn Chinh', email: 'chinh.le@education.vn', phone: '0903456789', role: 'Quản lý đào tạo', center: 'Trung tâm TP.HCM 1', major: 'Khoa học máy tính', exp: '10 năm', status: 'Hoạt động' },
-    { name: 'Phạm Thị Dung', email: 'dung.pham@education.vn', phone: '0904567890', role: 'Giảng viên', center: 'Trung tâm Đà Nẵng', major: 'Ngôn ngữ lập trình', exp: '2 năm', status: 'Không hoạt động' },
-    { name: 'Hoàng Minh Tuấn', email: 'tuan.hoang@education.vn', phone: '0905678901', role: 'Giảng viên', center: 'Trung tâm HN 1', major: 'Thiết kế đồ họa', exp: '6 năm', status: 'Hoạt động' },
-  ]
+  const [users, setUsers] = useState<User[]>([
+    { id: '1', name: 'Nguyễn Văn An', email: 'an.nguyen@education.vn', phone: '0901234567', role: 'Giáo vụ', center: 'Trung tâm Hà Nội 1', major: 'Giáo dục', exp: '5 năm', status: 'Hoạt động' },
+    { id: '2', name: 'Trần Thị Bình', email: 'binh.tran@education.vn', phone: '0902345678', role: 'Giảng viên', center: 'Trung tâm HN 1', major: 'Toán học', exp: '3 năm', status: 'Hoạt động' },
+    { id: '3', name: 'Lê Văn Chinh', email: 'chinh.le@education.vn', phone: '0903456789', role: 'Quản lý đào tạo', center: 'Trung tâm TP.HCM 1', major: 'Khoa học máy tính', exp: '10 năm', status: 'Hoạt động' },
+    { id: '4', name: 'Phạm Thị Dung', email: 'dung.pham@education.vn', phone: '0904567890', role: 'Giảng viên', center: 'Trung tâm Đà Nẵng', major: 'Ngôn ngữ lập trình', exp: '2 năm', status: 'Không hoạt động' },
+    { id: '5', name: 'Hoàng Minh Tuấn', email: 'tuan.hoang@education.vn', phone: '0905678901', role: 'Giảng viên', center: 'Trung tâm HN 1', major: 'Thiết kế đồ họa', exp: '6 năm', status: 'Hoạt động' },
+    { id: '6', name: 'Phạm Văn A', email: 'a.pham@education.vn', phone: '0906789012', role: 'Giảng viên', center: 'Trung tâm HN 2', major: 'Vật lý', exp: '4 năm', status: 'Hoạt động' },
+  ])
+
+  const filtered = useMemo(() => users.filter(u => (u.name + u.email).toLowerCase().includes(query.toLowerCase())), [users, query])
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const pageUsers = useMemo(() => filtered.slice((page-1)*pageSize, page*pageSize), [filtered, page])
 
   return (
     <div className="space-y-6">
@@ -165,7 +189,7 @@ export default function UsersPage() {
 
       <section className="rounded-lg border bg-white">
         <div className="px-4 py-3 border-b grid grid-cols-1 md:grid-cols-3 gap-2">
-          <input className="h-9 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-gray-200" placeholder="Tìm kiếm theo tên hoặc email..." />
+          <input value={query} onChange={(e)=>{setQuery(e.target.value); setPage(1)}} className="h-9 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-gray-200" placeholder="Tìm kiếm theo tên hoặc email..." />
           <select className="h-9 rounded-md border px-2 text-sm">
             <option>Tất cả trung tâm</option>
           </select>
@@ -182,8 +206,8 @@ export default function UsersPage() {
         </div>
 
         <div className="divide-y">
-          {users.map((u) => (
-            <div key={u.email} className="grid grid-cols-12 gap-4 px-4 py-4 items-center">
+          {pageUsers.map((u) => (
+            <div key={u.id} className="grid grid-cols-12 gap-4 px-4 py-4 items-center relative">
               <div className="col-span-12 md:col-span-4">
                 <div className="text-sm font-medium">{u.name}</div>
                 <div className="text-xs text-gray-500">{u.email}</div>
@@ -199,23 +223,135 @@ export default function UsersPage() {
                 <div className="text-sm">{u.major}</div>
                 <div className="text-xs text-gray-500">{u.exp}</div>
               </div>
-              <div className="col-span-12 md:col-span-2 text-right">
+              <div className="col-span-12 md:col-span-2 flex items-center justify-end gap-2">
                 <span className={`inline-flex items-center h-6 px-2 rounded-full text-xs ${u.status === 'Hoạt động' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>{u.status}</span>
+                <div className="relative">
+                  <button
+                    className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center"
+                    onClick={() => setOpenMenuId((prev) => (prev === u.id ? null : u.id))}
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
+                  {openMenuId === u.id && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                      <div className="absolute right-0 mt-2 w-52 rounded-lg border bg-white shadow-lg z-20">
+                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" onClick={()=>{ setOpenMenuId(null); setOpenView(u) }}><Eye size={16}/> Xem chi tiết</button>
+                        {can('users:update') && (
+                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" onClick={()=>{ setOpenMenuId(null); setOpenEdit(u) }}><Pencil size={16}/> Chỉnh sửa</button>
+                        )}
+                        <button
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                          onClick={()=>{
+                            setOpenMenuId(null)
+                            const action = u.status === 'Hoạt động' ? 'Vô hiệu hóa' : 'Kích hoạt'
+                            if(confirm(`${action} ${u.name}?`)){
+                              setUsers(prev=>prev.map(x=>x.id===u.id?{...x,status: u.status==='Hoạt động'?'Không hoạt động':'Hoạt động'}:x))
+                              toast.success(`${action} thành công`)
+                            }
+                          }}
+                        >
+                          {u.status === 'Hoạt động' ? (<><ShieldOff size={16}/> Vô hiệu hóa</>) : (<><ShieldCheck size={16}/> Kích hoạt</>)}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           ))}
         </div>
 
         <div className="flex items-center justify-between px-4 py-3 border-t text-sm">
-          <div className="text-gray-500">Hiển thị 1–5 trong 6 người dùng</div>
+          <div className="text-gray-500">Trang {page}/{totalPages}</div>
           <div className="flex items-center gap-1">
-            <button className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50">Previous</button>
-            <button className="h-8 px-3 rounded-md border bg-gray-900 text-white">1</button>
-            <button className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50">2</button>
-            <button className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50">Next</button>
+            <button disabled={page===1} onClick={()=>setPage(p=>Math.max(1,p-1))} className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 disabled:opacity-50">Previous</button>
+            <button className={`h-8 px-3 rounded-md border ${page===1?'bg-gray-900 text-white':'bg-white hover:bg-gray-50'}`} onClick={()=>setPage(1)}>1</button>
+            {totalPages>=2 && (
+              <button className={`h-8 px-3 rounded-md border ${page===2?'bg-gray-900 text-white':'bg-white hover:bg-gray-50'}`} onClick={()=>setPage(2)}>2</button>
+            )}
+            <button disabled={page===totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))} className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 disabled:opacity-50">Next</button>
           </div>
         </div>
       </section>
+      {/* View detail modal */}
+      <Modal open={!!openView} onClose={()=>setOpenView(null)}>
+        {openView && (
+          <div>
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <div className="font-medium">Thông tin người dùng</div>
+              <button className="h-8 w-8 rounded hover:bg-gray-100" onClick={()=>setOpenView(null)}>×</button>
+            </div>
+            <div className="p-4 grid grid-cols-2 gap-4 text-sm">
+              <div><div className="text-gray-500 text-xs">Họ tên</div><div>{openView.name}</div></div>
+              <div><div className="text-gray-500 text-xs">Email</div><div>{openView.email}</div></div>
+              <div><div className="text-gray-500 text-xs">SĐT</div><div>{openView.phone}</div></div>
+              <div><div className="text-gray-500 text-xs">Vai trò</div><div>{openView.role}</div></div>
+              <div><div className="text-gray-500 text-xs">Trung tâm</div><div>{openView.center}</div></div>
+              <div><div className="text-gray-500 text-xs">Chuyên môn</div><div>{openView.major}</div></div>
+              <div><div className="text-gray-500 text-xs">Kinh nghiệm</div><div>{openView.exp}</div></div>
+              <div><div className="text-gray-500 text-xs">Trạng thái</div><div>{openView.status}</div></div>
+            </div>
+            <div className="px-4 py-3 border-t flex items-center justify-end">
+              <button className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={()=>setOpenView(null)}>Đóng</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Edit modal */}
+      <Modal open={!!openEdit} onClose={()=>setOpenEdit(null)}>
+        {openEdit && (
+          <form
+            onSubmit={(e)=>{
+              e.preventDefault()
+              const form = new FormData(e.currentTarget as HTMLFormElement)
+              const updated: User = {
+                ...openEdit,
+                name: String(form.get('name')||openEdit.name),
+                role: String(form.get('role')||openEdit.role),
+                center: String(form.get('center')||openEdit.center),
+                major: String(form.get('major')||openEdit.major),
+                exp: String(form.get('exp')||openEdit.exp),
+              }
+              setUsers(prev=>prev.map(x=>x.id===updated.id?updated:x))
+              setOpenEdit(null)
+              toast.success('Đã lưu thay đổi')
+            }}
+          >
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <div className="font-medium">Chỉnh sửa người dùng</div>
+              <button type="button" className="h-8 w-8 rounded hover:bg-gray-100" onClick={()=>setOpenEdit(null)}>×</button>
+            </div>
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Họ và tên</label>
+                <input name="name" defaultValue={openEdit.name} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Vai trò</label>
+                <input name="role" defaultValue={openEdit.role} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Trung tâm</label>
+                <input name="center" defaultValue={openEdit.center} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Chuyên môn</label>
+                <input name="major" defaultValue={openEdit.major} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Kinh nghiệm</label>
+                <input name="exp" defaultValue={openEdit.exp} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
+              <button type="button" className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={()=>setOpenEdit(null)}>Hủy</button>
+              <button type="submit" className="h-9 px-3 rounded-md bg-gray-900 text-white hover:bg-black">Lưu thay đổi</button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   )
 }
