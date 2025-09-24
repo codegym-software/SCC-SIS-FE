@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useToast } from '../../../shared/hooks/useToast'
 import { usePermission } from '../../../shared/components/PermissionProvider'
-import { Eye, Pencil, ShieldOff, ShieldCheck, MoreHorizontal, Plus, Search, ChevronDown } from 'lucide-react'
+import { Eye, Pencil, ShieldOff, ShieldCheck, MoreHorizontal, Plus, Search, ChevronDown, Calendar, Mail, Phone, IdCard, Building2, GraduationCap, NotebookPen, X } from 'lucide-react'
 import CreateUserModal from '../components/CreateUserModal'
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
@@ -18,15 +18,28 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
   )
 }
 
+type UserRole = { role: string; center: string }
+
 type User = {
   id: string
   name: string
   email: string
   phone: string
-  role: string
-  center: string
+  gender: 'Nam' | 'Nữ' | 'Khác'
+  dob: string
+  citizenId: string
+  roles: UserRole[]
   major: string
   exp: string
+  startDate: string
+  address: string
+  city: string
+  district: string
+  ward: string
+  education: string
+  note: string
+  createdAt: string
+  lastLogin: string
   status: 'Hoạt động' | 'Không hoạt động'
 }
 
@@ -48,12 +61,12 @@ export default function UsersPage() {
   ]
 
   const [users, setUsers] = useState<User[]>([
-    { id: '1', name: 'Nguyễn Văn An', email: 'an.nguyen@education.vn', phone: '0901234567', role: 'Giáo vụ', center: 'Trung tâm Hà Nội 1', major: 'Giáo dục', exp: '5 năm', status: 'Hoạt động' },
-    { id: '2', name: 'Trần Thị Bình', email: 'binh.tran@education.vn', phone: '0902345678', role: 'Giảng viên', center: 'Trung tâm HN 1', major: 'Toán học', exp: '3 năm', status: 'Hoạt động' },
-    { id: '3', name: 'Lê Văn Chinh', email: 'chinh.le@education.vn', phone: '0903456789', role: 'Quản lý đào tạo', center: 'Trung tâm TP.HCM 1', major: 'Khoa học máy tính', exp: '10 năm', status: 'Hoạt động' },
-    { id: '4', name: 'Phạm Thị Dung', email: 'dung.pham@education.vn', phone: '0904567890', role: 'Giảng viên', center: 'Trung tâm Đà Nẵng', major: 'Ngôn ngữ lập trình', exp: '2 năm', status: 'Không hoạt động' },
-    { id: '5', name: 'Hoàng Minh Tuấn', email: 'tuan.hoang@education.vn', phone: '0905678901', role: 'Giảng viên', center: 'Trung tâm HN 1', major: 'Thiết kế đồ họa', exp: '6 năm', status: 'Hoạt động' },
-    { id: '6', name: 'Phạm Văn A', email: 'a.pham@education.vn', phone: '0906789012', role: 'Giảng viên', center: 'Trung tâm HN 2', major: 'Vật lý', exp: '4 năm', status: 'Hoạt động' },
+    { id: '1', name: 'Nguyễn Văn An', email: 'an.nguyen@education.vn', phone: '0901234567', gender:'Nam', dob:'1988-03-10', citizenId:'123456789012', roles:[{role:'Giáo vụ', center:'Trung tâm Hà Nội 1'}], major: 'Giáo dục', exp: '5 năm', startDate:'2024-01-02', address:'123 Đường ABC, Quận XYZ, Hà Nội', city:'Hà Nội', district:'XYZ', ward:'ABC', education:'Đại học', note:'', createdAt:'2024-01-02', lastLogin:'2024-12-18 08:15', status: 'Hoạt động' },
+    { id: '2', name: 'Trần Thị Bình', email: 'binh.tran@education.vn', phone: '0902345678', gender:'Nữ', dob:'1985-07-20', citizenId:'987654321098765', roles:[{role:'Giáo vụ', center:'Trung tâm Hà Nội 1'},{role:'Giảng viên', center:'Trung tâm Hà Nội 2'}], major: 'Toán học', exp: '3 năm', startDate:'2024-02-01', address:'456 Đường DEF, Phường UVW, Quận RST, Hà Nội', city:'Hà Nội', district:'RST', ward:'UVW', education:'Đại học', note:'Chuyên môn tốt', createdAt:'2024-02-01', lastLogin:'2024-12-19 08:15', status: 'Hoạt động' },
+    { id: '3', name: 'Lê Văn Chinh', email: 'chinh.le@education.vn', phone: '0903456789', gender:'Nam', dob:'1980-11-11', citizenId:'321654987000', roles:[{role:'Quản lý đào tạo', center:'Trung tâm TP.HCM 1'}], major: 'Khoa học máy tính', exp: '10 năm', startDate:'2023-10-01', address:'TP.HCM', city:'TP.HCM', district:'1', ward:'Bến Nghé', education:'Thạc sĩ', note:'', createdAt:'2023-10-01', lastLogin:'2024-12-15 09:20', status: 'Hoạt động' },
+    { id: '4', name: 'Phạm Thị Dung', email: 'dung.pham@education.vn', phone: '0904567890', gender:'Nữ', dob:'1994-02-12', citizenId:'654321987', roles:[{role:'Giảng viên', center:'Trung tâm Đà Nẵng'}], major: 'Ngôn ngữ lập trình', exp: '2 năm', startDate:'2024-04-05', address:'Đà Nẵng', city:'Đà Nẵng', district:'Hải Châu', ward:'Thạch Thang', education:'Đại học', note:'', createdAt:'2024-04-05', lastLogin:'2024-12-10 10:00', status: 'Không hoạt động' },
+    { id: '5', name: 'Hoàng Minh Tuấn', email: 'tuan.hoang@education.vn', phone: '0905678901', gender:'Nam', dob:'1990-01-05', citizenId:'99887766', roles:[{role:'Giảng viên', center:'Trung tâm Hà Nội 1'}], major: 'Thiết kế đồ họa', exp: '6 năm', startDate:'2022-01-01', address:'HN', city:'Hà Nội', district:'Cầu Giấy', ward:'Dịch Vọng', education:'Đại học', note:'', createdAt:'2022-01-01', lastLogin:'2024-12-17 08:00', status: 'Hoạt động' },
+    { id: '6', name: 'Phạm Văn A', email: 'a.pham@education.vn', phone: '0906789012', gender:'Nam', dob:'1992-06-30', citizenId:'77665544', roles:[{role:'Giảng viên', center:'Trung tâm Hà Nội 2'}], major: 'Vật lý', exp: '4 năm', startDate:'2021-09-09', address:'HN2', city:'Hà Nội', district:'Đống Đa', ward:'Cát Linh', education:'Thạc sĩ', note:'', createdAt:'2021-09-09', lastLogin:'2024-12-12 08:30', status: 'Hoạt động' },
   ])
 
   const filtered = useMemo(() => users.filter(u => (u.name + u.email).toLowerCase().includes(query.toLowerCase())), [users, query])
@@ -141,17 +154,22 @@ export default function UsersPage() {
                   <p className="text-[#717182]">{u.email}</p>
                   <p className="text-[#717182]">{u.phone}</p>
                 </div>
-                <div className="col-span-3 flex flex-col gap-1.5">
+              <div className="col-span-3 flex flex-col gap-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className={`text-xs font-medium self-start px-2 py-0.5 rounded-md ${
-                    u.role === 'Giáo vụ' ? 'bg-[#fef9c2] text-[#894b00]' :
-                    u.role === 'Giảng viên' ? 'bg-[#dcfce7] text-[#016630]' :
-                    u.role === 'Quản lý đào tạo' ? 'bg-[#dbeafe] text-[#193cb8]' :
+                    u.roles[0]?.role === 'Giáo vụ' ? 'bg-[#fef9c2] text-[#894b00]' :
+                    u.roles[0]?.role === 'Giảng viên' ? 'bg-[#dcfce7] text-[#016630]' :
+                    u.roles[0]?.role === 'Quản lý đào tạo' ? 'bg-[#dbeafe] text-[#193cb8]' :
                     'bg-gray-100 text-gray-600'
                   }`}>
-                    {u.role}
+                    {u.roles[0]?.role}
                   </span>
-                  <p className="text-xs text-[#717182]">{u.center}</p>
+                  {u.roles.length>1 && (
+                    <button className="text-xs px-2 py-0.5 rounded-md bg-gray-100 text-gray-700" onClick={(e)=>{ e.stopPropagation(); alert(u.roles.slice(1).map(r=>`${r.role} — ${r.center}`).join('\n')) }}>+{u.roles.length-1} vai trò khác</button>
+                  )}
                 </div>
+                <p className="text-xs text-[#717182]">{u.roles[0]?.center}{u.roles.length>1?` và ${u.roles.length-1} trung tâm khác`:''}</p>
+              </div>
                 <div className="col-span-2">
                   <p className="text-gray-900">{u.major}</p>
                   <p className="text-xs text-[#717182]">{u.exp}</p>
@@ -243,18 +261,41 @@ export default function UsersPage() {
         {openView && (
           <div>
             <div className="px-4 py-3 border-b flex items-center justify-between">
-              <div className="font-medium">Thông tin người dùng</div>
+              <div className="font-medium">Chi tiết người dùng</div>
               <button className="h-8 w-8 rounded hover:bg-gray-100" onClick={()=>setOpenView(null)}>×</button>
             </div>
-            <div className="p-4 grid grid-cols-2 gap-4 text-sm">
-              <div><div className="text-gray-500 text-xs">Họ tên</div><div>{openView.name}</div></div>
-              <div><div className="text-gray-500 text-xs">Email</div><div>{openView.email}</div></div>
-              <div><div className="text-gray-500 text-xs">SĐT</div><div>{openView.phone}</div></div>
-              <div><div className="text-gray-500 text-xs">Vai trò</div><div>{openView.role}</div></div>
-              <div><div className="text-gray-500 text-xs">Trung tâm</div><div>{openView.center}</div></div>
-              <div><div className="text-gray-500 text-xs">Chuyên môn</div><div>{openView.major}</div></div>
+            <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div><div className="text-gray-500 text-xs flex items-center gap-2"><NotebookPen size={14}/> Họ và tên</div><div>{openView.name}</div></div>
+              <div><div className="text-gray-500 text-xs flex items-center gap-2"><Mail size={14}/> Email</div><div>{openView.email}</div></div>
+              <div><div className="text-gray-500 text-xs flex items-center gap-2"><Phone size={14}/> Số điện thoại</div><div>{openView.phone}</div></div>
+              <div><div className="text-gray-500 text-xs flex items-center gap-2"><Calendar size={14}/> Ngày sinh</div><div>{new Date('' as any || openView.name ? openView.dob ?? '' : '').toLocaleDateString('vi-VN') || '-'}</div></div>
+              <div><div className="text-gray-500 text-xs">Giới tính</div><div>{(openView as any).gender ?? '-'}</div></div>
+              <div><div className="text-gray-500 text-xs flex items-center gap-2"><IdCard size={14}/> Số CMND/CCCD</div><div>{(openView as any).citizenId ?? '-'}</div></div>
+              <div className="md:col-span-3 space-y-2">
+                {(openView as any).roles ? (openView as any).roles.map((r: any,idx: number)=> (
+                  <div key={idx} className="flex items-center gap-3 rounded-lg border px-3 py-2">
+                    <span className={`px-2 py-1 rounded-full text-xs ${idx===0?'bg-amber-50 text-amber-700':'bg-emerald-50 text-emerald-700'}`}>{r.role}</span>
+                    <div className="text-sm flex items-center gap-2 text-gray-700"><Building2 size={14}/> {r.center}</div>
+                  </div>
+                )) : (
+                  <div className="flex items-center gap-3 rounded-lg border px-3 py-2">
+                    <span className={`px-2 py-1 rounded-full text-xs bg-amber-50 text-amber-700`}>{(openView as any).role}</span>
+                    <div className="text-sm flex items-center gap-2 text-gray-700"><Building2 size={14}/> {(openView as any).center}</div>
+                  </div>
+                )}
+              </div>
+              <div><div className="text-gray-500 text-xs">Ngày bắt đầu</div><div>{(openView as any).startDate ? new Date((openView as any).startDate).toLocaleDateString('vi-VN') : '-'}</div></div>
+              <div><div className="text-gray-500 text-xs flex items-center gap-2"><GraduationCap size={14}/> Chuyên môn</div><div>{openView.major}</div></div>
               <div><div className="text-gray-500 text-xs">Kinh nghiệm</div><div>{openView.exp}</div></div>
+              <div className="md:col-span-3"><div className="text-gray-500 text-xs">Địa chỉ</div><div>{(openView as any).address ?? '-'}</div></div>
+              <div><div className="text-gray-500 text-xs">Tỉnh/Thành phố</div><div>{(openView as any).city ?? '-'}</div></div>
+              <div><div className="text-gray-500 text-xs">Quận/Huyện</div><div>{(openView as any).district ?? '-'}</div></div>
+              <div><div className="text-gray-500 text-xs">Phường/Xã</div><div>{(openView as any).ward ?? '-'}</div></div>
+              <div><div className="text-gray-500 text-xs">Trình độ học vấn</div><div>{(openView as any).education ?? '-'}</div></div>
+              <div className="md:col-span-2"><div className="text-gray-500 text-xs">Ghi chú</div><div>{(openView as any).note ?? '-'}</div></div>
               <div><div className="text-gray-500 text-xs">Trạng thái</div><div>{openView.status}</div></div>
+              <div><div className="text-gray-500 text-xs">Ngày tạo</div><div>{(openView as any).createdAt ? new Date((openView as any).createdAt).toLocaleDateString('vi-VN') : '-'}</div></div>
+              <div><div className="text-gray-500 text-xs">Đăng nhập cuối</div><div>{(openView as any).lastLogin ?? '-'}</div></div>
             </div>
             <div className="px-4 py-3 border-t flex items-center justify-end">
               <button className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={()=>setOpenView(null)}>Đóng</button>
@@ -287,18 +328,69 @@ export default function UsersPage() {
               <div className="font-medium">Chỉnh sửa người dùng</div>
               <button type="button" className="h-8 w-8 rounded hover:bg-gray-100" onClick={()=>setOpenEdit(null)}>×</button>
             </div>
-            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Họ và tên</label>
+                <label className="block text-xs text-gray-600 mb-1">Họ và tên *</label>
                 <input name="name" defaultValue={openEdit.name} className="w-full h-9 rounded-md border px-3 text-sm" />
               </div>
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Vai trò</label>
-                <input name="role" defaultValue={openEdit.role} className="w-full h-9 rounded-md border px-3 text-sm" />
+                <label className="block text-xs text-gray-600 mb-1">Email *</label>
+                <input name="email" defaultValue={(openEdit as any).email} className="w-full h-9 rounded-md border px-3 text-sm" />
               </div>
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Trung tâm</label>
-                <input name="center" defaultValue={openEdit.center} className="w-full h-9 rounded-md border px-3 text-sm" />
+                <label className="block text-xs text-gray-600 mb-1">Số điện thoại *</label>
+                <input name="phone" defaultValue={(openEdit as any).phone} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Ngày sinh</label>
+                <input type="date" name="dob" defaultValue={(openEdit as any).dob} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Giới tính</label>
+                <select name="gender" defaultValue={(openEdit as any).gender} className="w-full h-9 rounded-md border px-2 text-sm"><option>Nam</option><option>Nữ</option><option>Khác</option></select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Số CMND/CCCD</label>
+                <input name="citizenId" defaultValue={(openEdit as any).citizenId} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+
+              {/* Roles editor */}
+              <div className="md:col-span-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-gray-700 text-sm font-medium">Vai trò và trung tâm</div>
+                  <button type="button" className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center gap-2" onClick={()=>{
+                    const draft = ([...(openEdit as any).roles] || []).concat({role:'Giảng viên', center:'Trung tâm Hà Nội 1'})
+                    setOpenEdit({...(openEdit as any), roles: draft} as any)
+                  }}><Plus size={14}/> Thêm vai trò</button>
+                </div>
+                {(openEdit as any).roles?.map((r: any,idx: number)=> (
+                  <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center rounded-lg border px-3 py-3">
+                    <select className="h-9 rounded-md border px-2 text-sm" value={r.role} onChange={(e)=>{
+                      const draft = ([...(openEdit as any).roles]); draft[idx] = {...r, role: e.target.value}; setOpenEdit({...(openEdit as any), roles: draft} as any)
+                    }}>
+                      <option>Giáo vụ</option>
+                      <option>Giảng viên</option>
+                      <option>Quản lý đào tạo</option>
+                    </select>
+                    <select className="h-9 rounded-md border px-2 text-sm" value={r.center} onChange={(e)=>{
+                      const draft = ([...(openEdit as any).roles]); draft[idx] = {...r, center: e.target.value}; setOpenEdit({...(openEdit as any), roles: draft} as any)
+                    }}>
+                      <option>Trung tâm Hà Nội 1</option>
+                      <option>Trung tâm Hà Nội 2</option>
+                      <option>Trung tâm TP.HCM 1</option>
+                      <option>Trung tâm Đà Nẵng</option>
+                    </select>
+                    <button type="button" className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center" onClick={()=>{
+                      const draft = ([...(openEdit as any).roles]).filter((_: any,i: number)=>i!==idx); setOpenEdit({...(openEdit as any), roles: draft} as any)
+                    }}><X size={14}/></button>
+                  </div>
+                ))}
+                <input type="hidden" name="roles" value={JSON.stringify((openEdit as any).roles||[])} />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Ngày bắt đầu</label>
+                <input type="date" name="startDate" defaultValue={(openEdit as any).startDate} className="w-full h-9 rounded-md border px-3 text-sm" />
               </div>
               <div>
                 <label className="block text-xs text-gray-600 mb-1">Chuyên môn</label>
@@ -307,6 +399,31 @@ export default function UsersPage() {
               <div>
                 <label className="block text-xs text-gray-600 mb-1">Kinh nghiệm</label>
                 <input name="exp" defaultValue={openEdit.exp} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+
+              <div className="md:col-span-3">
+                <label className="block text-xs text-gray-600 mb-1">Địa chỉ</label>
+                <input name="address" defaultValue={(openEdit as any).address} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Tỉnh/Thành phố</label>
+                <input name="city" defaultValue={(openEdit as any).city} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Quận/Huyện</label>
+                <input name="district" defaultValue={(openEdit as any).district} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Phường/Xã</label>
+                <input name="ward" defaultValue={(openEdit as any).ward} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Trình độ học vấn</label>
+                <input name="education" defaultValue={(openEdit as any).education} className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs text-gray-600 mb-1">Ghi chú</label>
+                <input name="note" defaultValue={(openEdit as any).note} className="w-full h-9 rounded-md border px-3 text-sm" />
               </div>
             </div>
             <div className="px-4 py-3 border-t flex items-center justify-end gap-2">

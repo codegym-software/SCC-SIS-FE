@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useToast } from '../../../shared/hooks/useToast'
 import { usePermission } from '../../../shared/components/PermissionProvider'
+import { Building2, Eye, MoreHorizontal, Users2 } from 'lucide-react'
 
 type Center = {
   id: string
@@ -9,6 +10,9 @@ type Center = {
   address: string
   phone: string
   status: 'Hoạt động' | 'Không hoạt động'
+  students: number
+  studentsCapacity: number
+  teachers: number
 }
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
@@ -29,13 +33,14 @@ export default function CentersPage() {
   const toast = useToast()
   const { can } = usePermission()
   const [centers, setCenters] = useState<Center[]>([
-    { id: '1', name: 'Trung tâm Hà Nội 1', code: 'HN1', address: '123 Đường A, Hà Nội', phone: '024-1234-5678', status: 'Hoạt động' },
-    { id: '2', name: 'Trung tâm TP.HCM 1', code: 'HCM1', address: '456 Đường B, TP.HCM', phone: '028-2345-6789', status: 'Hoạt động' },
-    { id: '3', name: 'Trung tâm Đà Nẵng', code: 'DN1', address: '789 Đường C, Đà Nẵng', phone: '0236-345-678', status: 'Không hoạt động' },
+    { id: '1', name: 'Trung tâm Hà Nội 1', code: 'HN01', address: '123 Nguyễn Du, Hai Bà Trưng, Hà Nội', phone: '024-3943-1234', status: 'Hoạt động', students: 450, studentsCapacity: 500, teachers: 25 },
+    { id: '2', name: 'Trung tâm TP.HCM 1', code: 'HCM01', address: '456 Lê Lợi, Quận 1, TP.HCM', phone: '028-3822-5678', status: 'Hoạt động', students: 680, studentsCapacity: 800, teachers: 35 },
+    { id: '3', name: 'Trung tâm Đà Nẵng', code: 'DN01', address: '789 Hùng Vương, Hải Châu, Đà Nẵng', phone: '0236-3567-890', status: 'Không hoạt động', students: 90, studentsCapacity: 300, teachers: 0 },
   ])
   const [query, setQuery] = useState('')
   const [openModal, setOpenModal] = useState(false)
   const [editing, setEditing] = useState<Center | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   const filtered = useMemo(
     () => centers.filter((c) => c.name.toLowerCase().includes(query.toLowerCase()) || c.code.toLowerCase().includes(query.toLowerCase())),
@@ -52,6 +57,9 @@ export default function CentersPage() {
       address: String(form.get('address') || ''),
       phone: String(form.get('phone') || ''),
       status: (String(form.get('status') || 'Hoạt động') as Center['status']) ?? 'Hoạt động',
+      students: Number(form.get('students') || 0),
+      studentsCapacity: Number(form.get('studentsCapacity') || 0),
+      teachers: Number(form.get('teachers') || 0),
     }
     setCenters((prev) => {
       const exists = prev.some((c) => c.id === payload.id)
@@ -80,14 +88,33 @@ export default function CentersPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold">Quản lý Trung tâm</h1>
-          <p className="text-xs text-gray-500">Xem, tạo mới, chỉnh sửa hoặc vô hiệu hóa Trung tâm</p>
+          <p className="text-xs text-gray-500">Quản lý thông tin các trung tâm trong hệ thống</p>
         </div>
         {can('centers:create') && (
-          <button className="inline-flex items-center gap-2 rounded-md bg-gray-900 text-white text-sm px-3 py-2 hover:bg-black focus:ring-2 focus:ring-gray-300" onClick={openCreate}>
-            + Tạo Trung tâm mới
+          <button className="inline-flex items-center gap-2 rounded-md bg-indigo-600 text-white text-sm px-3 py-2 hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-300" onClick={openCreate}>
+            + Thêm Trung tâm mới
           </button>
         )}
       </div>
+
+      {/* Stats */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-lg border bg-white p-4">
+          <div className="text-xs text-gray-500 flex items-center gap-2"><Building2 size={16}/> Tổng số Trung tâm</div>
+          <div className="mt-3 text-2xl font-semibold">{centers.length}</div>
+          <div className="text-xs text-emerald-600 mt-1">+2 tháng này</div>
+        </div>
+        <div className="rounded-lg border bg-white p-4">
+          <div className="text-xs text-gray-500 flex items-center gap-2"><Eye size={16}/> Đang hoạt động</div>
+          <div className="mt-3 text-2xl font-semibold">{centers.filter(c=>c.status==='Hoạt động').length}</div>
+          <div className="text-xs text-gray-500 mt-1">Trung tâm hoạt động</div>
+        </div>
+        <div className="rounded-lg border bg-white p-4">
+          <div className="text-xs text-gray-500 flex items-center gap-2"><Users2 size={16}/> Tổng Học viên</div>
+          <div className="mt-3 text-2xl font-semibold">{centers.reduce((s,c)=>s+c.students,0)}</div>
+          <div className="text-xs text-emerald-600 mt-1">+45 tuần này</div>
+        </div>
+      </section>
 
       <div className="rounded-lg border bg-white">
         <div className="px-4 py-3 border-b grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -105,40 +132,64 @@ export default function CentersPage() {
         </div>
 
         <div className="grid grid-cols-12 gap-4 px-4 py-3 text-xs text-gray-500 border-b">
-          <div className="col-span-4">Trung tâm</div>
+          <div className="col-span-4">Tên Trung tâm</div>
           <div className="col-span-3">Địa chỉ</div>
-          <div className="col-span-3">Liên hệ</div>
-          <div className="col-span-2 text-right">Trạng thái</div>
+          <div className="col-span-2">Liên hệ</div>
+          <div className="col-span-1">Trạng thái</div>
+          <div className="col-span-1">Học viên</div>
+          <div className="col-span-1 text-right">Giảng viên</div>
         </div>
 
         <div className="divide-y">
           {filtered.map((c) => (
             <div key={c.id} className="grid grid-cols-12 gap-4 px-4 py-4 items-center">
               <div className="col-span-12 md:col-span-4">
-                <div className="text-sm font-medium">{c.name}</div>
-                <div className="text-xs text-gray-500">Mã: {c.code}</div>
+                <div className="text-sm font-medium">{c.name} <span className="text-xs text-gray-500 font-normal">• Mã: {c.code}</span></div>
+                <div className="text-xs text-gray-500">Tạo: 2024-01-15</div>
               </div>
               <div className="col-span-12 md:col-span-3 text-sm">{c.address}</div>
-              <div className="col-span-12 md:col-span-3 text-sm">{c.phone}</div>
-              <div className="col-span-12 md:col-span-2 flex items-center justify-end gap-2">
+              <div className="col-span-12 md:col-span-2 text-sm">
+                <div>{c.phone}</div>
+                <div className="text-xs text-gray-500">{c.code.toLowerCase()}@education.vn</div>
+              </div>
+              <div className="col-span-6 md:col-span-1">
                 <span className={`inline-flex items-center h-6 px-2 rounded-full text-xs ${c.status === 'Hoạt động' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>{c.status}</span>
-                {can('centers:update') && (
-                  <button className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm" onClick={() => openEdit(c)}>Sửa</button>
-                )}
-                {can('centers:disable') && (
-                  <button
-                    className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm"
-                    onClick={() => {
-                      const action = c.status === 'Hoạt động' ? 'Vô hiệu hóa' : 'Kích hoạt'
-                      if (confirm(`${action} ${c.name}?`)) {
-                        toggleDisable(c)
-                        toast.success(`${action} thành công`, `${c.name} đã được cập nhật`)
-                      }
-                    }}
-                  >
-                    {c.status === 'Hoạt động' ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                  </button>
-                )}
+              </div>
+              <div className="col-span-3 md:col-span-1">
+                <div className="inline-flex items-center gap-1 text-sm"><Users2 size={14}/> {c.students} <span className="text-xs text-gray-500">/{c.studentsCapacity}</span></div>
+              </div>
+              <div className="col-span-3 md:col-span-1 text-right relative">
+                <div className="text-sm">{c.teachers}</div>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                  <div className="relative">
+                    <button className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center" onClick={()=> setOpenMenuId(p=>p===c.id?null:c.id)}>
+                      <MoreHorizontal size={16}/>
+                    </button>
+                    {openMenuId===c.id && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={()=>setOpenMenuId(null)}/>
+                        <div className="absolute right-0 mt-2 w-52 rounded-lg border bg-white shadow-lg z-20">
+                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Xem chi tiết</button>
+                          {can('centers:update') && (
+                            <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={()=>{ setOpenMenuId(null); openEdit(c) }}>Chỉnh sửa</button>
+                          )}
+                          {can('centers:disable') && (
+                            <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={()=>{
+                              setOpenMenuId(null)
+                              const action = c.status==='Hoạt động' ? 'Vô hiệu hóa' : 'Kích hoạt'
+                              if(confirm(`${action} ${c.name}?`)){
+                                toggleDisable(c)
+                                toast.success(`${action} thành công`, `${c.name} đã được cập nhật`)
+                              }
+                            }}>
+                              {c.status==='Hoạt động'?'Vô hiệu hóa':'Kích hoạt'}
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           ))}
@@ -167,6 +218,18 @@ export default function CentersPage() {
             <div>
               <label className="block text-xs text-gray-600 mb-1">Số điện thoại</label>
               <input name="phone" defaultValue={editing?.phone} className="w-full h-9 rounded-md border px-3 text-sm" placeholder="024-1234-5678" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Học viên hiện tại</label>
+              <input name="students" type="number" defaultValue={editing?.students ?? 0} className="w-full h-9 rounded-md border px-3 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Sức chứa học viên</label>
+              <input name="studentsCapacity" type="number" defaultValue={editing?.studentsCapacity ?? 0} className="w-full h-9 rounded-md border px-3 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Số giảng viên</label>
+              <input name="teachers" type="number" defaultValue={editing?.teachers ?? 0} className="w-full h-9 rounded-md border px-3 text-sm" />
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">Trạng thái</label>
