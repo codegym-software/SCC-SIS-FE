@@ -1,5 +1,6 @@
 import React from 'react'
 import { Home, Building2, Users2, Shield, BookOpen, GraduationCap, Settings, LogOut } from 'lucide-react'
+import { keycloak } from '../../keycloak'
 
 type AppLayoutProps = {
   children: React.ReactNode
@@ -78,7 +79,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
           <div className="mt-auto border-t p-3">
             <a className="block w-full text-left text-sm px-2 py-2 rounded-md hover:bg-gray-50 flex items-center gap-2" href="#"><Settings size={16} /> Cài đặt</a>
-            <button className="mt-2 w-full text-left text-sm px-2 py-2 rounded-md hover:bg-gray-50 flex items-center gap-2"><LogOut size={16} /> Đăng xuất</button>
+            <button
+              onClick={() => keycloak.logout({ redirectUri: window.location.origin })}
+              className="mt-2 w-full text-left text-sm px-2 py-2 rounded-md hover:bg-gray-50 flex items-center gap-2"
+            >
+              <LogOut size={16} /> Đăng xuất
+            </button>
           </div>
         </aside>
 
@@ -93,5 +99,3 @@ export default function AppLayout({ children }: AppLayoutProps) {
     </div>
   )
 }
-
-
