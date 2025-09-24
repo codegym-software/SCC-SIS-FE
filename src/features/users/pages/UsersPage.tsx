@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react'
 import { useToast } from '../../../shared/hooks/useToast'
 import { usePermission } from '../../../shared/components/PermissionProvider'
-import { Eye, Pencil, ShieldOff, ShieldCheck, MoreHorizontal } from 'lucide-react'
+import { Eye, Pencil, ShieldOff, ShieldCheck, MoreHorizontal, Plus, Search, ChevronDown } from 'lucide-react'
+import CreateUserModal from '../components/CreateUserModal'
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
   if (!open) return null
@@ -68,211 +69,174 @@ export default function UsersPage() {
         </div>
         {can('users:create') && (
           <button
-            className="inline-flex items-center gap-2 rounded-md bg-gray-900 text-white text-sm px-3 py-2 hover:bg-black focus:ring-2 focus:ring-gray-300"
+            className="inline-flex items-center gap-2 rounded-md bg-[#030213] text-white text-sm px-4 py-2 hover:bg-black focus:ring-2 focus:ring-gray-300"
             onClick={() => setOpenCreate(true)}
           >
-            + Thêm Người dùng mới
+            <Plus className="w-4 h-4" />
+            Thêm Người dùng mới
           </button>
         )}
       </div>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-lg border bg-white p-4">
-            <div className="text-xs text-gray-500 mb-3">{s.label}</div>
-            <div className="text-2xl font-semibold">{s.value}</div>
+          <div key={s.label} className="bg-white border border-gray-200 rounded-2xl p-6">
+            <p className="text-sm font-medium text-gray-900">{s.label}</p>
+            <p className={`text-3xl font-bold mt-8 ${s.label === 'Đang hoạt động' ? 'text-[#00a63e]' : 'text-gray-900'}`}>
+              {s.value}
+            </p>
           </div>
         ))}
       </section>
 
       {/* Create User Modal */}
-      <Modal open={openCreate} onClose={() => setOpenCreate(false)}>
-        <div className="px-4 py-3 border-b flex items-center justify-between">
-          <div className="font-medium">Tạo Người dùng mới</div>
-          <button className="h-8 w-8 rounded hover:bg-gray-100" onClick={() => setOpenCreate(false)}>×</button>
+      <CreateUserModal
+        open={openCreate}
+        onClose={() => setOpenCreate(false)}
+        onSubmit={(userData) => {
+          toast.success('Đã tạo người dùng', 'Người dùng mới đã được thêm vào danh sách')
+        }}
+      />
+
+      {/* Filters */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-6 flex flex-wrap items-center gap-4">
+        <div className="relative flex-grow">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setPage(1) }}
+            className="w-full bg-[#f3f3f5] border-transparent rounded-lg pl-10 pr-4 py-2 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            placeholder="Tìm kiếm theo tên hoặc email..."
+          />
         </div>
-        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="col-span-2 text-xs text-gray-500">Nhập thông tin để tạo tài khoản người dùng mới.</div>
+        <div className="flex items-center justify-between bg-[#f3f3f5] rounded-lg px-4 py-2 w-full sm:w-auto md:w-52 text-sm">
+          <span>Tất cả trung tâm</span>
+          <ChevronDown className="w-4 h-4 opacity-50" />
+        </div>
+        <div className="flex items-center justify-between bg-[#f3f3f5] rounded-lg px-4 py-2 w-full sm:w-auto md:w-52 text-sm">
+          <span>Tất cả vai trò</span>
+          <ChevronDown className="w-4 h-4 opacity-50" />
+        </div>
+      </div>
 
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Họ và tên *</label>
-            <input className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Nguyễn Văn A" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Email *</label>
-            <input className="w-full h-9 rounded-md border px-3 text-sm" placeholder="email@education.vn" />
-          </div>
-
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Số điện thoại *</label>
-            <input className="w-full h-9 rounded-md border px-3 text-sm" placeholder="090xxxxxxx" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Số CMND/CCCD</label>
-            <input className="w-full h-9 rounded-md border px-3 text-sm" placeholder="123456789012" />
-          </div>
-
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Ngày sinh</label>
-            <input type="date" className="w-full h-9 rounded-md border px-3 text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Giới tính</label>
-            <select className="w-full h-9 rounded-md border px-2 text-sm">
-              <option>Nam</option>
-              <option>Nữ</option>
-              <option>Khác</option>
-            </select>
+      <section className="bg-white border border-gray-200 rounded-2xl p-6">
+        <div>
+          <h3 className="text-base font-medium text-gray-900">Danh sách Người dùng</h3>
+          <p className="text-sm text-[#717182] mt-1">Xem và quản lý tất cả người dùng trong hệ thống ({filtered.length} kết quả)</p>
+        </div>
+        <div className="mt-6 -mx-6">
+          <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-gray-200 text-sm font-medium text-gray-500">
+            <div className="col-span-3">Người dùng</div>
+            <div className="col-span-3">Vai trò & Trung tâm</div>
+            <div className="col-span-2">Chuyên môn</div>
+            <div className="col-span-2">Trạng thái</div>
+            <div className="col-span-2 text-right"></div>
           </div>
 
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Vai trò *</label>
-            <select className="w-full h-9 rounded-md border px-2 text-sm">
-              <option>Chọn vai trò</option>
-              <option>Giảng viên</option>
-              <option>Giáo vụ</option>
-              <option>Quản lý đào tạo</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Trung tâm *</label>
-            <select className="w-full h-9 rounded-md border px-2 text-sm">
-              <option>Chọn trung tâm</option>
-              <option>Trung tâm Hà Nội 1</option>
-              <option>Trung tâm TP.HCM 1</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Ngày bắt đầu</label>
-            <input type="date" className="w-full h-9 rounded-md border px-3 text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Chuyên môn</label>
-            <input className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Giáo dục" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Kinh nghiệm</label>
-            <input className="w-full h-9 rounded-md border px-3 text-sm" placeholder="5 năm" />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-xs text-gray-600 mb-1">Địa chỉ</label>
-            <input className="w-full h-9 rounded-md border px-3 text-sm" placeholder="123 Đường ABC, Quận XYZ, Thành phố" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Tỉnh/Thành phố</label>
-            <input className="w-full h-9 rounded-md border px-3 text-sm" placeholder="TP.HCM" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Quận/Huyện</label>
-            <input className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Quận 1" />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Phường/Xã</label>
-            <input className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Phường ABC" />
+          <div className="text-sm">
+            {pageUsers.map((u) => (
+              <div key={u.id} className="grid grid-cols-12 gap-4 items-center px-6 py-4 border-b border-gray-200">
+                <div className="col-span-3">
+                  <p className="font-medium text-gray-900">{u.name}</p>
+                  <p className="text-[#717182]">{u.email}</p>
+                  <p className="text-[#717182]">{u.phone}</p>
+                </div>
+                <div className="col-span-3 flex flex-col gap-1.5">
+                  <span className={`text-xs font-medium self-start px-2 py-0.5 rounded-md ${
+                    u.role === 'Giáo vụ' ? 'bg-[#fef9c2] text-[#894b00]' :
+                    u.role === 'Giảng viên' ? 'bg-[#dcfce7] text-[#016630]' :
+                    u.role === 'Quản lý đào tạo' ? 'bg-[#dbeafe] text-[#193cb8]' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>
+                    {u.role}
+                  </span>
+                  <p className="text-xs text-[#717182]">{u.center}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-gray-900">{u.major}</p>
+                  <p className="text-xs text-[#717182]">{u.exp}</p>
+                </div>
+                <div className="col-span-2">
+                  <span className={`text-xs font-medium self-start px-2 py-0.5 rounded-md ${
+                    u.status === 'Hoạt động' 
+                      ? 'bg-[#dcfce7] text-[#016630]' 
+                      : 'bg-[#f3f4f6] text-[#1e2939]'
+                  }`}>
+                    {u.status}
+                  </span>
+                </div>
+                <div className="col-span-2 flex justify-end">
+                  <div className="relative">
+                    <button
+                      className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center"
+                      onClick={() => setOpenMenuId((prev) => (prev === u.id ? null : u.id))}
+                    >
+                      <MoreHorizontal size={16} />
+                    </button>
+                    {openMenuId === u.id && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                        <div className="absolute right-0 mt-2 w-52 rounded-lg border bg-white shadow-lg z-20">
+                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" onClick={()=>{ setOpenMenuId(null); setOpenView(u) }}><Eye size={16}/> Xem chi tiết</button>
+                          {can('users:update') && (
+                            <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" onClick={()=>{ setOpenMenuId(null); setOpenEdit(u) }}><Pencil size={16}/> Chỉnh sửa</button>
+                          )}
+                          <button
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                            onClick={()=>{
+                              setOpenMenuId(null)
+                              const action = u.status === 'Hoạt động' ? 'Vô hiệu hóa' : 'Kích hoạt'
+                              if(confirm(`${action} ${u.name}?`)){
+                                setUsers(prev=>prev.map(x=>x.id===u.id?{...x,status: u.status==='Hoạt động'?'Không hoạt động':'Hoạt động'}:x))
+                                toast.success(`${action} thành công`)
+                              }
+                            }}
+                          >
+                            {u.status === 'Hoạt động' ? (<><ShieldOff size={16}/> Vô hiệu hóa</>) : (<><ShieldCheck size={16}/> Kích hoạt</>)}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-        <div className="sticky bottom-0 bg-white px-4 py-3 border-t flex items-center justify-end gap-2">
-          <button className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={() => setOpenCreate(false)}>Hủy</button>
-          <button
-            className="h-9 px-3 rounded-md bg-gray-900 text-white hover:bg-black focus:ring-2 focus:ring-gray-300"
-            onClick={() => {
-              setOpenCreate(false)
-              toast.success('Đã tạo người dùng', 'Người dùng mới đã được thêm vào danh sách')
-            }}
+
+        {/* Pagination */}
+        <nav className="flex justify-center items-center gap-2 mt-8 text-sm font-medium">
+          <button 
+            disabled={page===1} 
+            onClick={()=>setPage(p=>Math.max(1,p-1))} 
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg opacity-50 disabled:opacity-50"
           >
-            Tạo Người dùng
+            <ChevronDown className="w-4 h-4 rotate-90" />
+            <span>Previous</span>
           </button>
-        </div>
-      </Modal>
-
-      <section className="rounded-lg border bg-white">
-        <div className="px-4 py-3 border-b grid grid-cols-1 md:grid-cols-3 gap-2">
-          <input value={query} onChange={(e)=>{setQuery(e.target.value); setPage(1)}} className="h-9 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-gray-200" placeholder="Tìm kiếm theo tên hoặc email..." />
-          <select className="h-9 rounded-md border px-2 text-sm">
-            <option>Tất cả trung tâm</option>
-          </select>
-          <select className="h-9 rounded-md border px-2 text-sm">
-            <option>Tất cả vai trò</option>
-          </select>
-        </div>
-
-        <div className="grid grid-cols-12 gap-4 px-4 py-3 text-xs text-gray-500 border-b">
-          <div className="col-span-4">Người dùng</div>
-          <div className="col-span-3">Vai trò & Trung tâm</div>
-          <div className="col-span-3">Chuyên môn</div>
-          <div className="col-span-2 text-right">Trạng thái</div>
-        </div>
-
-        <div className="divide-y">
-          {pageUsers.map((u) => (
-            <div key={u.id} className="grid grid-cols-12 gap-4 px-4 py-4 items-center relative">
-              <div className="col-span-12 md:col-span-4">
-                <div className="text-sm font-medium">{u.name}</div>
-                <div className="text-xs text-gray-500">{u.email}</div>
-                <div className="text-xs text-gray-500">{u.phone}</div>
-              </div>
-              <div className="col-span-12 md:col-span-3">
-                <div className="flex flex-wrap gap-1">
-                  <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-xs">{u.role}</span>
-                </div>
-                <div className="text-xs text-gray-500">{u.center}</div>
-              </div>
-              <div className="col-span-12 md:col-span-3">
-                <div className="text-sm">{u.major}</div>
-                <div className="text-xs text-gray-500">{u.exp}</div>
-              </div>
-              <div className="col-span-12 md:col-span-2 flex items-center justify-end gap-2">
-                <span className={`inline-flex items-center h-6 px-2 rounded-full text-xs ${u.status === 'Hoạt động' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>{u.status}</span>
-                <div className="relative">
-                  <button
-                    className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center"
-                    onClick={() => setOpenMenuId((prev) => (prev === u.id ? null : u.id))}
-                  >
-                    <MoreHorizontal size={16} />
-                  </button>
-                  {openMenuId === u.id && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
-                      <div className="absolute right-0 mt-2 w-52 rounded-lg border bg-white shadow-lg z-20">
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" onClick={()=>{ setOpenMenuId(null); setOpenView(u) }}><Eye size={16}/> Xem chi tiết</button>
-                        {can('users:update') && (
-                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" onClick={()=>{ setOpenMenuId(null); setOpenEdit(u) }}><Pencil size={16}/> Chỉnh sửa</button>
-                        )}
-                        <button
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                          onClick={()=>{
-                            setOpenMenuId(null)
-                            const action = u.status === 'Hoạt động' ? 'Vô hiệu hóa' : 'Kích hoạt'
-                            if(confirm(`${action} ${u.name}?`)){
-                              setUsers(prev=>prev.map(x=>x.id===u.id?{...x,status: u.status==='Hoạt động'?'Không hoạt động':'Hoạt động'}:x))
-                              toast.success(`${action} thành công`)
-                            }
-                          }}
-                        >
-                          {u.status === 'Hoạt động' ? (<><ShieldOff size={16}/> Vô hiệu hóa</>) : (<><ShieldCheck size={16}/> Kích hoạt</>)}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between px-4 py-3 border-t text-sm">
-          <div className="text-gray-500">Trang {page}/{totalPages}</div>
-          <div className="flex items-center gap-1">
-            <button disabled={page===1} onClick={()=>setPage(p=>Math.max(1,p-1))} className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 disabled:opacity-50">Previous</button>
-            <button className={`h-8 px-3 rounded-md border ${page===1?'bg-gray-900 text-white':'bg-white hover:bg-gray-50'}`} onClick={()=>setPage(1)}>1</button>
-            {totalPages>=2 && (
-              <button className={`h-8 px-3 rounded-md border ${page===2?'bg-gray-900 text-white':'bg-white hover:bg-gray-50'}`} onClick={()=>setPage(2)}>2</button>
-            )}
-            <button disabled={page===totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))} className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 disabled:opacity-50">Next</button>
-          </div>
-        </div>
+          <button 
+            className={`w-9 h-9 flex items-center justify-center rounded-lg border ${page===1?'bg-white border-gray-200':'text-gray-900'}`} 
+            onClick={()=>setPage(1)}
+          >
+            1
+          </button>
+          {totalPages>=2 && (
+            <button 
+              className={`w-9 h-9 flex items-center justify-center rounded-lg ${page===2?'bg-white border border-gray-200':'text-gray-900'}`} 
+              onClick={()=>setPage(2)}
+            >
+              2
+            </button>
+          )}
+          <button 
+            disabled={page===totalPages} 
+            onClick={()=>setPage(p=>Math.min(totalPages,p+1))} 
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg disabled:opacity-50"
+          >
+            <span>Next</span>
+            <ChevronDown className="w-4 h-4 -rotate-90" />
+          </button>
+        </nav>
       </section>
       {/* View detail modal */}
       <Modal open={!!openView} onClose={()=>setOpenView(null)}>
