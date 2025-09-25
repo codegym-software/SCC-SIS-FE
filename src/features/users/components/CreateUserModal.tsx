@@ -1,10 +1,29 @@
 import React, { useState } from 'react'
 import { X, Plus, Calendar, ChevronDown } from 'lucide-react'
 
+// ====== MAP HIỂN THỊ -> ID TRONG DB (CẬP NHẬT CHO KHỚP DB CỦA BẠN) ======
+const ROLE_LABEL_TO_ID: Record<string, number> = {
+  // ví dụ: chỉnh lại đúng roleId thực tế
+  'Super Admin': 1,
+  'Quản lý đào tạo': 3,
+  'Giáo vụ': 4,
+  'Giảng viên': 5,
+  // nếu có "Quản lý trung tâm": thêm 'Quản lý trung tâm': 2,
+}
+
+const CENTER_LABEL_TO_ID: Record<string, number> = {
+  // ví dụ: chỉnh centerId thực tế
+  'Trung tâm Hà Nội 1': 1,
+  'Trung tâm TP.HCM 1': 2,
+  'Trung tâm Đà Nẵng 1': 3,
+}
+
+const GLOBAL_ROLES = new Set(['Super Admin', 'Quản lý đào tạo']) // centerId phải null & chỉ 1 role
+
 interface CreateUserModalProps {
   open: boolean
   onClose: () => void
-  onSubmit: (userData: any) => void
+  onSubmit: (payload: any) => void // parent sẽ gọi API createUser(payload)
 }
 
 interface UserRole {
@@ -58,7 +77,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
   }
 
   const handleRoleChange = (index: number, field: 'role' | 'center', value: string) => {
-    setUserRoles(prev => prev.map((role, i) => 
+    setUserRoles(prev => prev.map((role, i) =>
       i === index ? { ...role, [field]: value } : role
     ))
   }
@@ -73,9 +92,78 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
     }
   }
 
+  // Map 'Nam'|'Nữ'|'Khác' -> 'male'|'female'|undefined
+  const mapGender = (g: string) => g === 'Nam'
+    ? 'male'
+    : g === 'Nữ'
+      ? 'female'
+      : undefined
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit({ ...formData, roles: userRoles })
+
+    // ==== VALIDATION theo rule “final” (BE cũng sẽ check, đây là UX sớm) ====
+    // Không cho chọn "Chọn vai trò"
+    if (userRoles.some(r => !r.role || r.role === 'Chọn vai trò')) {
+      alert('Vui lòng chọn vai trò hợp lệ')
+      return
+    }
+
+    // Nếu chọn role global → chỉ được 1 dòng role & centerId phải null
+    const pickedGlobal = userRoles.filter(r => GLOBAL_ROLES.has(r.role))
+    if (pickedGlobal.length > 0) {
+      if (userRoles.length > 1) {
+        alert('Role độc quyền (Super Admin / Quản lý đào tạo) không được đi kèm vai trò khác')
+        return
+      }
+    } else {
+      // Tất cả là center-scoped → tối đa 3 dòng và phải chọn center hợp lệ
+      if (userRoles.length > 3) {
+        alert('Tối đa 3 vai trò center-scoped cho mỗi user')
+        return
+      }
+      if (userRoles.some(r => !r.center || r.center === 'Chọn trung tâm')) {
+        alert('Vui lòng chọn trung tâm cho vai trò center-scoped')
+        return
+      }
+    }
+
+    // Map role/center label -> id
+    const rolesDto = userRoles.map(r => {
+      const roleId = ROLE_LABEL_TO_ID[r.role]
+      if (!roleId) {
+        throw new Error(`Vai trò chưa được map ID: ${r.role}`)
+      }
+      const centerId = GLOBAL_ROLES.has(r.role)
+        ? null
+        : CENTER_LABEL_TO_ID[r.center]
+      if (!GLOBAL_ROLES.has(r.role) && !centerId) {
+        throw new Error(`Trung tâm chưa được map ID: ${r.center}`)
+      }
+      return { roleId, centerId }
+    })
+
+    // Map field FE -> DTO BE (CreateUserRequest)
+    const payload = {
+      fullName: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      dob: formData.dateOfBirth || undefined, // yyyy-MM-dd
+      gender: mapGender(formData.gender),     // 'male' | 'female' | undefined
+      nationalIdNo: formData.idCard || undefined,
+      startDate: formData.startDate || undefined,
+      specialty: formData.specialization || undefined,
+      experience: formData.experience || undefined,
+      addressLine: formData.address || undefined,
+      province: formData.city || undefined,   // FE đặt city, BE dùng province
+      district: formData.district || undefined,
+      ward: formData.ward || undefined,
+      educationLevel: formData.educationLevel || undefined,
+      note: formData.notes || undefined,
+      roles: rolesDto
+    }
+
+    onSubmit(payload) // parent sẽ gọi API & toast
     onClose()
   }
 
@@ -92,7 +180,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
             <h2 className="text-lg font-semibold text-gray-900">Tạo Người dùng mới</h2>
             <p className="text-sm text-[#717182] mt-1">Nhập thông tin để tạo tài khoản người dùng mới.</p>
           </div>
-          <button 
+          <button
             className="text-gray-400 hover:text-gray-600"
             onClick={onClose}
           >
