@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useToast } from '../../../shared/hooks/useToast'
 import { usePermission } from '../../../shared/components/PermissionProvider'
-import { Building2, Eye, MoreHorizontal, Users2 } from 'lucide-react'
+import { Building2, Eye, MoreHorizontal, Users2, MapPin, Phone, Mail, Globe, IdCard, User2, Layers } from 'lucide-react'
 
 type Center = {
   id: string
@@ -13,14 +13,23 @@ type Center = {
   students: number
   studentsCapacity: number
   teachers: number
+  city?: string
+  district?: string
+  ward?: string
+  email?: string
+  website?: string
+  description?: string
+  managerId?: string
+  managerName?: string
+  classesCount?: number
 }
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="absolute inset-0 flex items-start justify-center pt-12 px-4">
+      <div className="fixed inset-0 bg-black/30" onClick={onClose} />
+      <div className="fixed inset-0 flex items-start justify-center pt-12 px-4">
         <div className="w-full max-w-2xl rounded-lg bg-white shadow-lg border">
           {children}
         </div>
@@ -33,9 +42,9 @@ export default function CentersPage() {
   const toast = useToast()
   const { can } = usePermission()
   const [centers, setCenters] = useState<Center[]>([
-    { id: '1', name: 'Trung tâm Hà Nội 1', code: 'HN01', address: '123 Nguyễn Du, Hai Bà Trưng, Hà Nội', phone: '024-3943-1234', status: 'Hoạt động', students: 450, studentsCapacity: 500, teachers: 25 },
-    { id: '2', name: 'Trung tâm TP.HCM 1', code: 'HCM01', address: '456 Lê Lợi, Quận 1, TP.HCM', phone: '028-3822-5678', status: 'Hoạt động', students: 680, studentsCapacity: 800, teachers: 35 },
-    { id: '3', name: 'Trung tâm Đà Nẵng', code: 'DN01', address: '789 Hùng Vương, Hải Châu, Đà Nẵng', phone: '0236-3567-890', status: 'Không hoạt động', students: 90, studentsCapacity: 300, teachers: 0 },
+    { id: '1', name: 'Trung tâm Hà Nội 1', code: 'HN01', address: '123 Nguyễn Du, Hai Bà Trưng, Hà Nội', city: 'Hà Nội', district: 'Hai Bà Trưng', ward: 'Bùi Thị Xuân', phone: '024-3943-1234', email: 'hanoi1@education.vn', website: 'https://hanoi1.education.vn', status: 'Hoạt động', students: 450, studentsCapacity: 500, teachers: 25, managerId: 'QL-001', managerName: 'Nguyễn Văn A', classesCount: 15, description: 'Trung tâm đào tạo công nghệ thông tin hàng đầu tại Hà Nội' },
+    { id: '2', name: 'Trung tâm TP.HCM 1', code: 'HCM01', address: '456 Lê Lợi, Quận 1, TP.HCM', city: 'TP.HCM', district: 'Quận 1', ward: 'Bến Nghé', phone: '028-3822-5678', email: 'hcm1@education.vn', website: 'https://hcm1.education.vn', status: 'Hoạt động', students: 680, studentsCapacity: 800, teachers: 35, managerId: 'QL-002', managerName: 'Trần Thị B', classesCount: 20, description: '' },
+    { id: '3', name: 'Trung tâm Đà Nẵng', code: 'DN01', address: '789 Hùng Vương, Hải Châu, Đà Nẵng', city: 'Đà Nẵng', district: 'Hải Châu', ward: 'Thạch Thang', phone: '0236-3567-890', email: 'danang@education.vn', website: 'https://danang.education.vn', status: 'Không hoạt động', students: 90, studentsCapacity: 300, teachers: 0, managerId: 'QL-003', managerName: 'Lê Văn C', classesCount: 8, description: '' },
   ])
   const [query, setQuery] = useState('')
   const [openModal, setOpenModal] = useState(false)
@@ -86,9 +95,14 @@ export default function CentersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold">Quản lý Trung tâm</h1>
-          <p className="text-xs text-gray-500">Quản lý thông tin các trung tâm trong hệ thống</p>
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 grid place-items-center text-white">
+            <Building2 size={18} />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold">Quản lý Trung tâm</h1>
+            <p className="text-xs text-gray-500">Quản lý thông tin các trung tâm trong hệ thống</p>
+          </div>
         </div>
         {can('centers:create') && (
           <button className="inline-flex items-center gap-2 rounded-md bg-indigo-600 text-white text-sm px-3 py-2 hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-300" onClick={openCreate}>
@@ -132,25 +146,38 @@ export default function CentersPage() {
         </div>
 
         <div className="grid grid-cols-12 gap-4 px-4 py-3 text-xs text-gray-500 border-b">
-          <div className="col-span-4">Tên Trung tâm</div>
+          <div className="col-span-3">Tên Trung tâm</div>
           <div className="col-span-3">Địa chỉ</div>
-          <div className="col-span-2">Liên hệ</div>
+          <div className="col-span-3">Liên hệ</div>
           <div className="col-span-1">Trạng thái</div>
           <div className="col-span-1">Học viên</div>
-          <div className="col-span-1 text-right">Giảng viên</div>
+          <div className="col-span-1">Giảng viên</div>
+          <div className="col-span-0 md:col-span-0"></div>
         </div>
 
         <div className="divide-y">
           {filtered.map((c) => (
             <div key={c.id} className="grid grid-cols-12 gap-4 px-4 py-4 items-center">
-              <div className="col-span-12 md:col-span-4">
-                <div className="text-sm font-medium">{c.name} <span className="text-xs text-gray-500 font-normal">• Mã: {c.code}</span></div>
-                <div className="text-xs text-gray-500">Tạo: 2024-01-15</div>
+              <div className="col-span-12 md:col-span-3">
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 grid place-items-center text-white flex-shrink-0">
+                    <Building2 size={18} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">{c.name}</div>
+                    <div className="text-xs text-gray-500">Mã: {c.code}</div>
+                    <div className="text-xs text-gray-500">Tạo: 2024-01-15</div>
+                  </div>
+                </div>
               </div>
-              <div className="col-span-12 md:col-span-3 text-sm">{c.address}</div>
-              <div className="col-span-12 md:col-span-2 text-sm">
-                <div>{c.phone}</div>
-                <div className="text-xs text-gray-500">{c.code.toLowerCase()}@education.vn</div>
+              <div className="col-span-12 md:col-span-3 text-sm">
+                <div className="flex items-center gap-2 text-gray-700"><MapPin size={14}/> {c.address}</div>
+                <div className="text-xs text-gray-500">{[c.ward,c.district,c.city].filter(Boolean).join(', ')}</div>
+              </div>
+              <div className="col-span-12 md:col-span-3 text-sm">
+                <div className="flex items-center gap-2"><Phone size={14}/> {c.phone}</div>
+                <div className="flex items-center gap-2 text-xs text-gray-600"><Mail size={14}/> {c.email}</div>
+                <div className="flex items-center gap-2 text-xs text-gray-600"><Globe size={14}/> {c.website?.replace('https://','')}</div>
               </div>
               <div className="col-span-6 md:col-span-1">
                 <span className={`inline-flex items-center h-6 px-2 rounded-full text-xs ${c.status === 'Hoạt động' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>{c.status}</span>
@@ -158,8 +185,8 @@ export default function CentersPage() {
               <div className="col-span-3 md:col-span-1">
                 <div className="inline-flex items-center gap-1 text-sm"><Users2 size={14}/> {c.students} <span className="text-xs text-gray-500">/{c.studentsCapacity}</span></div>
               </div>
-              <div className="col-span-3 md:col-span-1 text-right relative">
-                <div className="text-sm">{c.teachers}</div>
+              <div className="col-span-3 md:col-span-1 relative">
+                <div className="inline-flex items-center gap-1 text-sm"><User2 size={14}/> {c.teachers}</div>
                 <div className="absolute right-0 top-1/2 -translate-y-1/2">
                   <div className="relative">
                     <button className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center" onClick={()=> setOpenMenuId(p=>p===c.id?null:c.id)}>
@@ -202,7 +229,7 @@ export default function CentersPage() {
             <div className="font-medium">{editing ? 'Sửa Trung tâm' : 'Tạo Trung tâm mới'}</div>
             <button type="button" className="h-8 w-8 rounded hover:bg-gray-100" onClick={() => setOpenModal(false)}>×</button>
           </div>
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs text-gray-600 mb-1">Tên Trung tâm *</label>
               <input name="name" defaultValue={editing?.name} required className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Trung tâm Hà Nội 1" />
@@ -211,13 +238,41 @@ export default function CentersPage() {
               <label className="block text-xs text-gray-600 mb-1">Mã *</label>
               <input name="code" defaultValue={editing?.code} required className="w-full h-9 rounded-md border px-3 text-sm" placeholder="HN1" />
             </div>
-            <div className="md:col-span-2">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Ngày thành lập</label>
+              <input name="founded" type="date" className="w-full h-9 rounded-md border px-3 text-sm" />
+            </div>
+            <div className="md:col-span-3">
+              <label className="block text-xs text-gray-600 mb-1">Mô tả</label>
+              <input name="description" defaultValue={editing?.description} className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Mô tả về trung tâm..." />
+            </div>
+            <div className="md:col-span-3">
               <label className="block text-xs text-gray-600 mb-1">Địa chỉ *</label>
-              <input name="address" defaultValue={editing?.address} required className="w-full h-9 rounded-md border px-3 text-sm" placeholder="123 Đường A, Quận B, TP.C" />
+              <input name="address" defaultValue={editing?.address} required className="w-full h-9 rounded-md border px-3 text-sm" placeholder="123 Đường ABC, Phường XYZ, Quận QWE" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Tỉnh/Thành phố *</label>
+              <input name="city" defaultValue={editing?.city} className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Hà Nội" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Quận/Huyện *</label>
+              <input name="district" defaultValue={editing?.district} className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Hai Bà Trưng" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Phường/Xã *</label>
+              <input name="ward" defaultValue={editing?.ward} className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Bùi Thị Xuân" />
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">Số điện thoại</label>
               <input name="phone" defaultValue={editing?.phone} className="w-full h-9 rounded-md border px-3 text-sm" placeholder="024-1234-5678" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Email</label>
+              <input name="email" defaultValue={editing?.email} className="w-full h-9 rounded-md border px-3 text-sm" placeholder="center@education.vn" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Website</label>
+              <input name="website" defaultValue={editing?.website} className="w-full h-9 rounded-md border px-3 text-sm" placeholder="https://center.edu" />
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">Học viên hiện tại</label>
@@ -230,6 +285,18 @@ export default function CentersPage() {
             <div>
               <label className="block text-xs text-gray-600 mb-1">Số giảng viên</label>
               <input name="teachers" type="number" defaultValue={editing?.teachers ?? 0} className="w-full h-9 rounded-md border px-3 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">ID Quản lý</label>
+              <input name="managerId" defaultValue={editing?.managerId} className="w-full h-9 rounded-md border px-3 text-sm" placeholder="QL-001" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Tên Quản lý</label>
+              <input name="managerName" defaultValue={editing?.managerName} className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Nguyễn Văn A" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Số lớp học</label>
+              <input name="classesCount" type="number" defaultValue={editing?.classesCount ?? 0} className="w-full h-9 rounded-md border px-3 text-sm" />
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">Trạng thái</label>

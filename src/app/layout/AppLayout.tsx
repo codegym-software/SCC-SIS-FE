@@ -13,7 +13,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     <div className="min-h-screen bg-white text-gray-900">
       <div className="flex min-h-screen">
         {/* Sidebar */}
-        <aside className="w-64 border-r bg-white hidden md:flex md:flex-col">
+        <aside className="w-64 border-r bg-white hidden md:flex md:flex-col sticky top-0 h-screen overflow-y-auto">
           <div className="px-4 py-5 border-b">
             <div className="text-xs text-gray-500 mb-2">Hệ thống Giáo dục Số</div>
             <div className="flex items-center gap-3">
@@ -77,7 +77,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </NavLink>
           </nav>
 
-          <div className="mt-auto border-t p-3">
+          <div className="mt-auto border-t p-3 sticky bottom-0 bg-white">
             <a className="block w-full text-left text-sm px-2 py-2 rounded-md hover:bg-gray-50 flex items-center gap-2" href="#"><Settings size={16} /> Cài đặt</a>
             <button
               onClick={() => keycloak.logout({ redirectUri: window.location.origin })}

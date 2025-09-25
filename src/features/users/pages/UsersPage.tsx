@@ -8,8 +8,8 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="absolute inset-0 flex items-start justify-center pt-12 px-4">
+      <div className="fixed inset-0 bg-black/30" onClick={onClose} />
+      <div className="fixed inset-0 flex items-start justify-center pt-12 px-4">
         <div className="w-full max-w-3xl rounded-lg bg-white shadow-lg border max-h-[85vh] overflow-auto">
           {children}
         </div>

@@ -82,8 +82,10 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl mx-auto my-8 relative flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="fixed inset-0 flex items-start justify-center pt-12 px-4">
+        <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl relative flex flex-col max-h-[85vh] overflow-auto">
         {/* Modal Header */}
         <div className="p-6 border-b border-gray-200 flex justify-between items-center">
           <div>
@@ -368,6 +370,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
           >
             Tạo Người dùng
           </button>
+        </div>
         </div>
       </div>
     </div>
