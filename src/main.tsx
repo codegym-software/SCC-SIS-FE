@@ -11,6 +11,7 @@ async function bootstrap() {
       onLoad: "login-required",
       pkceMethod: "S256",
       checkLoginIframe: false, // giảm lỗi dev
+      redirectUri: window.location.origin,
     });
 
     console.log("KC authenticated:", authenticated);
