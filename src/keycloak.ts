@@ -9,13 +9,21 @@ export const keycloak = new Keycloak({
 
 // Helper: luôn chắc token còn hạn trước khi dùng
 export async function ensureValidToken(minSeconds = 30): Promise<string | null> {
-    try {
-        if (!keycloak.authenticated) return null;
-        await keycloak.updateToken(minSeconds); // refresh nếu sắp hết hạn
-        return keycloak.token ?? null;
-    } catch {
-        // nếu refresh lỗi -> yêu cầu login lại
-        await keycloak.login();
+    if (!keycloak.authenticated) {
         return null;
+    }
+
+    try {
+        const refreshed = await keycloak.updateToken(minSeconds);
+        if (refreshed) {
+            console.log("Token refreshed");
+        } else {
+            console.log("Token is still valid");
+        }
+        return keycloak.token;
+    } catch (error) {
+        console.error("Failed to refresh token:", error);
+        await keycloak.login();
+        return keycloak.token;
     }
 }

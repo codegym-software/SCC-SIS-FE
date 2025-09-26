@@ -33,36 +33,69 @@ export default function RolesPage() {
   const [assignFilter, setAssignFilter] = useState('Tất cả vai trò')
 
   const PERMISSIONS: Record<string, string[]> = {
-    'Trung tâm': ['centers.view', 'centers.create', 'centers.edit', 'centers.delete'],
-    'Người dùng': ['users.view', 'users.create', 'users.edit', 'users.delete'],
-    'Vai trò': ['roles.view', 'roles.create', 'roles.edit', 'roles.assign'],
-    'Lớp học': ['classes.view', 'classes.create', 'classes.manage'],
+    'Trung tâm': ['Xem trung tâm', 'Tạo trung tâm', 'Chỉnh sửa trung tâm', 'Xóa trung tâm'],
+    'Người dùng': ['Xem người dùng', 'Tạo người dùng', 'Chỉnh sửa người dùng', 'Xóa người dùng'],
+    'Vai trò': ['Xem vai trò', 'Tạo vai trò', 'Chỉnh sửa vai trò', 'Gán vai trò'],
+    'Lớp học': ['Xem lớp học', 'Tạo lớp học', 'Quản lý lớp học'],
   }
   const [roles, setRoles] = useState<Role[]>([
-    { id: '1', name: 'Giáo vụ', desc: 'Quản trị học vụ và lớp học', permissions: ['classes.view','users.view','users.edit','centers.view','roles.view'], members: 15, status: 'Hoạt động', createdAt: '2024-01-10' },
-    { id: '2', name: 'Giảng viên', desc: 'Quản lý nội dung và điểm danh', permissions: ['classes.view','classes.manage'], members: 45, status: 'Hoạt động', createdAt: '2024-01-10' },
-    { id: '3', name: 'Trưởng phòng', desc: 'Quản lý bộ phận và nhân sự', permissions: ['roles.view','roles.edit','users.view','users.edit','centers.view'], members: 8, status: 'Hoạt động', createdAt: '2024-01-10' },
-    { id: '4', name: 'Quản lý trung tâm', desc: 'Quản lý toàn bộ hoạt động tại trung tâm', permissions: ['centers.view','centers.create','centers.edit','centers.delete','users.view','users.create','users.edit','users.delete','classes.view','classes.create','classes.manage'], members: 3, status: 'Hoạt động', createdAt: '2024-01-10' },
+    { id: '1', name: 'Giáo vụ', desc: 'Quản trị học vụ và lớp học', permissions: ['Xem lớp học','Xem người dùng','Chỉnh sửa người dùng','Xem trung tâm','Xem vai trò'], members: 15, status: 'Hoạt động', createdAt: '2024-01-10' },
+    { id: '2', name: 'Giảng viên', desc: 'Quản lý nội dung và điểm danh', permissions: ['Xem lớp học','Quản lý lớp học'], members: 45, status: 'Hoạt động', createdAt: '2024-01-10' },
+    { id: '3', name: 'Trưởng phòng', desc: 'Quản lý bộ phận và nhân sự', permissions: ['Xem vai trò','Chỉnh sửa vai trò','Xem người dùng','Chỉnh sửa người dùng','Xem trung tâm'], members: 8, status: 'Hoạt động', createdAt: '2024-01-10' },
+    { id: '4', name: 'Quản lý trung tâm', desc: 'Quản lý toàn bộ hoạt động tại trung tâm', permissions: ['Xem trung tâm','Tạo trung tâm','Chỉnh sửa trung tâm','Xóa trung tâm','Xem người dùng','Tạo người dùng','Chỉnh sửa người dùng','Xóa người dùng','Xem lớp học','Tạo lớp học','Quản lý lớp học'], members: 3, status: 'Hoạt động', createdAt: '2024-01-10' },
   ])
   const [openCreate, setOpenCreate] = useState(false)
   const [openEdit, setOpenEdit] = useState<Role | null>(null)
   const [openDelete, setOpenDelete] = useState<Role | null>(null)
 
   const stats = useMemo(() => ([
-    { label: 'Tổng vai trò', value: String(roles.length) },
-    { label: 'Đang hoạt động', value: String(roles.filter(r=>r.status==='Hoạt động').length) },
-    { label: 'Tổng quyền', value: String(roles.reduce((s,r)=> s + r.permissions.length, 0)) },
-    { label: 'Nhóm quyền', value: '12' },
+    { 
+      label: 'Tổng Vai trò', 
+      value: String(roles.length),
+      icon: Shield,
+      iconColor: 'from-violet-500 to-indigo-500',
+      change: '+2 tháng này',
+      changeColor: 'text-emerald-600 bg-emerald-50'
+    },
+    { 
+      label: 'Người dùng có vai trò', 
+      value: '71',
+      icon: Users2,
+      iconColor: 'from-blue-500 to-cyan-500',
+      change: '+5 tuần này',
+      changeColor: 'text-blue-600 bg-blue-50'
+    },
+    { 
+      label: 'Quyền hạn', 
+      value: String(roles.reduce((s,r)=> s + r.permissions.length, 0)),
+      icon: Settings,
+      iconColor: 'from-orange-500 to-amber-500',
+      change: null,
+      changeColor: null
+    },
+    { 
+      label: 'Phân quyền', 
+      value: '3',
+      icon: UserPlus,
+      iconColor: 'from-emerald-500 to-green-500',
+      change: '+3 tuần này',
+      changeColor: 'text-emerald-600 bg-emerald-50'
+    },
   ]), [roles])
 
   const filtered = useMemo(() => roles.filter(r => r.name.toLowerCase().includes(query.toLowerCase())), [roles, query])
 
   type Assignment = { id: string; user: string; email: string; role: string; center: string; date: string; by: string }
-  const [assignments] = useState<Assignment[]>([
+  const [assignments, setAssignments] = useState<Assignment[]>([
     { id: 'a1', user: 'Nguyễn Văn An', email: 'an.nguyen@education.vn', role: 'Giáo vụ', center: 'Trung tâm Hà Nội 1', date: '2024-01-15', by: 'Super Admin' },
     { id: 'a2', user: 'Trần Thị Bình', email: 'binh.tran@education.vn', role: 'Giảng viên', center: 'Trung tâm Hà Nội 1', date: '2024-02-01', by: 'Nguyễn Văn An' },
     { id: 'a3', user: 'Lê Văn Chinh', email: 'chinh.le@education.vn', role: 'Trưởng phòng', center: 'Trung tâm TP.HCM 1', date: '2024-01-20', by: 'Super Admin' },
   ])
+  const [openAssignRole, setOpenAssignRole] = useState(false)
+  const [openEditAssignment, setOpenEditAssignment] = useState<Assignment | null>(null)
+  const [openCreatePermission, setOpenCreatePermission] = useState(false)
+  const [openRevokeAssignment, setOpenRevokeAssignment] = useState<Assignment | null>(null)
+  const [permissions, setPermissions] = useState(PERMISSIONS)
   const filteredAssignments = useMemo(() => assignments.filter(a => {
     const matchesText = (a.user + a.email).toLowerCase().includes(assignQuery.toLowerCase())
     const matchesRole = assignFilter === 'Tất cả vai trò' || a.role === assignFilter
@@ -142,7 +175,15 @@ export default function RolesPage() {
                         <input type="checkbox" className="mt-0.5" checked={selected.has(key)} onChange={()=>togglePermission(key)} />
                         <div>
                           <div className="text-sm font-medium">{key}</div>
-                          <div className="text-xs text-gray-500">Mô tả quyền {key}</div>
+                          <div className="text-xs text-gray-500">
+                            {key.includes('Xem') ? 'Quyền xem thông tin' :
+                             key.includes('Tạo') ? 'Quyền tạo mới' :
+                             key.includes('Chỉnh sửa') ? 'Quyền chỉnh sửa thông tin' :
+                             key.includes('Xóa') ? 'Quyền xóa dữ liệu' :
+                             key.includes('Quản lý') ? 'Quyền quản lý toàn diện' :
+                             key.includes('Gán') ? 'Quyền gán vai trò' :
+                             'Quyền hệ thống'}
+                          </div>
                         </div>
                       </label>
                     ))}
@@ -177,12 +218,23 @@ export default function RolesPage() {
       </div>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-gray-200 bg-white p-5">
-            <div className="text-xs text-gray-500 mb-3">{s.label}</div>
-            <div className="text-2xl font-semibold">{s.value}</div>
-          </div>
-        ))}
+        {stats.map((s) => {
+          const IconComponent = s.icon
+          return (
+            <div key={s.label} className="rounded-xl border border-gray-200 bg-white p-5 relative">
+              <div className="text-xs text-gray-500 mb-3">{s.label}</div>
+              <div className="text-2xl font-semibold mb-2">{s.value}</div>
+              {s.change && (
+                <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${s.changeColor}`}>
+                  {s.change}
+                </div>
+              )}
+              <div className={`absolute top-4 right-4 h-8 w-8 rounded-lg bg-gradient-to-br ${s.iconColor} grid place-items-center text-white`}>
+                <IconComponent size={16} />
+              </div>
+            </div>
+          )
+        })}
       </section>
 
       {/* Tabs */}
@@ -265,15 +317,19 @@ export default function RolesPage() {
                 </div>
                 <div className="col-span-6 md:col-span-2 text-sm text-gray-700">{new Date(r.createdAt).toLocaleDateString('vi-VN')}</div>
                 {/* Actions aligned to far right without taking grid width */}
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 z-50">
-                  <div className="relative z-50">
-                    <button className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center" onClick={()=> setOpenMenuId(prev=> prev===r.id? null : r.id)}>⋯</button>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 z-40">
+                  <div className="relative z-40">
+                    <button className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center" onClick={()=> setOpenMenuId(openMenuId === r.id ? null : r.id)}>⋯</button>
                     {openMenuId===r.id && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={()=>setOpenMenuId(null)} />
-                        <div className="absolute right-0 mt-2 w-40 rounded-lg border bg-white shadow-lg z-50">
-                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={()=>{ setOpenMenuId(null); setOpenEdit(r)}}>Chỉnh sửa</button>
-                          <button className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50" onClick={()=>{ setOpenMenuId(null); setOpenDelete(r)}}>Xóa vai trò</button>
+                        <div className="absolute right-0 mt-1 w-36 rounded-lg border bg-white shadow-lg z-[70]">
+                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={()=>{ setOpenMenuId(null); setOpenEdit(r)}}>
+                            Chỉnh sửa
+                          </button>
+                          <button className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50" onClick={()=>{ setOpenMenuId(null); setOpenDelete(r)}}>
+                            Xóa vai trò
+                          </button>
                         </div>
                       </>
                     )}
@@ -292,15 +348,21 @@ export default function RolesPage() {
             <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 grid place-items-center text-white flex-shrink-0">
               <Shield size={16} />
             </div>
-            <div>
+            <div className="flex-1">
               <div className="text-sm font-medium">Danh sách Quyền hạn</div>
-              <div className="text-xs text-gray-500">Tất cả các quyền có thể được cấp trong hệ thống ({Object.values(PERMISSIONS).reduce((s,a)=>s+a.length,0)} quyền)</div>
+              <div className="text-xs text-gray-500">Tất cả các quyền có thể được cấp trong hệ thống ({Object.values(permissions).reduce((s,a)=>s+a.length,0)} quyền)</div>
             </div>
+            <button 
+              className="inline-flex items-center gap-2 rounded-md bg-indigo-600 text-white text-sm px-3 py-2 hover:bg-indigo-700"
+              onClick={() => setOpenCreatePermission(true)}
+            >
+              <UserPlus size={16}/> Tạo quyền mới
+            </button>
           </div>
 
           {/* Permission groups */}
           <div className="p-3 space-y-6">
-            {Object.entries(PERMISSIONS).map(([group, items])=> (
+            {Object.entries(permissions).map(([group, items])=> (
               <div key={group}>
                 <div className="text-sm font-medium mb-2">{group}</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -312,7 +374,15 @@ export default function RolesPage() {
                         </div>
                         <div>
                           <div className="text-sm font-medium">{key}</div>
-                          <div className="text-xs text-gray-500">Mô tả quyền {key}</div>
+                          <div className="text-xs text-gray-500">
+                            {key.includes('Xem') ? 'Quyền xem thông tin' :
+                             key.includes('Tạo') ? 'Quyền tạo mới' :
+                             key.includes('Chỉnh sửa') ? 'Quyền chỉnh sửa thông tin' :
+                             key.includes('Xóa') ? 'Quyền xóa dữ liệu' :
+                             key.includes('Quản lý') ? 'Quyền quản lý toàn diện' :
+                             key.includes('Gán') ? 'Quyền gán vai trò' :
+                             'Quyền hệ thống'}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -335,7 +405,12 @@ export default function RolesPage() {
               <div className="text-sm font-medium">Phân quyền Người dùng</div>
               <div className="text-xs text-gray-500">Quản lý vai trò được gán cho từng người dùng</div>
             </div>
-            <button className="inline-flex items-center gap-2 rounded-md bg-emerald-600 text-white text-sm px-3 py-2 hover:bg-emerald-700">Gán vai trò</button>
+            <button 
+              className="inline-flex items-center gap-2 rounded-md bg-emerald-600 text-white text-sm px-3 py-2 hover:bg-emerald-700"
+              onClick={() => setOpenAssignRole(true)}
+            >
+              Gán vai trò
+            </button>
           </div>
           <div className="px-3 py-2 border-b flex items-center gap-2">
             <input value={assignQuery} onChange={(e)=>setAssignQuery(e.target.value)} className="flex-1 h-8 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-gray-200" placeholder="Tìm kiếm theo tên hoặc email..." />
@@ -373,14 +448,30 @@ export default function RolesPage() {
                     <div className="col-span-1 text-sm">{new Date(a.date).toLocaleDateString('vi-VN')}</div>
                     <div className="col-span-1 text-sm">{a.by}</div>
                     <div className="col-span-1 flex justify-end">
-                      <div className="relative z-50">
-                        <button className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center" onClick={()=> setOpenMenuId(prev=> prev===a.id? null : a.id)}>⋯</button>
+                      <div className="relative z-40">
+                        <button className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center" onClick={()=> setOpenMenuId(openMenuId === a.id ? null : a.id)}>⋯</button>
                         {openMenuId===a.id && (
                           <>
                             <div className="fixed inset-0 z-40" onClick={()=>setOpenMenuId(null)} />
-                            <div className="absolute right-0 mt-2 w-40 rounded-lg border bg-white shadow-lg z-50">
-                              <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={()=>{ setOpenMenuId(null)}}>Chỉnh sửa</button>
-                              <button className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50" onClick={()=>{ setOpenMenuId(null)}}>Hủy gán</button>
+                            <div className="absolute right-0 mt-1 w-36 rounded-lg border bg-white shadow-lg z-[70]">
+                              <button 
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" 
+                                onClick={()=>{ 
+                                  setOpenMenuId(null)
+                                  setOpenEditAssignment(a)
+                                }}
+                              >
+                                Thay đổi vai trò
+                              </button>
+                              <button 
+                                className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50" 
+                                onClick={()=>{ 
+                                  setOpenMenuId(null)
+                                  setOpenRevokeAssignment(a)
+                                }}
+                              >
+                                Thu hồi vai trò
+                              </button>
                             </div>
                           </>
                         )}
@@ -408,11 +499,205 @@ export default function RolesPage() {
       <Modal open={!!openDelete} onClose={()=>setOpenDelete(null)}>
         {openDelete && (
           <div>
-            <div className="px-4 py-3 border-b font-medium">Xóa vai trò</div>
-            <div className="p-4 text-sm">Bạn có chắc muốn xóa vai trò “{openDelete.name}”?</div>
+            <div className="px-4 py-3 border-b font-medium">Xác nhận xóa vai trò</div>
+            <div className="p-4">
+              <div className="text-sm mb-4">Bạn có chắc chắn muốn xóa vai trò "{openDelete.name}" không? Hành động này không thể hoàn tác.</div>
+              {openDelete.members > 0 && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-4">
+                  <div className="h-5 w-5 rounded-full bg-red-100 text-red-600 grid place-items-center">
+                    <span className="text-xs font-bold">!</span>
+                  </div>
+                  <div className="text-sm text-red-700 font-medium">
+                    Có {openDelete.members} người dùng đang sử dụng vai trò này!
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
               <button className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={()=>setOpenDelete(null)}>Hủy</button>
-              <button className="h-9 px-3 rounded-md bg-red-600 text-white hover:bg-red-700" onClick={()=>{ setRoles(prev=>prev.filter(x=>x.id!==openDelete.id)); setOpenDelete(null) }}>Xóa</button>
+              <button className="h-9 px-3 rounded-md bg-red-600 text-white hover:bg-red-700" onClick={()=>{ setRoles(prev=>prev.filter(x=>x.id!==openDelete.id)); setOpenDelete(null) }}>Xóa vai trò</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Assign Role Modal */}
+      <Modal open={openAssignRole} onClose={()=>setOpenAssignRole(false)}>
+        <form onSubmit={(e) => {
+          e.preventDefault()
+          const form = new FormData(e.currentTarget as HTMLFormElement)
+          const newAssignment: Assignment = {
+            id: String(Date.now()),
+            user: String(form.get('user') || ''),
+            email: String(form.get('email') || ''),
+            role: String(form.get('role') || ''),
+            center: String(form.get('center') || ''),
+            date: new Date().toISOString().slice(0, 10),
+            by: 'Super Admin'
+          }
+          setAssignments(prev => [newAssignment, ...prev])
+          setOpenAssignRole(false)
+        }}>
+          <div className="px-4 py-3 border-b flex items-center justify-between">
+            <div className="font-medium">Gán vai trò mới</div>
+            <button type="button" className="h-8 w-8 rounded hover:bg-gray-100" onClick={()=>setOpenAssignRole(false)}>×</button>
+          </div>
+          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Người dùng *</label>
+              <input name="user" required className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Tên người dùng" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Email *</label>
+              <input name="email" type="email" required className="w-full h-9 rounded-md border px-3 text-sm" placeholder="email@example.com" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Vai trò *</label>
+              <select name="role" required className="w-full h-9 rounded-md border px-2 text-sm">
+                <option value="">Chọn vai trò</option>
+                <option>Giáo vụ</option>
+                <option>Giảng viên</option>
+                <option>Trưởng phòng</option>
+                <option>Quản lý trung tâm</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Trung tâm *</label>
+              <select name="center" required className="w-full h-9 rounded-md border px-2 text-sm">
+                <option value="">Chọn trung tâm</option>
+                <option>Trung tâm Hà Nội 1</option>
+                <option>Trung tâm Hà Nội 2</option>
+                <option>Trung tâm TP.HCM 1</option>
+                <option>Trung tâm Đà Nẵng</option>
+              </select>
+            </div>
+          </div>
+          <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
+            <button type="button" className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={()=>setOpenAssignRole(false)}>Hủy</button>
+            <button type="submit" className="h-9 px-3 rounded-md bg-emerald-600 text-white hover:bg-emerald-700">Gán vai trò</button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Assignment Modal */}
+      <Modal open={!!openEditAssignment} onClose={()=>setOpenEditAssignment(null)}>
+        {openEditAssignment && (
+          <form onSubmit={(e) => {
+            e.preventDefault()
+            const form = new FormData(e.currentTarget as HTMLFormElement)
+            const updatedAssignment: Assignment = {
+              ...openEditAssignment,
+              user: String(form.get('user') || openEditAssignment.user),
+              email: String(form.get('email') || openEditAssignment.email),
+              role: String(form.get('role') || openEditAssignment.role),
+              center: String(form.get('center') || openEditAssignment.center),
+            }
+            setAssignments(prev => prev.map(x => x.id === openEditAssignment.id ? updatedAssignment : x))
+            setOpenEditAssignment(null)
+          }}>
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <div className="font-medium">Thay đổi vai trò</div>
+              <button type="button" className="h-8 w-8 rounded hover:bg-gray-100" onClick={()=>setOpenEditAssignment(null)}>×</button>
+            </div>
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Người dùng *</label>
+                <input name="user" defaultValue={openEditAssignment.user} required className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Email *</label>
+                <input name="email" type="email" defaultValue={openEditAssignment.email} required className="w-full h-9 rounded-md border px-3 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Vai trò *</label>
+                <select name="role" defaultValue={openEditAssignment.role} required className="w-full h-9 rounded-md border px-2 text-sm">
+                  <option>Giáo vụ</option>
+                  <option>Giảng viên</option>
+                  <option>Trưởng phòng</option>
+                  <option>Quản lý trung tâm</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Trung tâm *</label>
+                <select name="center" defaultValue={openEditAssignment.center} required className="w-full h-9 rounded-md border px-2 text-sm">
+                  <option>Trung tâm Hà Nội 1</option>
+                  <option>Trung tâm Hà Nội 2</option>
+                  <option>Trung tâm TP.HCM 1</option>
+                  <option>Trung tâm Đà Nẵng</option>
+                </select>
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
+              <button type="button" className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={()=>setOpenEditAssignment(null)}>Hủy</button>
+              <button type="submit" className="h-9 px-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">Lưu thay đổi</button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Create Permission Modal */}
+      <Modal open={openCreatePermission} onClose={()=>setOpenCreatePermission(false)}>
+        <form onSubmit={(e) => {
+          e.preventDefault()
+          const form = new FormData(e.currentTarget as HTMLFormElement)
+          const group = String(form.get('group') || '')
+          const permission = String(form.get('permission') || '')
+          
+          if (group && permission) {
+            setPermissions(prev => ({
+              ...prev,
+              [group]: [...(prev[group] || []), permission]
+            }))
+            setOpenCreatePermission(false)
+          }
+        }}>
+          <div className="px-4 py-3 border-b flex items-center justify-between">
+            <div className="font-medium">Tạo quyền mới</div>
+            <button type="button" className="h-8 w-8 rounded hover:bg-gray-100" onClick={()=>setOpenCreatePermission(false)}>×</button>
+          </div>
+          <div className="p-4 grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Nhóm quyền *</label>
+              <select name="group" required className="w-full h-9 rounded-md border px-2 text-sm">
+                <option value="">Chọn nhóm quyền</option>
+                <option>Trung tâm</option>
+                <option>Người dùng</option>
+                <option>Vai trò</option>
+                <option>Lớp học</option>
+                <option>Báo cáo</option>
+                <option>Hệ thống</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Tên quyền *</label>
+              <input name="permission" required className="w-full h-9 rounded-md border px-3 text-sm" placeholder="VD: Xem báo cáo" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Mô tả</label>
+              <input name="description" className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Mô tả quyền này" />
+            </div>
+          </div>
+          <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
+            <button type="button" className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={()=>setOpenCreatePermission(false)}>Hủy</button>
+            <button type="submit" className="h-9 px-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">Tạo quyền</button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Revoke Assignment Modal */}
+      <Modal open={!!openRevokeAssignment} onClose={()=>setOpenRevokeAssignment(null)}>
+        {openRevokeAssignment && (
+          <div>
+            <div className="px-4 py-3 border-b font-medium">Xác nhận thu hồi vai trò</div>
+            <div className="p-4 text-sm">
+              Bạn có chắc chắn muốn thu hồi vai trò "{openRevokeAssignment.role}" từ người dùng "{openRevokeAssignment.user}" không?
+            </div>
+            <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
+              <button className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={()=>setOpenRevokeAssignment(null)}>Hủy</button>
+              <button className="h-9 px-3 rounded-md bg-red-600 text-white hover:bg-red-700" onClick={()=>{ 
+                setAssignments(prev => prev.filter(x => x.id !== openRevokeAssignment.id))
+                setOpenRevokeAssignment(null)
+              }}>Thu hồi vai trò</button>
             </div>
           </div>
         )}

@@ -78,7 +78,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </nav>
 
           <div className="mt-auto border-t p-3 sticky bottom-0 bg-white">
-            <a className="block w-full text-left text-sm px-2 py-2 rounded-md hover:bg-gray-50 flex items-center gap-2" href="#"><Settings size={16} /> Cài đặt</a>
+            <NavLink
+              to="/settings"
+              className={({ isActive }) =>
+                `block w-full text-left text-sm px-2 py-2 rounded-md flex items-center gap-2 ${isActive ? 'bg-gray-100 text-gray-900 font-medium' : 'hover:bg-gray-50'}`
+              }
+            >
+              <Settings size={16} /> Cài đặt
+            </NavLink>
             <button
               onClick={() => keycloak.logout({ redirectUri: window.location.origin })}
               className="mt-2 w-full text-left text-sm px-2 py-2 rounded-md hover:bg-gray-50 flex items-center gap-2"

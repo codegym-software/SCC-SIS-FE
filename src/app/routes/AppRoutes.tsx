@@ -6,6 +6,7 @@ import RolesPage from '../../features/users/pages/RolesPage'
 import CentersPage from '../../features/users/pages/CentersPage'
 import ProgramsPage from '../../features/users/pages/ProgramsPage'
 import ClassesPage from '../../features/users/pages/ClassesPage'
+import SettingsPage from '../../features/users/pages/SettingsPage'
 
 export default function AppRoutes() {
   return (
@@ -16,6 +17,7 @@ export default function AppRoutes() {
       <Route path="/roles" element={<RolesPage />} />
       <Route path="/programs" element={<ProgramsPage />} />
       <Route path="/classes" element={<ClassesPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

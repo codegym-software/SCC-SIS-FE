@@ -3,7 +3,7 @@ import axios, { AxiosError } from "axios";
 import { ensureValidToken, keycloak } from "../../keycloak";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL, // ví dụ: http://localhost:7000
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:7000', // fallback nếu không có env
   timeout: 15000,
 });
 
