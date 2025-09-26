@@ -1,4 +1,4 @@
-import React from 'react'
+// import React from 'react' // không cần trong React 17+
 import { Routes, Route, Navigate } from 'react-router-dom'
 import DashboardPage from '../../features/users/pages/DashboardPage'
 import UsersPage from '../../features/users/pages/UsersPage'
