@@ -93,9 +93,8 @@ export default function RolesPage() {
   ])
   const [openAssignRole, setOpenAssignRole] = useState(false)
   const [openEditAssignment, setOpenEditAssignment] = useState<Assignment | null>(null)
-  const [openCreatePermission, setOpenCreatePermission] = useState(false)
   const [openRevokeAssignment, setOpenRevokeAssignment] = useState<Assignment | null>(null)
-  const [permissions, setPermissions] = useState(PERMISSIONS)
+  const [permissions] = useState(PERMISSIONS)
   const filteredAssignments = useMemo(() => assignments.filter(a => {
     const matchesText = (a.user + a.email).toLowerCase().includes(assignQuery.toLowerCase())
     const matchesRole = assignFilter === 'Tất cả vai trò' || a.role === assignFilter
@@ -123,7 +122,7 @@ export default function RolesPage() {
             desc: String(form.get('desc')||''),
             permissions: Array.from(selected),
             members: editing?.members ?? 0,
-            status: (String(form.get('status')||'Hoạt động') as Role['status']),
+            status: 'Hoạt động', // Mặc định là Hoạt động
             createdAt: editing?.createdAt ?? new Date().toISOString().slice(0,10)
           }
           // validations
@@ -149,13 +148,6 @@ export default function RolesPage() {
             {errors.name && <div className="text-xs text-red-600 mt-1">{errors.name}</div>}
           </div>
           <div>
-            <label className="block text-xs text-gray-600 mb-1">Trạng thái</label>
-            <select name="status" defaultValue={editing?.status ?? 'Hoạt động'} className="w-full h-9 rounded-md border px-2 text-sm">
-              <option>Hoạt động</option>
-              <option>Không hoạt động</option>
-            </select>
-          </div>
-          <div className="md:col-span-2">
             <label className="block text-xs text-gray-600 mb-1">Mô tả</label>
             <input name="desc" defaultValue={editing?.desc} className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Mô tả vai trò" />
           </div>
@@ -352,12 +344,6 @@ export default function RolesPage() {
               <div className="text-sm font-medium">Danh sách Quyền hạn</div>
               <div className="text-xs text-gray-500">Tất cả các quyền có thể được cấp trong hệ thống ({Object.values(permissions).reduce((s,a)=>s+a.length,0)} quyền)</div>
             </div>
-            <button 
-              className="inline-flex items-center gap-2 rounded-md bg-indigo-600 text-white text-sm px-3 py-2 hover:bg-indigo-700"
-              onClick={() => setOpenCreatePermission(true)}
-            >
-              <UserPlus size={16}/> Tạo quyền mới
-            </button>
           </div>
 
           {/* Permission groups */}
@@ -635,54 +621,6 @@ export default function RolesPage() {
         )}
       </Modal>
 
-      {/* Create Permission Modal */}
-      <Modal open={openCreatePermission} onClose={()=>setOpenCreatePermission(false)}>
-        <form onSubmit={(e) => {
-          e.preventDefault()
-          const form = new FormData(e.currentTarget as HTMLFormElement)
-          const group = String(form.get('group') || '')
-          const permission = String(form.get('permission') || '')
-          
-          if (group && permission) {
-            setPermissions(prev => ({
-              ...prev,
-              [group]: [...(prev[group] || []), permission]
-            }))
-            setOpenCreatePermission(false)
-          }
-        }}>
-          <div className="px-4 py-3 border-b flex items-center justify-between">
-            <div className="font-medium">Tạo quyền mới</div>
-            <button type="button" className="h-8 w-8 rounded hover:bg-gray-100" onClick={()=>setOpenCreatePermission(false)}>×</button>
-          </div>
-          <div className="p-4 grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Nhóm quyền *</label>
-              <select name="group" required className="w-full h-9 rounded-md border px-2 text-sm">
-                <option value="">Chọn nhóm quyền</option>
-                <option>Trung tâm</option>
-                <option>Người dùng</option>
-                <option>Vai trò</option>
-                <option>Lớp học</option>
-                <option>Báo cáo</option>
-                <option>Hệ thống</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Tên quyền *</label>
-              <input name="permission" required className="w-full h-9 rounded-md border px-3 text-sm" placeholder="VD: Xem báo cáo" />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Mô tả</label>
-              <input name="description" className="w-full h-9 rounded-md border px-3 text-sm" placeholder="Mô tả quyền này" />
-            </div>
-          </div>
-          <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
-            <button type="button" className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={()=>setOpenCreatePermission(false)}>Hủy</button>
-            <button type="submit" className="h-9 px-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">Tạo quyền</button>
-          </div>
-        </form>
-      </Modal>
 
       {/* Revoke Assignment Modal */}
       <Modal open={!!openRevokeAssignment} onClose={()=>setOpenRevokeAssignment(null)}>

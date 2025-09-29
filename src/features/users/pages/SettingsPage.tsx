@@ -35,6 +35,7 @@ export default function SettingsPage() {
 
   const [appearanceSettings, setAppearanceSettings] = useState({
     theme: 'light',
+    language: 'vi',
     fontSize: 'medium'
   })
 
@@ -171,6 +172,13 @@ export default function SettingsPage() {
       ...prev,
       [field]: value
     }))
+    
+    // If language is changed, show notification
+    if (field === 'language') {
+      if (value === 'de') {
+        alert('Chức năng tiếng Đức đang được phát triển!')
+      }
+    }
   }
 
   const handleApplyAppearance = () => {
@@ -608,16 +616,22 @@ export default function SettingsPage() {
                 </select>
               </div>
 
-              {/* Language Selection - Disabled */}
+              {/* Language Selection */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-2">Ngôn ngữ</label>
                 <select 
-                  disabled
-                  className="w-full h-9 rounded-md border border-gray-300 px-3 text-sm bg-gray-100 cursor-not-allowed"
+                  value={appearanceSettings.language}
+                  onChange={(e) => handleAppearanceChange('language', e.target.value)}
+                  className="w-full h-9 rounded-md border border-gray-300 px-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 >
-                  <option value="vi">Tiếng Việt</option>
+                  <option value="vi">🇻🇳 Tiếng Việt</option>
+                  <option value="en">🇺🇸 English (Tiếng Anh)</option>
+                  <option value="zh">🇨🇳 中文 (Tiếng Trung)</option>
+                  <option value="ko">🇰🇷 한국어 (Tiếng Hàn)</option>
+                  <option value="ja">🇯🇵 日本語 (Tiếng Nhật)</option>
+                  <option value="es">🇪🇸 Español (Tiếng Tây Ban Nha)</option>
+                  <option value="de">🇩🇪 Deutsch (Tiếng Đức)</option>
                 </select>
-                <p className="text-xs text-gray-500 mt-1">Chức năng đổi ngôn ngữ đang được phát triển</p>
               </div>
 
               {/* Font Size Selection */}
