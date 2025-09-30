@@ -7,7 +7,7 @@ type PermissionContextValue = {
 const PermissionContext = createContext<PermissionContextValue | null>(null)
 
 export function PermissionProvider({ children, current }: { children: React.ReactNode; current?: string[] }) {
-  const set = useMemo(() => new Set(current ?? ['users:create', 'users:update', 'centers:create', 'centers:update', 'centers:disable']), [current])
+  const set = useMemo(() => new Set(current ?? ['users:create', 'users:update', 'centers:create', 'centers:update', 'centers:delete', 'centers:read']), [current])
   const value = useMemo<PermissionContextValue>(() => ({ can: (p: string) => set.has(p) }), [set])
   return <PermissionContext.Provider value={value}>{children}</PermissionContext.Provider>
 }
