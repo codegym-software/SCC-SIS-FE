@@ -1,28 +1,39 @@
-import React, { useMemo, useState, useEffect } from 'react'
+// src/features/users/pages/CentersPage.tsx
+import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { useToast } from '../../../shared/hooks/useToast'
 import { usePermission } from '../../../shared/components/PermissionProvider'
-import { Building2, Eye, MoreHorizontal, Users2, MapPin, Phone, Mail, Globe, User2, Sparkles, Zap, Star, TrendingUp } from 'lucide-react'
+import { Building2, Eye, MoreHorizontal, Users2, MapPin, Phone, Mail, Globe } from 'lucide-react'
+
+// Lấy type từ shared/types (không lấy từ API)
+import type { CenterDto, CreateCenterDto, UpdateCenterDto } from '../../../shared/types/centers'
+
+// Chỉ import HÀM từ API
+import {
+  listAllCenters,
+  createCenter,
+  updateCenter,
+  deactivateCenter,
+  reactivateCenter,
+} from '../../../shared/api/centers'
 
 type Center = {
-  id: string
+  id: number
   name: string
   code: string
-  address: string
+  email: string
   phone: string
-  status: 'Hoạt động' | 'Không hoạt động'
-  students: number
-  studentsCapacity: number
-  teachers: number
-  city?: string
-  district?: string
-  ward?: string
-  email?: string
-  website?: string
+  establishedDate?: string
   description?: string
-  managerId?: string
-  managerName?: string
-  classesCount?: number
-  founded?: string
+  addressLine: string
+  province: string
+  district: string
+  ward: string
+  active: boolean
+  createdAt: string
+  updatedAt?: string
+  createdBy?: number | null
+  updatedBy?: number | null
+  deletedAt?: string | null
 }
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
@@ -42,305 +53,688 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
 export default function CentersPage() {
   const toast = useToast()
   const { can } = usePermission()
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [centers, setCenters] = useState<Center[]>([
-    { id: '1', name: 'Trung tâm Hà Nội 1', code: 'HN01', address: '123 Nguyễn Du, Hai Bà Trưng, Hà Nội', city: 'Hà Nội', district: 'Hai Bà Trưng', ward: 'Bùi Thị Xuân', phone: '024-3943-1234', email: 'hanoi1@education.vn', website: 'https://hanoi1.education.vn', status: 'Hoạt động', students: 450, studentsCapacity: 500, teachers: 25, managerId: 'QL-001', managerName: 'Nguyễn Văn A', classesCount: 15, description: 'Trung tâm đào tạo công nghệ thông tin hàng đầu tại Hà Nội' },
-    { id: '2', name: 'Trung tâm TP.HCM 1', code: 'HCM01', address: '456 Lê Lợi, Quận 1, TP.HCM', city: 'TP.HCM', district: 'Quận 1', ward: 'Bến Nghé', phone: '028-3822-5678', email: 'hcm1@education.vn', website: 'https://hcm1.education.vn', status: 'Hoạt động', students: 680, studentsCapacity: 800, teachers: 35, managerId: 'QL-002', managerName: 'Trần Thị B', classesCount: 20, description: '' },
-    { id: '3', name: 'Trung tâm Đà Nẵng', code: 'DN01', address: '789 Hùng Vương, Hải Châu, Đà Nẵng', city: 'Đà Nẵng', district: 'Hải Châu', ward: 'Thạch Thang', phone: '0236-3567-890', email: 'danang@education.vn', website: 'https://danang.education.vn', status: 'Không hoạt động', students: 90, studentsCapacity: 300, teachers: 0, managerId: 'QL-003', managerName: 'Lê Văn C', classesCount: 8, description: '' },
-  ])
+  const [centers, setCenters] = useState<Center[]>([])
+  const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái')
   const [openModal, setOpenModal] = useState(false)
   const [editing, setEditing] = useState<Center | null>(null)
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [viewingCenter, setViewingCenter] = useState<Center | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null)
+
+  // Province dropdown states
+  const [provinceQuery, setProvinceQuery] = useState('')
+  const [selectedProvince, setSelectedProvince] = useState('')
+  const [showProvinceDropdown, setShowProvinceDropdown] = useState(false)
+
+  // District dropdown states
+  const [districtQuery, setDistrictQuery] = useState('')
+  const [selectedDistrict, setSelectedDistrict] = useState('')
+  const [showDistrictDropdown, setShowDistrictDropdown] = useState(false)
+
+  // Ward dropdown states
+  const [wardQuery, setWardQuery] = useState('')
+  const [selectedWard, setSelectedWard] = useState('')
+  const [showWardDropdown, setShowWardDropdown] = useState(false)
+
+  // Ref for auto focus
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  // Validation states
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Vietnam provinces and cities
+  const vietnamProvinces = [
+    'An Giang', 'Bà Rịa - Vũng Tàu', 'Bắc Giang', 'Bắc Kạn', 'Bạc Liêu', 'Bắc Ninh',
+    'Bến Tre', 'Bình Định', 'Bình Dương', 'Bình Phước', 'Bình Thuận', 'Cà Mau',
+    'Cao Bằng', 'Đắk Lắk', 'Đắk Nông', 'Điện Biên', 'Đồng Nai', 'Đồng Tháp',
+    'Gia Lai', 'Hà Giang', 'Hà Nam', 'Hà Tĩnh', 'Hải Dương', 'Hậu Giang',
+    'Hòa Bình', 'Hưng Yên', 'Khánh Hòa', 'Kiên Giang', 'Kon Tum', 'Lai Châu',
+    'Lâm Đồng', 'Lạng Sơn', 'Lào Cai', 'Long An', 'Nam Định', 'Nghệ An',
+    'Ninh Bình', 'Ninh Thuận', 'Phú Thọ', 'Quảng Bình', 'Quảng Nam', 'Quảng Ngãi',
+    'Quảng Ninh', 'Quảng Trị', 'Sóc Trăng', 'Sơn La', 'Tây Ninh', 'Thái Bình',
+    'Thái Nguyên', 'Thanh Hóa', 'Thừa Thiên Huế', 'Tiền Giang', 'Trà Vinh',
+    'Tuyên Quang', 'Vĩnh Long', 'Vĩnh Phúc', 'Yên Bái',
+    'Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ'
+  ].sort()
+
+  const filteredProvinces = vietnamProvinces.filter(province =>
+    province.toLowerCase().includes(provinceQuery.toLowerCase())
+  )
+
+  // Common districts/counties in Vietnam
+  const vietnamDistricts = [
+    'Quận 1', 'Quận 2', 'Quận 3', 'Quận 4', 'Quận 5', 'Quận 6', 'Quận 7', 'Quận 8', 'Quận 9', 'Quận 10',
+    'Quận 11', 'Quận 12', 'Quận Bình Thạnh', 'Quận Tân Bình', 'Quận Tân Phú', 'Quận Phú Nhuận',
+    'Quận Gò Vấp', 'Quận Bình Tân', 'Quận Thủ Đức',
+    'Quận Ba Đình', 'Quận Hoàn Kiếm', 'Quận Hai Bà Trưng', 'Quận Đống Đa', 'Quận Tây Hồ', 'Quận Cầu Giấy',
+    'Quận Thanh Xuân', 'Quận Hoàng Mai', 'Quận Long Biên', 'Quận Nam Từ Liêm', 'Quận Bắc Từ Liêm', 'Quận Hà Đông',
+    'Quận Hải Châu', 'Quận Thanh Khê', 'Quận Sơn Trà', 'Quận Ngũ Hành Sơn', 'Quận Liên Chiểu', 'Quận Cẩm Lệ',
+    'Quận Hồng Bàng', 'Quận Ngô Quyền', 'Quận Lê Chân', 'Quận Kiến An', 'Quận Dương Kinh',
+    'Huyện Bình Chánh', 'Huyện Nhà Bè', 'Huyện Hóc Môn', 'Huyện Củ Chi', 'Huyện Cần Giờ',
+    'Huyện Gia Lâm', 'Huyện Đông Anh', 'Huyện Sóc Sơn', 'Huyện Thanh Trì', 'Huyện Thường Tín',
+    'Huyện Phúc Thọ', 'Huyện Đan Phượng', 'Huyện Hoài Đức', 'Huyện Quốc Oai', 'Huyện Thạch Thất',
+    'Huyện Chương Mỹ', 'Huyện Thanh Oai', 'Huyện Mỹ Đức', 'Huyện Ứng Hòa', 'Huyện Ba Vì',
+    'Thành phố Thủ Dầu Một', 'Thành phố Biên Hòa', 'Thành phố Vũng Tàu', 'Thành phố Phan Thiết',
+    'Thành phố Nha Trang', 'Thành phố Đà Lạt', 'Thành phố Buôn Ma Thuột', 'Thành phố Pleiku',
+    'Thành phố Quy Nhon', 'Thành phố Huế', 'Thành phố Vinh', 'Thành phố Nam Định',
+    'Thành phố Thái Nguyên', 'Thành phố Hạ Long', 'Thành phố Bắc Ninh', 'Thành phố Việt Trì'
+  ].sort()
+
+  const filteredDistricts = vietnamDistricts.filter(district =>
+    district.toLowerCase().includes(districtQuery.toLowerCase())
+  )
+
+  // Common wards in Vietnam
+  const vietnamWards = [
+    'Phường 1', 'Phường 2', 'Phường 3', 'Phường 4', 'Phường 5', 'Phường 6', 'Phường 7', 'Phường 8',
+    'Phường 9', 'Phường 10', 'Phường 11', 'Phường 12', 'Phường 13', 'Phường 14', 'Phường 15',
+    'Phường Bến Nghé', 'Phường Bến Thành', 'Phường Cô Giang', 'Phường Cầu Kho', 'Phường Cầu Ông Lãnh',
+    'Phường Đa Kao', 'Phường Nguyễn Cư Trinh', 'Phường Nguyễn Thái Bình', 'Phường Phạm Ngũ Lão',
+    'Phường Tân Định', 'Phường Bùi Thị Xuân', 'Phường Đống Đa', 'Phường Hàng Bài', 'Phường Hàng Bồ',
+    'Phường Hàng Buồm', 'Phường Hàng Đào', 'Phường Hàng Gai', 'Phường Hàng Mã', 'Phường Hàng Trống',
+    'Phường Lý Thái Tổ', 'Phường Phan Chu Trinh', 'Phường Tràng Tiền', 'Phường Trúc Bạch',
+    'Phường Cửa Nam', 'Phường Cửa Đông', 'Phường Đức Giang', 'Phường Gia Thụy', 'Phường Long Biên',
+    'Phường Ngọc Lâm', 'Phường Phúc Đông', 'Phường Phúc Lợi', 'Phường Sài Đồng', 'Phường Thạch Bàn',
+    'Phường Thượng Thanh', 'Phường Việt Hưng', 'Phường Bồ Đề', 'Phường Thống Nhất', 'Phường Thành Công',
+    'Xã An Phú', 'Xã Bình An', 'Xã Đông Thạnh', 'Xã Hòa Phú', 'Xã Tân Thạnh', 'Xã Thới An',
+    'Xã Xuân Thới Đông', 'Xã Xuân Thới Sơn', 'Xã Xuân Thới Thượng', 'Xã Lê Minh Xuân',
+    'Xã Tân Kiên', 'Xã Tân Nhựt', 'Xã Tân Quý Tây', 'Xã Vĩnh Lộc A', 'Xã Vĩnh Lộc B',
+    'Xã Phạm Văn Hai', 'Xã Phong Phú', 'Xã An Phú Tây', 'Xã Hưng Long', 'Xã Nhơn Đức',
+    'Xã Phú Xuân', 'Xã Quy Đức', 'Xã Tân An Hội', 'Xã Tân Phú Trung', 'Xã Phú Hòa Đông',
+    'Thị trấn Tân Túc', 'Thị trấn Bến Lức', 'Thị trấn Cần Đước', 'Thị trấn Cần Giuộc',
+    'Thị trấn Châu Thành', 'Thị trấn Đức Hòa', 'Thị trấn Mộc Hóa', 'Thị trấn Tân Hưng',
+    'Thị trấn Tân Thạnh', 'Thị trấn Thủ Thừa', 'Thị trấn Vĩnh Hưng'
+  ].sort()
+
+  const filteredWards = vietnamWards.filter(ward =>
+    ward.toLowerCase().includes(wardQuery.toLowerCase())
+  )
+
+  // Convert API response to internal Center type (coalesce null -> undefined)
+  const mapCenterFromAPI = (apiCenter: CenterDto): Center => ({
+    id: apiCenter.centerId,
+    name: apiCenter.name,
+    code: apiCenter.code,
+    email: apiCenter.email,
+    phone: apiCenter.phone,
+    establishedDate: apiCenter.establishedDate ?? undefined,
+    description: apiCenter.description ?? undefined,
+    addressLine: apiCenter.addressLine,
+    province: apiCenter.province,
+    district: apiCenter.district,
+    ward: apiCenter.ward,
+    active: apiCenter.active,
+    createdAt: apiCenter.createdAt,
+    updatedAt: apiCenter.updatedAt ?? undefined,
+    createdBy: apiCenter.createdBy ?? null,
+    updatedBy: apiCenter.updatedBy ?? null,
+    deletedAt: apiCenter.deletedAt ?? null,
+  })
+
+  // Load centers from API
+  const loadCenters = async () => {
+    try {
+      setLoading(true)
+      const response = await listAllCenters()
+      const centersData = (response.data as CenterDto[]).map(mapCenterFromAPI)
+      setCenters(centersData)
+    } catch (error) {
+      console.error('Failed to load centers:', error)
+      toast.error('Lỗi tải dữ liệu', 'Không thể tải danh sách trung tâm')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    setIsLoaded(true)
+    loadCenters()
   }, [])
 
+  // Auto focus on modal open
+  useEffect(() => {
+    if (openModal && !editing && nameInputRef.current) {
+      setTimeout(() => {
+        nameInputRef.current?.focus()
+      }, 100)
+    }
+  }, [openModal, editing])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (openModal && e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault()
+        const form = document.querySelector('form')
+        if (form) form.requestSubmit()
+      }
+    }
+    if (openModal) {
+      document.addEventListener('keydown', handleKeyDown)
+      return () => document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [openModal])
+
+  // Validation
+  const validateEmail = (email: string): string | null => {
+    if (!email) return 'Email là bắt buộc'
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) return 'Email không hợp lệ'
+    return null
+  }
+
+  const validatePhone = (phone: string): string | null => {
+    if (!phone) return 'Số điện thoại là bắt buộc'
+    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/
+    if (!phoneRegex.test(phone.replace(/[-\s]/g, ''))) return 'Số điện thoại không hợp lệ'
+    return null
+  }
+
+  const validateCode = (code: string): string | null => {
+    if (!code) return 'Mã trung tâm là bắt buộc'
+    if (code.length < 2 || code.length > 10) return 'Mã trung tâm phải từ 2-10 ký tự'
+    if (!/^[A-Z0-9]+$/.test(code)) return 'Mã trung tâm chỉ chứa chữ hoa và số'
+    if (!editing && centers.some(c => c.code.toLowerCase() === code.toLowerCase())) {
+      return 'Mã trung tâm đã tồn tại'
+    }
+    return null
+  }
+
+  const validateName = (name: string): string | null => {
+    if (!name) return 'Tên trung tâm là bắt buộc'
+    if (name.length < 3) return 'Tên trung tâm phải ít nhất 3 ký tự'
+    if (name.length > 100) return 'Tên trung tâm không được quá 100 ký tự'
+    return null
+  }
+
+  const validateRequired = (value: string, fieldName: string): string | null => {
+    if (!value.trim()) return `${fieldName} là bắt buộc`
+    return null
+  }
+
+  const validateAllFields = (formData: any): Record<string, string> => {
+    const errors: Record<string, string> = {}
+    const nameError = validateName(formData.name)
+    if (nameError) errors.name = nameError
+    const codeError = validateCode(formData.code)
+    if (codeError) errors.code = codeError
+    const emailError = validateEmail(formData.email)
+    if (emailError) errors.email = emailError
+    const phoneError = validatePhone(formData.phone)
+    if (phoneError) errors.phone = phoneError
+    const addressError = validateRequired(formData.addressLine, 'Địa chỉ')
+    if (addressError) errors.addressLine = addressError
+    const provinceError = validateRequired(formData.province, 'Tỉnh/Thành phố')
+    if (provinceError) errors.province = provinceError
+    const districtError = validateRequired(formData.district, 'Quận/Huyện')
+    if (districtError) errors.district = districtError
+    const wardError = validateRequired(formData.ward, 'Phường/Xã')
+    if (wardError) errors.ward = wardError
+    return errors
+  }
+
+  // Clear errors when user starts typing
+  const clearFieldError = (fieldName: string) => {
+    if (validationErrors[fieldName]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[fieldName]
+        return newErrors
+      })
+    }
+  }
+
   const filtered = useMemo(() => {
-    let result = centers.filter((c) => 
-      c.name.toLowerCase().includes(query.toLowerCase()) || 
+    let result = centers.filter((c) =>
+      c.name.toLowerCase().includes(query.toLowerCase()) ||
       c.code.toLowerCase().includes(query.toLowerCase())
     )
-    
     if (statusFilter !== 'Tất cả trạng thái') {
-      result = result.filter(c => c.status === statusFilter)
+      if (statusFilter === 'Hoạt động') result = result.filter(c => c.active)
+      else if (statusFilter === 'Không hoạt động') result = result.filter(c => !c.active)
     }
-    
     return result
   }, [centers, query, statusFilter])
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    setIsSubmitting(true)
+    setValidationErrors({})
+
     const form = new FormData(e.currentTarget)
-    const payload: Center = {
-      id: editing?.id ?? String(Date.now()),
-      name: String(form.get('name') || ''),
-      code: String(form.get('code') || ''),
-      address: String(form.get('address') || ''),
-      phone: String(form.get('phone') || ''),
-      status: (String(form.get('status') || 'Hoạt động') as Center['status']) ?? 'Hoạt động',
-      students: Number(form.get('students') || 0),
-      studentsCapacity: Number(form.get('studentsCapacity') || 0),
-      teachers: Number(form.get('teachers') || 0),
-      founded: String(form.get('founded') || ''),
+
+    const formData = {
+      name: String(form.get('name') || '').trim(),
+      code: String(form.get('code') || '').trim().toUpperCase(),
+      email: String(form.get('email') || '').trim().toLowerCase(),
+      phone: String(form.get('phone') || '').trim(),
+      addressLine: String(form.get('addressLine') || '').trim(),
+      province: String(form.get('province') || '').trim(),
+      district: String(form.get('district') || '').trim(),
+      ward: String(form.get('ward') || '').trim(),
     }
-    setCenters((prev) => {
-      const exists = prev.some((c) => c.id === payload.id)
-      return exists ? prev.map((c) => (c.id === payload.id ? payload : c)) : [payload, ...prev]
-    })
-    setOpenModal(false)
-    setEditing(null)
+
+    const errors = validateAllFields(formData)
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors)
+      setIsSubmitting(false)
+      toast.error('Lỗi validation', 'Vui lòng kiểm tra lại thông tin đã nhập')
+      return
+    }
+
+    // Payload cho create/update
+    const basePayload = {
+      ...formData,
+      establishedDate: form.get('establishedDate') ? String(form.get('establishedDate')) : undefined,
+      description: form.get('description') ? String(form.get('description')) : undefined,
+    }
+
+    try {
+      if (editing) {
+        const updatePayload: UpdateCenterDto = { ...basePayload }
+        await updateCenter(editing.id, updatePayload)
+        toast.success('Cập nhật thành công!', `Trung tâm ${formData.name} đã được cập nhật`)
+      } else {
+        const createPayload: CreateCenterDto = { ...basePayload }
+        await createCenter(createPayload)
+        toast.success('Tạo thành công!', `Trung tâm ${formData.name} đã được thêm vào hệ thống`)
+      }
+
+      await loadCenters()
+      setOpenModal(false)
+      setEditing(null)
+      setSelectedProvince('')
+      setProvinceQuery('')
+      setSelectedDistrict('')
+      setDistrictQuery('')
+      setSelectedWard('')
+      setWardQuery('')
+      setValidationErrors({})
+    } catch (error: any) {
+      console.error('Failed to save center:', error)
+      if (error.response?.status === 400) {
+        const apiError = error.response.data
+        if (apiError.field) {
+          setValidationErrors({ [apiError.field]: apiError.message })
+        } else {
+          toast.error('Dữ liệu không hợp lệ', apiError.message || 'Vui lòng kiểm tra lại thông tin')
+        }
+      } else if (error.response?.status === 409) {
+        toast.error('Trùng lặp dữ liệu', 'Mã trung tâm hoặc tên đã tồn tại trong hệ thống')
+      } else {
+        const errorMessage = error.response?.data?.message || error.message || 'Không thể kết nối đến server'
+        toast.error('Lỗi hệ thống', errorMessage)
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   function openCreate() {
     setEditing(null)
+    setSelectedProvince('')
+    setProvinceQuery('')
+    setSelectedDistrict('')
+    setDistrictQuery('')
+    setSelectedWard('')
+    setWardQuery('')
+    setValidationErrors({})
+    setIsSubmitting(false)
     setOpenModal(true)
   }
 
   function openEdit(center: Center) {
     setEditing(center)
+    setSelectedProvince(center.province)
+    setProvinceQuery(center.province)
+    setSelectedDistrict(center.district)
+    setDistrictQuery(center.district)
+    setSelectedWard(center.ward)
+    setWardQuery(center.ward)
+    setValidationErrors({})
+    setIsSubmitting(false)
     setOpenModal(true)
   }
 
-  function toggleDisable(center: Center) {
-    setCenters((prev) => prev.map((c) => (c.id === center.id ? { ...c, status: c.status === 'Hoạt động' ? 'Không hoạt động' : 'Hoạt động' } : c)))
+  async function toggleDisable(center: Center) {
+    try {
+      const action = center.active ? 'Vô hiệu hóa' : 'Kích hoạt'
+      if (center.active) await deactivateCenter(center.id)
+      else await reactivateCenter(center.id)
+      await loadCenters()
+      toast.success(`${action} thành công`, `${center.name} đã được cập nhật`)
+    } catch (error) {
+      console.error('Failed to toggle center status:', error)
+      toast.error('Lỗi cập nhật', 'Không thể cập nhật trạng thái trung tâm')
+    }
   }
 
   return (
-    <div className={`space-y-8 transition-all duration-1000 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-      {/* Modern Header */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/5 via-blue-600/5 to-purple-600/5 rounded-2xl"></div>
-        <div className="relative flex items-center justify-between p-8">
-          <div className="space-y-2">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                <Building2 className="h-7 w-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  Quản lý Trung tâm
-                </h1>
-                <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-indigo-500" />
-                  Quản lý thông tin các trung tâm trong hệ thống với giao diện hiện đại
-                </p>
-              </div>
-            </div>
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 grid place-items-center text-white">
+            <Building2 size={18} />
           </div>
-          {can('centers:create') && (
-            <button 
-              className="group relative overflow-hidden inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-sm px-6 py-3 hover:from-indigo-700 hover:to-blue-700 focus:ring-2 focus:ring-indigo-300 transition-all duration-300 hover:scale-105 hover:shadow-xl" 
-              onClick={openCreate}
-            >
-              <div className="h-5 w-5 rounded-lg bg-white/20 grid place-items-center">
-                <Building2 size={14} />
-              </div>
-              <span className="font-semibold">Thêm Trung tâm mới</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-            </button>
-          )}
+          <div>
+            <h1 className="text-lg font-semibold">Quản lý Trung tâm</h1>
+            <p className="text-xs text-gray-500">Quản lý thông tin các trung tâm trong hệ thống</p>
+          </div>
         </div>
+        {can('centers:create') && (
+          <button className="inline-flex items-center gap-2 rounded-md bg-indigo-600 text-white text-sm px-3 py-2 hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-300" onClick={openCreate}>
+            + Thêm Trung tâm mới
+          </button>
+        )}
       </div>
 
-      {/* Modern Stats */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        {[
-          { 
-            label: 'Tổng số Trung tâm', 
-            value: centers.length, 
-            sub: '+2 tháng này', 
-            icon: Building2, 
-            color: 'from-indigo-500 to-blue-500',
-            bgGradient: 'from-indigo-50 to-blue-50',
-            glowColor: 'shadow-indigo-200'
-          },
-          { 
-            label: 'Đang hoạt động', 
-            value: centers.filter(c=>c.status==='Hoạt động').length, 
-            sub: 'Trung tâm hoạt động', 
-            icon: Eye, 
-            color: 'from-green-500 to-emerald-500',
-            bgGradient: 'from-green-50 to-emerald-50',
-            glowColor: 'shadow-green-200'
-          },
-          { 
-            label: 'Tổng Học viên', 
-            value: centers.reduce((s,c)=>s+c.students,0), 
-            sub: '+45 tuần này', 
-            icon: Users2, 
-            color: 'from-purple-500 to-violet-500',
-            bgGradient: 'from-purple-50 to-violet-50',
-            glowColor: 'shadow-purple-200'
-          }
-        ].map((stat, index) => {
-          const IconComponent = stat.icon
-          return (
-            <div 
-              key={stat.label}
-              className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${stat.bgGradient} p-6 border border-white/20 backdrop-blur-sm transition-all duration-500 hover:scale-105 hover:shadow-2xl ${stat.glowColor} hover:shadow-xl`}
-              style={{
-                animationDelay: `${index * 150}ms`,
-                animation: isLoaded ? 'fadeInUp 0.6s ease-out forwards' : 'none'
-              }}
-            >
-              {/* Animated background pattern */}
-              <div className="absolute inset-0 opacity-10">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/20 to-transparent rounded-full blur-2xl"></div>
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-white/10 to-transparent rounded-full blur-xl"></div>
-              </div>
-              
-              <div className="relative z-10">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="text-xs text-gray-600 font-semibold uppercase tracking-wide">{stat.label}</div>
-                  <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${stat.color} grid place-items-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                    <IconComponent size={18} />
-                  </div>
-                </div>
-                <div className="text-3xl font-bold text-gray-900 mb-2 group-hover:text-gray-800 transition-colors">{stat.value}</div>
-                <div className="text-sm text-gray-600">{stat.sub}</div>
-              </div>
-            </div>
-          )
-        })}
+      {/* Stats */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-lg border bg-white p-4">
+          <div className="text-xs text-gray-500 flex items-center gap-2"><Building2 size={16} /> Tổng số Trung tâm</div>
+          <div className="mt-3 text-2xl font-semibold">{centers.length}</div>
+          <div className="text-xs text-emerald-600 mt-1">+2 tháng này</div>
+        </div>
+        <div className="rounded-lg border bg-white p-4">
+          <div className="text-xs text-gray-500 flex items-center gap-2"><Eye size={16} /> Đang hoạt động</div>
+          <div className="mt-3 text-2xl font-semibold">{centers.filter(c => c.active).length}</div>
+          <div className="text-xs text-gray-500 mt-1">Trung tâm hoạt động</div>
+        </div>
+        <div className="rounded-lg border bg-white p-4">
+          <div className="text-xs text-gray-500 flex items-center gap-2"><Users2 size={16} /> Tổng Học viên</div>
+          <div className="mt-3 text-2xl font-semibold">{centers.length}</div>
+          <div className="text-xs text-emerald-600 mt-1">+45 tuần này</div>
+        </div>
       </section>
 
-      {/* Modern Data Table */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white to-gray-50/30 border border-gray-200/50 backdrop-blur-sm">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/3 via-blue-500/3 to-purple-500/3"></div>
-        <div className="relative z-10">
-          <div className="px-6 py-4 border-b border-gray-100/50 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
+      <div className="rounded-lg border bg-white">
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-sm text-gray-500">Đang tải dữ liệu...</div>
+          </div>
+        )}
+        {!loading && (
+          <>
+            <div className="px-4 py-3 border-b grid grid-cols-1 md:grid-cols-3 gap-2">
               <input
-                className="w-full h-11 rounded-xl border-0 bg-white/80 backdrop-blur-sm px-4 text-sm font-medium shadow-lg ring-1 ring-gray-200/50 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
+                className="h-9 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-gray-200"
                 placeholder="Tìm theo tên hoặc mã trung tâm..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
-            </div>
-            <div className="relative">
-              <select 
+              <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full h-11 rounded-xl border-0 bg-white/80 backdrop-blur-sm px-4 text-sm font-medium shadow-lg ring-1 ring-gray-200/50 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
+                className="h-9 rounded-md border px-2 text-sm"
               >
                 <option>Tất cả trạng thái</option>
                 <option>Hoạt động</option>
                 <option>Không hoạt động</option>
               </select>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <TrendingUp className="h-4 w-4 text-indigo-500" />
-              <span>Hiển thị {filtered.length} trung tâm</span>
+
+            <div className="grid grid-cols-12 gap-4 px-4 py-3 text-xs text-gray-500 border-b">
+              <div className="col-span-3">Tên Trung tâm</div>
+              <div className="col-span-3">Địa chỉ</div>
+              <div className="col-span-2">Liên hệ</div>
+              <div className="col-span-2">Trạng thái</div>
+              <div className="col-span-1">Học viên</div>
+              <div className="col-span-1">Giảng viên</div>
+              <div className="col-span-0 md:col-span-0"></div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-12 gap-4 px-6 py-4 text-xs text-gray-600 border-b border-gray-100/50 font-semibold uppercase tracking-wide">
-            <div className="col-span-3">Tên Trung tâm</div>
-            <div className="col-span-3">Địa chỉ</div>
-            <div className="col-span-2">Liên hệ</div>
-            <div className="col-span-2">Trạng thái</div>
-            <div className="col-span-1">Học viên</div>
-            <div className="col-span-1">Giảng viên</div>
-            <div className="col-span-0 md:col-span-0"></div>
-          </div>
-
-          <div className="divide-y divide-gray-100/50">
-            {filtered.map((c, index) => (
-              <div 
-                key={c.id} 
-                className="group grid grid-cols-12 gap-4 px-6 py-6 items-center hover:bg-gradient-to-r hover:from-gray-50/50 hover:to-white/50 transition-all duration-300 hover:shadow-sm"
-                style={{
-                  animationDelay: `${index * 100}ms`,
-                  animation: isLoaded ? 'fadeInUp 0.6s ease-out forwards' : 'none'
-                }}
-              >
-                <div className="col-span-12 md:col-span-3">
-                  <div className="flex items-start gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-500 grid place-items-center text-white flex-shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <Building2 size={20} />
+            <div className="divide-y">
+              {filtered.map((c) => (
+                <div key={c.id} className="grid grid-cols-12 gap-4 px-4 py-4 items-center">
+                  <div className="col-span-12 md:col-span-3">
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 grid place-items-center text-white flex-shrink-0">
+                        <Building2 size={18} />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium">{c.name}</div>
+                        <div className="text-xs text-gray-500">Mã: {c.code}</div>
+                        <div className="text-xs text-gray-500">Tạo: 2024-01-15</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900 group-hover:text-gray-800 transition-colors">{c.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">Mã: {c.code}</div>
-                      <div className="text-xs text-gray-500">Tạo: 2024-01-15</div>
+                  </div>
+                  <div className="col-span-12 md:col-span-3 text-sm">
+                    <div className="flex items-center gap-2 text-gray-700"><MapPin size={14} /> {c.addressLine}</div>
+                    <div className="text-xs text-gray-500">{[c.ward, c.district, c.province].filter(Boolean).join(', ')}</div>
+                  </div>
+                  <div className="col-span-12 md:col-span-2 text-sm">
+                    <div className="flex items-center gap-2"><Phone size={14} /> {c.phone}</div>
+                    <div className="flex items-center gap-2 text-xs text-gray-600"><Mail size={14} /> {c.email}</div>
+                  </div>
+                  <div className="col-span-6 md:col-span-2">
+                    <span className={`inline-flex items-center h-6 px-2 rounded-full text-xs whitespace-nowrap ${c.active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {c.active ? 'Hoạt động' : 'Không hoạt động'}
+                    </span>
+                  </div>
+                  <div className="col-span-6 md:col-span-2 relative">
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                      <div className="relative z-40">
+                        <button className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center" onClick={() => setOpenMenuId(openMenuId === c.id ? null : c.id)}>
+                          <MoreHorizontal size={16} />
+                        </button>
+                        {openMenuId === c.id && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                            <div className="absolute right-0 mt-1 w-40 rounded-lg border bg-white shadow-lg z-[70]">
+                              <button
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                                onClick={() => { setOpenMenuId(null); setViewingCenter(c) }}
+                              >
+                                <Eye size={14} /> Xem chi tiết
+                              </button>
+                              {can('centers:update') && (
+                                <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => { setOpenMenuId(null); openEdit(c) }}>
+                                  Chỉnh sửa
+                                </button>
+                              )}
+                              {can('centers:disable') && (
+                                <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => {
+                                  setOpenMenuId(null)
+                                  const action = c.active ? 'Vô hiệu hóa' : 'Kích hoạt'
+                                  if (confirm(`${action} ${c.name}?`)) {
+                                    toggleDisable(c)
+                                  }
+                                }}>
+                                  {c.active ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div className="col-span-12 md:col-span-3 text-sm">
-                  <div className="flex items-center gap-2 text-gray-700"><MapPin size={16}/> {c.address}</div>
-                  <div className="text-xs text-gray-500 mt-1">{[c.ward,c.district,c.city].filter(Boolean).join(', ')}</div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* View Center Detail Modal */}
+      <Modal open={!!viewingCenter} onClose={() => setViewingCenter(null)}>
+        {viewingCenter && (
+          <div>
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 grid place-items-center text-white">
+                  <Building2 size={18} />
                 </div>
-                <div className="col-span-12 md:col-span-2 text-sm">
-                  <div className="flex items-center gap-2"><Phone size={16}/> {c.phone}</div>
-                  <div className="flex items-center gap-2 text-xs text-gray-600 mt-1"><Mail size={16}/> {c.email}</div>
-                  <div className="flex items-center gap-2 text-xs text-gray-600"><Globe size={16}/> {c.website?.replace('https://','')}</div>
+                <div>
+                  <div className="font-semibold">{viewingCenter.name}</div>
+                  <div className="text-xs text-gray-500">Mã: {viewingCenter.code}</div>
                 </div>
-                <div className="col-span-6 md:col-span-2">
-                  <span className={`inline-flex items-center h-7 px-3 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-300 ${
-                    c.status === 'Hoạt động' 
-                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                      : 'bg-gray-100 text-gray-600 border border-gray-200'
-                  }`}>
-                    {c.status}
-                  </span>
+              </div>
+              <button
+                type="button"
+                className="h-8 w-8 rounded hover:bg-gray-100 flex items-center justify-center"
+                onClick={() => setViewingCenter(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Thông tin cơ bản */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                    <div className="h-5 w-5 rounded-lg bg-blue-50 text-blue-600 grid place-items-center">
+                      <Building2 size={12} />
+                    </div>
+                    <h3 className="text-sm font-medium text-gray-900">Thông tin cơ bản</h3>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Tên trung tâm</label>
+                      <div className="text-sm font-medium">{viewingCenter.name}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Mã trung tâm</label>
+                      <div className="text-sm font-mono bg-gray-50 px-2 py-1 rounded">{viewingCenter.code}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Trạng thái</label>
+                      <span className={`inline-flex items-center h-6 px-2 rounded-full text-xs ${viewingCenter.active
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'bg-gray-100 text-gray-600'
+                        }`}>
+                        {viewingCenter.active ? 'Hoạt động' : 'Không hoạt động'}
+                      </span>
+                    </div>
+                    {viewingCenter.establishedDate && (
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Ngày thành lập</label>
+                        <div className="text-sm">{new Date(viewingCenter.establishedDate).toLocaleDateString('vi-VN')}</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="col-span-3 md:col-span-1">
-                  <div className="inline-flex items-center gap-2 text-sm font-semibold"><Users2 size={16}/> {c.students} <span className="text-xs text-gray-500">/{c.studentsCapacity}</span></div>
-                </div>
-                <div className="col-span-3 md:col-span-1 relative">
-                  <div className="inline-flex items-center gap-2 text-sm font-semibold"><User2 size={16}/> {c.teachers}</div>
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2">
-                    <div className="relative z-40">
-                      <button className="h-9 w-9 rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm hover:bg-gray-50 hover:scale-110 transition-all duration-200 inline-flex items-center justify-center shadow-lg" onClick={()=> setOpenMenuId(openMenuId === c.id ? null : c.id)}>
-                        <MoreHorizontal size={16}/>
-                      </button>
-                      {openMenuId===c.id && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={()=>setOpenMenuId(null)}/>
-                          <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-gray-200/50 bg-white/95 backdrop-blur-sm shadow-xl z-[70] overflow-hidden">
-                            <button className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors font-medium">
-                              Xem chi tiết
-                            </button>
-                            {can('centers:update') && (
-                              <button className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors font-medium" onClick={()=>{ setOpenMenuId(null); openEdit(c) }}>
-                                Chỉnh sửa
-                              </button>
-                            )}
-                            {can('centers:disable') && (
-                              <button className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors font-medium" onClick={()=>{
-                                setOpenMenuId(null)
-                                const action = c.status==='Hoạt động' ? 'Vô hiệu hóa' : 'Kích hoạt'
-                                if(confirm(`${action} ${c.name}?`)){
-                                  toggleDisable(c)
-                                  toast.success(`${action} thành công`, `${c.name} đã được cập nhật`)
-                                }
-                              }}>
-                                {c.status==='Hoạt động'?'Vô hiệu hóa':'Kích hoạt'}
-                              </button>
-                            )}
-                          </div>
-                        </>
-                      )}
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                    <div className="h-5 w-5 rounded-lg bg-green-50 text-green-600 grid place-items-center">
+                      <Phone size={12} />
+                    </div>
+                    <h3 className="text-sm font-medium text-gray-900">Thông tin liên hệ</h3>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Số điện thoại</label>
+                      <div className="text-sm flex items-center gap-2">
+                        <Phone size={14} className="text-gray-400" />
+                        {viewingCenter.phone}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Email</label>
+                      <div className="text-sm flex items-center gap-2">
+                        <Mail size={14} className="text-gray-400" />
+                        {viewingCenter.email}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      <Modal open={openModal} onClose={() => setOpenModal(false)}>
+              {/* Địa chỉ */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                  <div className="h-5 w-5 rounded-lg bg-purple-50 text-purple-600 grid place-items-center">
+                    <MapPin size={12} />
+                  </div>
+                  <h3 className="text-sm font-medium text-gray-900">Địa chỉ</h3>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="text-sm font-medium mb-2">{viewingCenter.addressLine}</div>
+                  <div className="text-xs text-gray-600">
+                    {[viewingCenter.ward, viewingCenter.district, viewingCenter.province].filter(Boolean).join(', ')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Mô tả */}
+              {viewingCenter.description && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                    <div className="h-5 w-5 rounded-lg bg-orange-50 text-orange-600 grid place-items-center">
+                      <Globe size={12} />
+                    </div>
+                    <h3 className="text-sm font-medium text-gray-900">Mô tả</h3>
+                  </div>
+
+                  <div className="text-sm text-gray-700 bg-gray-50 rounded-lg p-4">
+                    {viewingCenter.description}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t bg-gray-50 flex items-center justify-between rounded-b-lg">
+              <div className="text-xs text-gray-500">
+                Chi tiết trung tâm - {viewingCenter.name}
+              </div>
+              <div className="flex items-center gap-2">
+                {can('centers:update') && (
+                  <button
+                    className="h-8 px-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-sm"
+                    onClick={() => {
+                      setViewingCenter(null)
+                      openEdit(viewingCenter)
+                    }}
+                  >
+                    Chỉnh sửa
+                  </button>
+                )}
+                <button
+                  className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm"
+                  onClick={() => setViewingCenter(null)}
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={openModal} onClose={() => {
+        setOpenModal(false)
+        setSelectedProvince('')
+        setProvinceQuery('')
+        setSelectedDistrict('')
+        setDistrictQuery('')
+        setSelectedWard('')
+        setWardQuery('')
+        setValidationErrors({})
+        setIsSubmitting(false)
+        setEditing(null)
+      }}>
         <form onSubmit={onSubmit}>
           <div className="px-4 py-3 border-b flex items-center justify-between">
             <div>
               <div className="font-medium">{editing ? 'Sửa Trung tâm' : 'Tạo Trung tâm mới'}</div>
               <div className="text-xs text-gray-500 mt-1">Nhập thông tin để tạo một trung tâm mới trong hệ thống.</div>
             </div>
-            <button type="button" className="h-8 w-8 rounded hover:bg-gray-100" onClick={() => setOpenModal(false)}>×</button>
+            <button type="button" className="h-8 w-8 rounded hover:bg-gray-100" onClick={() => {
+              setOpenModal(false)
+              setSelectedProvince('')
+              setProvinceQuery('')
+              setSelectedDistrict('')
+              setDistrictQuery('')
+              setSelectedWard('')
+              setWardQuery('')
+              setEditing(null)
+            }}>×</button>
           </div>
           <div className="p-4 space-y-4">
             {/* Thông tin cơ bản */}
@@ -354,15 +748,39 @@ export default function CentersPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Tên trung tâm *</label>
-                  <input name="name" defaultValue={editing?.name} required className="w-full h-8 rounded-md border px-2 text-xs" placeholder="Trung tâm Hà Nội 2" />
+                  <input
+                    ref={nameInputRef}
+                    name="name"
+                    defaultValue={editing?.name}
+                    required
+                    onChange={() => clearFieldError('name')}
+                    className={`w-full h-8 rounded-md border px-2 text-xs ${validationErrors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                    placeholder="Trung tâm Hà Nội 2"
+                  />
+                  {validationErrors.name && (
+                    <div className="text-xs text-red-600 mt-1">{validationErrors.name}</div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Mã trung tâm *</label>
-                  <input name="code" defaultValue={editing?.code} required className="w-full h-8 rounded-md border px-2 text-xs" placeholder="HN02" />
+                  <input
+                    name="code"
+                    defaultValue={editing?.code}
+                    required
+                    onChange={(e) => {
+                      e.target.value = e.target.value.toUpperCase()
+                      clearFieldError('code')
+                    }}
+                    className={`w-full h-8 rounded-md border px-2 text-xs ${validationErrors.code ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                    placeholder="HN02"
+                  />
+                  {validationErrors.code && (
+                    <div className="text-xs text-red-600 mt-1">{validationErrors.code}</div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Ngày thành lập</label>
-                  <input name="founded" type="date" defaultValue={editing?.founded} className="w-full h-8 rounded-md border px-2 text-xs text-gray-700" />
+                  <input name="establishedDate" type="date" defaultValue={editing?.establishedDate} className="w-full h-8 rounded-md border px-2 text-xs text-gray-700" />
                 </div>
               </div>
             </div>
@@ -377,26 +795,136 @@ export default function CentersPage() {
               </div>
               <div>
                 <label className="block text-xs text-gray-600 mb-1">Địa chỉ đầy đủ *</label>
-                <input name="address" defaultValue={editing?.address} required className="w-full h-8 rounded-md border px-2 text-xs" placeholder="123 Nguyễn Du, Phường Bùi Thị Xuân, Quận Hai Bà Trưng" />
+                <input
+                  name="addressLine"
+                  defaultValue={editing?.addressLine}
+                  required
+                  onChange={() => clearFieldError('addressLine')}
+                  className={`w-full h-8 rounded-md border px-2 text-xs ${validationErrors.addressLine ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                  placeholder="123 Nguyễn Du, Phường Bùi Thị Xuân, Quận Hai Bà Trưng"
+                />
+                {validationErrors.addressLine && (
+                  <div className="text-xs text-red-600 mt-1">{validationErrors.addressLine}</div>
+                )}
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <div>
+                <div className="relative">
                   <label className="block text-xs text-gray-600 mb-1">Tỉnh/Thành phố *</label>
-                  <select name="city" defaultValue={editing?.city} required className="w-full h-8 rounded-md border px-2 text-xs">
-                    <option value="">Chọn tỉnh/thành phố</option>
-                    <option value="Hà Nội">Hà Nội</option>
-                    <option value="TP.HCM">TP.HCM</option>
-                    <option value="Đà Nẵng">Đà Nẵng</option>
-                    <option value="Hải Phòng">Hải Phòng</option>
-                  </select>
+                  <input
+                    name="province"
+                    type="text"
+                    value={selectedProvince || editing?.province || ''}
+                    onChange={(e) => {
+                      setSelectedProvince(e.target.value)
+                      setProvinceQuery(e.target.value)
+                      setShowProvinceDropdown(true)
+                      clearFieldError('province')
+                    }}
+                    onFocus={() => setShowProvinceDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowProvinceDropdown(false), 200)}
+                    placeholder="Nhập hoặc chọn tỉnh/thành phố"
+                    required
+                    className={`w-full h-8 rounded-md border px-2 text-xs ${validationErrors.province ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                  />
+                  {showProvinceDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                      {filteredProvinces.length > 0 ? (
+                        filteredProvinces.map((province) => (
+                          <div
+                            key={province}
+                            className="px-2 py-1 text-xs hover:bg-gray-100 cursor-pointer"
+                            onClick={() => {
+                              setSelectedProvince(province)
+                              setProvinceQuery(province)
+                              setShowProvinceDropdown(false)
+                            }}
+                          >
+                            {province}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-2 py-1 text-xs text-gray-500">Không tìm thấy tỉnh/thành phố</div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div>
+                <div className="relative">
                   <label className="block text-xs text-gray-600 mb-1">Quận/Huyện *</label>
-                  <input name="district" defaultValue={editing?.district} required className="w-full h-8 rounded-md border px-2 text-xs" placeholder="Hai Bà Trưng" />
+                  <input
+                    name="district"
+                    type="text"
+                    value={selectedDistrict || editing?.district || ''}
+                    onChange={(e) => {
+                      setSelectedDistrict(e.target.value)
+                      setDistrictQuery(e.target.value)
+                      setShowDistrictDropdown(true)
+                    }}
+                    onFocus={() => setShowDistrictDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowDistrictDropdown(false), 200)}
+                    placeholder="Nhập hoặc chọn quận/huyện"
+                    required
+                    className="w-full h-8 rounded-md border px-2 text-xs"
+                  />
+                  {showDistrictDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                      {filteredDistricts.length > 0 ? (
+                        filteredDistricts.map((district) => (
+                          <div
+                            key={district}
+                            className="px-2 py-1 text-xs hover:bg-gray-100 cursor-pointer"
+                            onClick={() => {
+                              setSelectedDistrict(district)
+                              setDistrictQuery(district)
+                              setShowDistrictDropdown(false)
+                            }}
+                          >
+                            {district}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-2 py-1 text-xs text-gray-500">Không tìm thấy quận/huyện</div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div>
+                <div className="relative">
                   <label className="block text-xs text-gray-600 mb-1">Phường/Xã *</label>
-                  <input name="ward" defaultValue={editing?.ward} required className="w-full h-8 rounded-md border px-2 text-xs" placeholder="Phường Bùi Thị Xuân" />
+                  <input
+                    name="ward"
+                    type="text"
+                    value={selectedWard || editing?.ward || ''}
+                    onChange={(e) => {
+                      setSelectedWard(e.target.value)
+                      setWardQuery(e.target.value)
+                      setShowWardDropdown(true)
+                    }}
+                    onFocus={() => setShowWardDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowWardDropdown(false), 200)}
+                    placeholder="Nhập hoặc chọn phường/xã"
+                    required
+                    className="w-full h-8 rounded-md border px-2 text-xs"
+                  />
+                  {showWardDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                      {filteredWards.length > 0 ? (
+                        filteredWards.map((ward) => (
+                          <div
+                            key={ward}
+                            className="px-2 py-1 text-xs hover:bg-gray-100 cursor-pointer"
+                            onClick={() => {
+                              setSelectedWard(ward)
+                              setWardQuery(ward)
+                              setShowWardDropdown(false)
+                            }}
+                          >
+                            {ward}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-2 py-1 text-xs text-gray-500">Không tìm thấy phường/xã</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -412,11 +940,33 @@ export default function CentersPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Số điện thoại *</label>
-                  <input name="phone" defaultValue={editing?.phone} required className="w-full h-8 rounded-md border px-2 text-xs" placeholder="024-3943-1234" />
+                  <input
+                    name="phone"
+                    defaultValue={editing?.phone}
+                    required
+                    type="tel"
+                    onChange={() => clearFieldError('phone')}
+                    className={`w-full h-8 rounded-md border px-2 text-xs ${validationErrors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                    placeholder="024-3943-1234"
+                  />
+                  {validationErrors.phone && (
+                    <div className="text-xs text-red-600 mt-1">{validationErrors.phone}</div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Email *</label>
-                  <input name="email" type="email" defaultValue={editing?.email} required className="w-full h-8 rounded-md border px-2 text-xs" placeholder="contact@education.vn" />
+                  <input
+                    name="email"
+                    type="email"
+                    defaultValue={editing?.email}
+                    required
+                    onChange={() => clearFieldError('email')}
+                    className={`w-full h-8 rounded-md border px-2 text-xs ${validationErrors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                    placeholder="contact@education.vn"
+                  />
+                  {validationErrors.email && (
+                    <div className="text-xs text-red-600 mt-1">{validationErrors.email}</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -436,13 +986,28 @@ export default function CentersPage() {
             </div>
           </div>
           <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
-            <button type="button" className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={() => setOpenModal(false)}>Hủy</button>
+            <button type="button" className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={() => {
+              setOpenModal(false)
+              setSelectedProvince('')
+              setProvinceQuery('')
+              setSelectedDistrict('')
+              setDistrictQuery('')
+              setSelectedWard('')
+              setWardQuery('')
+              setEditing(null)
+            }}>Hủy</button>
             <button
               type="submit"
-              className="h-9 px-3 rounded-md bg-blue-600 text-white hover:bg-blue-700"
-              onClick={() => toast.success(editing ? 'Đã lưu thay đổi' : 'Đã tạo Trung tâm')}
+              className="h-9 px-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              disabled={isSubmitting}
             >
-              {editing ? 'Lưu thay đổi' : 'Tạo Trung tâm'}
+              {isSubmitting && (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              )}
+              {isSubmitting
+                ? (editing ? 'Đang cập nhật...' : 'Đang tạo...')
+                : (editing ? 'Lưu thay đổi' : 'Tạo Trung tâm')
+              }
             </button>
           </div>
         </form>
@@ -450,5 +1015,3 @@ export default function CentersPage() {
     </div>
   )
 }
-
-
