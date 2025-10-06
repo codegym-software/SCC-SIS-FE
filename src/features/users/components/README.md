@@ -15,30 +15,31 @@ Component modal để tạo người dùng mới với giao diện đẹp theo t
 
 ```typescript
 interface CreateUserModalProps {
-  open: boolean
-  onClose: () => void
-  onSubmit: (userData: any) => void
+    open: boolean;
+    onClose: () => void;
+    onSubmit: (userData: any) => void;
 }
 ```
 
 ### Usage
 
 ```tsx
-import CreateUserModal from './CreateUserModal'
+import CreateUserModal from './CreateUserModal';
 
 <CreateUserModal
-  open={isOpen}
-  onClose={() => setIsOpen(false)}
-  onSubmit={(userData) => {
-    // Handle user creation
-    console.log('New user data:', userData)
-  }}
-/>
+    open={isOpen}
+    onClose={() => setIsOpen(false)}
+    onSubmit={(userData) => {
+        // Handle user creation
+        console.log('New user data:', userData);
+    }}
+/>;
 ```
 
 ### Styling
 
 Component sử dụng Tailwind CSS với các màu sắc và styling phù hợp với thiết kế:
+
 - Background: `#f3f3f5` cho input fields
 - Primary button: `#030213`
 - Text colors: `#717182` cho placeholder, `#1e2939` cho text chính
