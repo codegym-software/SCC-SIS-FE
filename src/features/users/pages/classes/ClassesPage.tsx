@@ -1,8 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { BookOpen, GraduationCap, Plus, Search, Users, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { BookOpen, Search, X } from 'lucide-react';
 import ClassList from '@/features/users/pages/classes/list.tsx';
 import ManageStudentsModal from '@/features/users/pages/classes/components/ManageStudentsModal';
 import AssignInstructorModal from '@/features/users/pages/classes/components/AssignInstructorModal';
+
+type Instructor = {
+    id: string;
+    name: string;
+    initial: string;
+    avatar?: string;
+};
 
 type Class = {
     id: string;
@@ -14,8 +21,7 @@ type Class = {
     location: string;
     students: number;
     maxStudents: number;
-    instructor: string;
-    instructorInitial: string;
+    instructors: Instructor[];
     status: 'Chuẩn bị' | 'Đang học' | 'Hoàn thành' | 'Tạm dừng';
 };
 
@@ -50,10 +56,13 @@ export default function ClassesPage() {
             startDate: '2024-12-25',
             schedule: 'Thứ 2, 4, 6 - 19:00-21:30',
             location: 'Phòng A101',
-            students: 28,
+            students: 9,
             maxStudents: 30,
-            instructor: 'Nguyễn Văn A',
-            instructorInitial: 'N',
+            instructors: [
+                { id: '1', name: 'Nguyễn Văn A', initial: 'N' },
+                { id: '2', name: 'Trần Thị B', initial: 'T' },
+                { id: '3', name: 'Lê Văn C', initial: 'L' }
+            ],
             status: 'Chuẩn bị',
         },
         {
@@ -66,8 +75,9 @@ export default function ClassesPage() {
             location: 'Phòng B201',
             students: 22,
             maxStudents: 25,
-            instructor: 'Trần Thị B',
-            instructorInitial: 'T',
+            instructors: [
+                { id: '4', name: 'Trần Thị B', initial: 'T' }
+            ],
             status: 'Đang học',
         },
         {
@@ -80,8 +90,10 @@ export default function ClassesPage() {
             location: 'Phòng C301',
             students: 30,
             maxStudents: 35,
-            instructor: 'Lê Văn C',
-            instructorInitial: 'L',
+            instructors: [
+                { id: '5', name: 'Lê Văn C', initial: 'L' },
+                { id: '6', name: 'Phạm Thị D', initial: 'P' }
+            ],
             status: 'Đang học',
         },
         {
@@ -94,8 +106,9 @@ export default function ClassesPage() {
             location: 'Phòng D401',
             students: 18,
             maxStudents: 20,
-            instructor: 'Nguyễn Văn A',
-            instructorInitial: 'N',
+            instructors: [
+                { id: '7', name: 'Nguyễn Văn A', initial: 'N' }
+            ],
             status: 'Đang học',
         },
         {
@@ -108,8 +121,9 @@ export default function ClassesPage() {
             location: 'Phòng E501',
             students: 0,
             maxStudents: 15,
-            instructor: 'Trần Thị B',
-            instructorInitial: 'T',
+            instructors: [
+                { id: '8', name: 'Trần Thị B', initial: 'T' }
+            ],
             status: 'Chuẩn bị',
         },
     ]);
@@ -141,8 +155,7 @@ export default function ClassesPage() {
                         location: String(form.get('location') || ''),
                         students: editing?.students ?? 0, // Giữ nguyên số học viên hiện tại khi chỉnh sửa
                         maxStudents: Number(form.get('maxStudents') || 0),
-                        instructor: editing?.instructor ?? 'Chưa phân công', // Giữ nguyên giảng viên hiện tại
-                        instructorInitial: editing?.instructorInitial ?? '?',
+                        instructors: editing?.instructors ?? [], // Giữ nguyên danh sách giảng viên hiện tại
                         status: String(form.get('status') || 'Chuẩn bị') as Class['status'],
                     };
 
@@ -255,7 +268,7 @@ export default function ClassesPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-600 mb-1">Lịch học *</label>
+                                <label className="block text-xs text-gray-600 mb-1">Lịch học </label>
                                 <input
                                     name="schedule"
                                     defaultValue={editing?.schedule}

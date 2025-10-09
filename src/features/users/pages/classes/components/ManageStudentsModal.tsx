@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Eye, UserMinus, Users } from 'lucide-react';
+import { X, Plus, Eye, UserMinus } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -7,6 +7,13 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import StudentDetailsModal from './StudentDetailsModal';
+
+type Instructor = {
+    id: string;
+    name: string;
+    initial: string;
+    avatar?: string;
+};
 
 type Class = {
     id: string;
@@ -18,8 +25,7 @@ type Class = {
     location: string;
     students: number;
     maxStudents: number;
-    instructor: string;
-    instructorInitial: string;
+    instructors: Instructor[];
     status: 'Chuẩn bị' | 'Đang học' | 'Hoàn thành' | 'Tạm dừng';
 };
 

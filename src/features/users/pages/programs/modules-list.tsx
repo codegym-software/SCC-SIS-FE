@@ -101,7 +101,7 @@ const ModulesList: React.FC<ModulesListProps> = ({
             {/* Header columns */}
             <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-12 gap-3">
                 <div className="col-span-4">Module</div>
-                <div className="col-span-2">Lĩnh vực</div>
+                <div className="col-span-2">Danh mục</div>
                 <div className="col-span-2">Thời gian</div>
                 <div className="col-span-2">Tín chỉ</div>
                 <div className="col-span-1">Trạng thái</div>

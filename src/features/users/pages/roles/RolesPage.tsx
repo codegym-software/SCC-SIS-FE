@@ -2,34 +2,23 @@ import React, { useMemo, useState } from 'react';
 import { 
   Shield, 
   Users2, 
-  Settings, 
-  UserPlus
+  Settings
 } from 'lucide-react';
 
 // Import components
 import RoleList from './list';
 import Permissions from './permissions';
-import Assignments from './assignments';
 
 type Role = {
     id: string;
     name: string;
-    desc: string;
+    code: string;
     permissions: string[];
     members: number;
     status: 'Hoạt động' | 'Không hoạt động';
     createdAt: string;
 };
 
-type Assignment = {
-    id: string;
-    user: string;
-    email: string;
-    role: string;
-    center: string;
-    date: string;
-    by: string;
-};
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
     if (!open) return null;
@@ -47,9 +36,7 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
 
 export default function RolesPage() {
     const [query] = useState('');
-    const [tab, setTab] = useState<'permissions' | 'roles' | 'assign'>('roles');
-    const [assignQuery] = useState('');
-    const [assignFilter] = useState('Tất cả vai trò');
+    const [tab, setTab] = useState<'permissions' | 'roles'>('roles');
 
     const PERMISSIONS: Record<string, string[]> = {
         'Trung tâm': ['Xem trung tâm', 'Tạo trung tâm', 'Chỉnh sửa trung tâm', 'Xóa trung tâm'],
@@ -62,7 +49,7 @@ export default function RolesPage() {
         {
             id: '1',
             name: 'Giáo vụ',
-            desc: 'Quản trị học vụ và lớp học',
+            code: 'GV',
             permissions: ['Xem lớp học', 'Xem người dùng', 'Chỉnh sửa người dùng', 'Xem trung tâm', 'Xem vai trò'],
             members: 15,
             status: 'Hoạt động',
@@ -71,7 +58,7 @@ export default function RolesPage() {
         {
             id: '2',
             name: 'Giảng viên',
-            desc: 'Quản lý nội dung và điểm danh',
+            code: 'GVI',
             permissions: ['Xem lớp học', 'Quản lý lớp học'],
             members: 45,
             status: 'Hoạt động',
@@ -80,7 +67,7 @@ export default function RolesPage() {
         {
             id: '3',
             name: 'Trưởng phòng',
-            desc: 'Quản lý bộ phận và nhân sự',
+            code: 'TP',
             permissions: [
                 'Xem vai trò',
                 'Chỉnh sửa vai trò',
@@ -95,7 +82,7 @@ export default function RolesPage() {
         {
             id: '4',
             name: 'Quản lý trung tâm',
-            desc: 'Quản lý toàn bộ hoạt động tại trung tâm',
+            code: 'QLTT',
             permissions: [
                 'Xem trung tâm',
                 'Tạo trung tâm',
@@ -115,39 +102,11 @@ export default function RolesPage() {
         },
     ]);
 
-    const [assignments] = useState<Assignment[]>([
-        {
-            id: 'a1',
-            user: 'Nguyễn Văn An',
-            email: 'an.nguyen@education.vn',
-            role: 'Giáo vụ',
-            center: 'Trung tâm Hà Nội 1',
-            date: '2024-01-15',
-            by: 'Super Admin',
-        },
-        {
-            id: 'a2',
-            user: 'Trần Thị Bình',
-            email: 'binh.tran@education.vn',
-            role: 'Giảng viên',
-            center: 'Trung tâm Hà Nội 1',
-            date: '2024-02-01',
-            by: 'Nguyễn Văn An',
-        },
-        {
-            id: 'a3',
-            user: 'Lê Văn Chinh',
-            email: 'chinh.le@education.vn',
-            role: 'Trưởng phòng',
-            center: 'Trung tâm TP.HCM 1',
-            date: '2024-01-20',
-            by: 'Super Admin',
-        },
-    ]);
 
     const [openCreate, setOpenCreate] = useState(false);
     const [openEdit, setOpenEdit] = useState<Role | null>(null);
     const [openDelete, setOpenDelete] = useState<Role | null>(null);
+    const [openViewDetails, setOpenViewDetails] = useState<Role | null>(null);
 
     const stats = useMemo(
         () => [
@@ -175,14 +134,6 @@ export default function RolesPage() {
                 change: null,
                 changeColor: null,
             },
-            {
-                label: 'Phân quyền',
-                value: '3',
-                icon: UserPlus,
-                iconColor: 'from-emerald-500 to-green-500',
-                change: '+3 tuần này',
-                changeColor: 'text-emerald-600 bg-emerald-50',
-            },
         ],
         [roles],
     );
@@ -203,6 +154,22 @@ export default function RolesPage() {
             });
         }
 
+        function toggleAllPermissions(items: string[]) {
+            setSelected((prev) => {
+                const next = new Set(prev);
+                const allSelected = items.every(item => next.has(item));
+                
+                if (allSelected) {
+                    // Nếu tất cả đã được chọn, bỏ chọn tất cả
+                    items.forEach(item => next.delete(item));
+                } else {
+                    // Nếu chưa chọn hết, chọn tất cả
+                    items.forEach(item => next.add(item));
+                }
+                return next;
+            });
+        }
+
         return (
             <form
                 onSubmit={(e) => {
@@ -211,7 +178,7 @@ export default function RolesPage() {
                     const payload: Role = {
                         id: editing?.id ?? String(Date.now()),
                         name: String(form.get('name') || ''),
-                        desc: String(form.get('desc') || ''),
+                        code: String(form.get('code') || ''),
                         permissions: Array.from(selected),
                         members: editing?.members ?? 0,
                         status: 'Hoạt động',
@@ -257,12 +224,13 @@ export default function RolesPage() {
                         {errors.name && <div className="text-xs text-red-600 mt-1">{errors.name}</div>}
                     </div>
                     <div>
-                        <label className="block text-xs text-gray-600 mb-1">Mô tả</label>
+                        <label className="block text-xs text-gray-600 mb-1">Mã vai trò *</label>
                         <input
-                            name="desc"
-                            defaultValue={editing?.desc}
+                            name="code"
+                            defaultValue={editing?.code}
+                            required
                             className="w-full h-9 rounded-md border px-3 text-sm"
-                            placeholder="Mô tả vai trò"
+                            placeholder="GV"
                         />
                     </div>
                     <div className="md:col-span-2">
@@ -273,9 +241,22 @@ export default function RolesPage() {
                                 <div key={group} className="mb-3 rounded-xl border border-gray-200">
                                     <div className="px-3 py-2 text-sm font-medium flex items-center justify-between">
                                         <span>{group}</span>
-                                        <span className="text-xs text-gray-500">
-                                            {count}/{items.length}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-gray-500">
+                                                {count}/{items.length}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleAllPermissions(items)}
+                                                className={`px-2 py-1 text-xs rounded-md border ${
+                                                    count === items.length
+                                                        ? 'bg-gray-100 text-gray-700 border-gray-300'
+                                                        : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                                                }`}
+                                            >
+                                                {count === items.length ? 'Bỏ chọn tất cả' : 'Tích tất cả'}
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3">
                                         {items.map((key) => (
@@ -384,12 +365,6 @@ export default function RolesPage() {
                 >
                     <Shield size={14} /> Vai trò
                 </button>
-                <button
-                    onClick={() => setTab('assign')}
-                    className={`px-4 h-9 rounded-full text-sm inline-flex items-center gap-2 ${tab === 'assign' ? 'bg-gray-900 text-white' : 'bg-white border'}`}
-                >
-                    <Users2 size={14} /> Phân quyền
-                </button>
             </div>
 
             {/* Tab content */}
@@ -400,6 +375,7 @@ export default function RolesPage() {
                     onEdit={setOpenEdit}
                     onDelete={setOpenDelete}
                     onCreate={() => setOpenCreate(true)}
+                    onViewDetails={setOpenViewDetails}
                 />
             )}
 
@@ -407,16 +383,6 @@ export default function RolesPage() {
                 <Permissions permissions={PERMISSIONS} />
             )}
 
-            {tab === 'assign' && (
-                <Assignments
-                    assignments={assignments}
-                    query={assignQuery}
-                    filter={assignFilter}
-                    onEdit={() => {}}
-                    onRevoke={() => {}}
-                    onAssign={() => {}}
-                />
-            )}
 
             {/* Modals */}
             <Modal open={openCreate} onClose={() => setOpenCreate(false)}>
@@ -462,6 +428,113 @@ export default function RolesPage() {
                                 }}
                             >
                                 Xóa vai trò
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* View Details Modal */}
+            <Modal open={!!openViewDetails} onClose={() => setOpenViewDetails(null)}>
+                {openViewDetails && (
+                    <div>
+                        <div className="px-4 py-3 border-b flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 grid place-items-center text-white">
+                                    <Shield size={16} />
+                                </div>
+                                <div>
+                                    <div className="font-medium">Chi tiết vai trò: {openViewDetails.name}</div>
+                                    <div className="text-xs text-gray-500">Xem thông tin chi tiết về vai trò và quyền hạn</div>
+                                </div>
+                            </div>
+                            <button
+                                className="h-8 w-8 rounded hover:bg-gray-100 flex items-center justify-center"
+                                onClick={() => setOpenViewDetails(null)}
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="p-4 space-y-6">
+                            {/* Role Information */}
+                            <div>
+                                <h3 className="text-sm font-medium mb-3">Thông tin vai trò</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Tên vai trò</label>
+                                        <div className="text-sm font-medium">{openViewDetails.name}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Mã vai trò</label>
+                                        <div className="text-sm">{openViewDetails.code}</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Số người dùng</label>
+                                        <div className="text-sm">{openViewDetails.members} người dùng</div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Trạng thái</label>
+                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                                            openViewDetails.status === 'Hoạt động'
+                                                ? 'bg-green-50 text-green-700'
+                                                : 'bg-gray-50 text-gray-700'
+                                        }`}>
+                                            {openViewDetails.status}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Ngày tạo</label>
+                                        <div className="text-sm">{new Date(openViewDetails.createdAt).toLocaleDateString('vi-VN')}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Permissions */}
+                            <div>
+                                <h3 className="text-sm font-medium mb-3">Quyền hạn ({openViewDetails.permissions.length} quyền)</h3>
+                                <div className="space-y-3 max-h-60 overflow-y-auto">
+                                    {Object.entries(PERMISSIONS).map(([group, items]) => {
+                                        const rolePermissions = items.filter(item => openViewDetails.permissions.includes(item));
+                                        if (rolePermissions.length === 0) return null;
+                                        
+                                        return (
+                                            <div key={group} className="rounded-xl border border-gray-200">
+                                                <div className="px-3 py-2 text-sm font-medium bg-gray-50 border-b">
+                                                    {group} ({rolePermissions.length}/{items.length})
+                                                </div>
+                                                <div className="p-3">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {rolePermissions.map((permission) => (
+                                                            <span
+                                                                key={permission}
+                                                                className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-xs"
+                                                            >
+                                                                {permission}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
+                            <button
+                                className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50"
+                                onClick={() => setOpenViewDetails(null)}
+                            >
+                                Đóng
+                            </button>
+                            <button
+                                className="h-9 px-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700"
+                                onClick={() => {
+                                    setOpenViewDetails(null);
+                                    setOpenEdit(openViewDetails);
+                                }}
+                            >
+                                Chỉnh sửa
                             </button>
                         </div>
                     </div>

@@ -7,6 +7,13 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+type ClassInstructor = {
+    id: string;
+    name: string;
+    initial: string;
+    avatar?: string;
+};
+
 type Class = {
     id: string;
     name: string;
@@ -17,8 +24,7 @@ type Class = {
     location: string;
     students: number;
     maxStudents: number;
-    instructor: string;
-    instructorInitial: string;
+    instructors: ClassInstructor[];
     status: 'Chuẩn bị' | 'Đang học' | 'Hoàn thành' | 'Tạm dừng';
 };
 

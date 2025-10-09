@@ -1,4 +1,4 @@
-import { BookOpen, Calendar, Clock, GraduationCap } from 'lucide-react';
+import { BookOpen, Calendar, Clock } from 'lucide-react';
 import { useMemo } from 'react';
 import ProgramActions from './components/actions';
 
@@ -8,8 +8,6 @@ type Program = {
     description: string;
     category: string;
     duration: string;
-    modules: number;
-    credits: number;
     startDate: string;
     status: 'Đang hoạt động' | 'Tạm dừng' | 'Hoàn thành';
 };
@@ -119,11 +117,9 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
             </div>
 
             {/* Header columns */}
-            <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-12 gap-3">
+            <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-8 gap-3">
                 <div className="col-span-4">Chương trình</div>
                 <div className="col-span-2">Thời gian</div>
-                <div className="col-span-2">Module</div>
-                <div className="col-span-2">Tín chỉ</div>
                 <div className="col-span-1">Trạng thái</div>
                 <div className="col-span-1"></div>
             </div>
@@ -132,7 +128,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
                 {filtered.map((program) => (
                     <div
                         key={program.id}
-                        className="px-3 py-3 pr-12 grid grid-cols-12 gap-3 items-center border-t first:border-t-0 relative"
+                        className="px-3 py-3 pr-12 grid grid-cols-8 gap-3 items-center border-t first:border-t-0 relative"
                     >
                         <div className="col-span-12 md:col-span-4">
                             <div className="flex items-start gap-3">
@@ -159,13 +155,6 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
                                 <Calendar size={12} className="text-gray-400" />
                                 {new Date(program.startDate).toLocaleDateString('vi-VN')}
                             </div>
-                        </div>
-                        <div className="col-span-6 md:col-span-2 text-sm flex items-center gap-1">
-                            <GraduationCap size={14} className="text-gray-500" />
-                            {program.modules} module
-                        </div>
-                        <div className="col-span-6 md:col-span-2 text-sm">
-                            {program.credits} tín chỉ
                         </div>
                         <div className="col-span-6 md:col-span-1">
                             <span

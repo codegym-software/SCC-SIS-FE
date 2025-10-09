@@ -13,8 +13,6 @@ type Program = {
     description: string;
     category: string;
     duration: string;
-    modules: number;
-    credits: number;
     startDate: string;
     status: 'Đang hoạt động' | 'Tạm dừng' | 'Hoàn thành';
 };
@@ -67,8 +65,6 @@ export default function ProgramsPage() {
             description: 'Chương trình đào tạo toàn diện về CNTT từ cơ bản đến nâng cao',
             category: 'Kỹ thuật',
             duration: '18 tháng',
-            modules: 4,
-            credits: 14,
             startDate: '2024-01-10',
             status: 'Đang hoạt động',
         },
@@ -78,8 +74,6 @@ export default function ProgramsPage() {
             description: 'Chuyên sâu về lập trình Java và các ứng dụng thực tế',
             category: 'Lập trình',
             duration: '8 tháng',
-            modules: 2,
-            credits: 7,
             startDate: '2024-01-25',
             status: 'Đang hoạt động',
         },
@@ -89,8 +83,6 @@ export default function ProgramsPage() {
             description: 'Đào tạo thiết kế đồ họa chuyên nghiệp với các công cụ hiện đại',
             category: 'Thiết kế',
             duration: '12 tháng',
-            modules: 3,
-            credits: 10,
             startDate: '2024-02-01',
             status: 'Đang hoạt động',
         },
@@ -155,8 +147,6 @@ export default function ProgramsPage() {
                 const newProgram: Program = {
                     id: String(Date.now()),
                     ...formData,
-                    modules: Number(formData.modules),
-                    credits: Number(formData.credits),
                 };
                 setPrograms(prev => [newProgram, ...prev]);
             }

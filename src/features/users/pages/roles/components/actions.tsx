@@ -5,16 +5,17 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Edit, Trash, UserPlus } from 'lucide-react';
+import { Edit, Trash, UserPlus, Eye } from 'lucide-react';
 import React from 'react';
 
 interface RoleActionsProps {
     onEdit?: () => void;
     onDelete?: () => void;
     onAssign?: () => void;
+    onViewDetails?: () => void;
 }
 
-const RoleActions: React.FC<RoleActionsProps> = ({ onEdit, onDelete, onAssign }) => {
+const RoleActions: React.FC<RoleActionsProps> = ({ onEdit, onDelete, onAssign, onViewDetails }) => {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -24,6 +25,12 @@ const RoleActions: React.FC<RoleActionsProps> = ({ onEdit, onDelete, onAssign })
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-48">
                 <DropdownMenuGroup>
+                    {onViewDetails && (
+                        <DropdownMenuItem onClick={onViewDetails}>
+                            <Eye size={14} />
+                            <span>Thêm chi tiết</span>
+                        </DropdownMenuItem>
+                    )}
                     {onEdit && (
                         <DropdownMenuItem onClick={onEdit}>
                             <Edit size={14} />

@@ -7,8 +7,6 @@ type Program = {
     description: string;
     category: string;
     duration: string;
-    modules: number;
-    credits: number;
     startDate: string;
     status: 'Đang hoạt động' | 'Tạm dừng' | 'Hoàn thành';
 };
@@ -73,18 +71,10 @@ const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program
                             <div className="text-sm">{program.duration}</div>
                         </div>
                         <div>
-                            <label className="block text-xs text-gray-500 mb-1">Tổng tín chỉ</label>
-                            <div className="text-sm">{program.credits} tín chỉ</div>
-                        </div>
-                        <div>
-                            <label className="block text-xs text-gray-500 mb-1">Lĩnh vực</label>
+                            <label className="block text-xs text-gray-500 mb-1">Danh mục</label>
                             <span className="inline-flex items-center px-2 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium">
                                 {program.category}
                             </span>
-                        </div>
-                        <div>
-                            <label className="block text-xs text-gray-500 mb-1">Số module</label>
-                            <div className="text-sm">{program.modules} module</div>
                         </div>
                         <div>
                             <label className="block text-xs text-gray-500 mb-1">Trạng thái</label>

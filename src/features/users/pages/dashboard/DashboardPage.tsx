@@ -8,13 +8,10 @@ import {
     Settings,
     BookOpen,
     Sparkles,
-    Zap,
-    Star,
 } from 'lucide-react';
 
 // Import components
 import Stats from './components/stats';
-import QuickActions from './components/quick-actions';
 import Activities from './components/activities';
 import SystemStatus from './components/system-status';
 
@@ -116,32 +113,6 @@ export default function DashboardPage() {
         },
     ];
 
-    const quickActions = [
-        {
-            label: 'Tạo Trung tâm',
-            color: 'bg-gradient-to-br from-blue-500 to-cyan-500',
-            icon: Building2,
-            onClick: () => console.log('Navigate to create center'),
-        },
-        {
-            label: 'Thêm Người dùng',
-            color: 'bg-gradient-to-br from-green-500 to-emerald-500',
-            icon: UserPlus,
-            onClick: () => console.log('Navigate to create user'),
-        },
-        {
-            label: 'Quản lý Vai trò',
-            color: 'bg-gradient-to-br from-purple-500 to-violet-500',
-            icon: Shield,
-            onClick: () => console.log('Navigate to roles'),
-        },
-        {
-            label: 'Tạo Lớp học',
-            color: 'bg-gradient-to-br from-orange-500 to-amber-500',
-            icon: BookOpen,
-            onClick: () => console.log('Navigate to create class'),
-        },
-    ];
 
     const systemServices = [
         {
@@ -188,9 +159,6 @@ export default function DashboardPage() {
 
             {/* Stats */}
             <Stats stats={stats} isLoaded={isLoaded} />
-
-            {/* Quick Actions */}
-            <QuickActions actions={quickActions} isLoaded={isLoaded} />
 
             {/* Activities */}
             <Activities activities={activities} isLoaded={isLoaded} />

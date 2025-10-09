@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Clock, GraduationCap, Calendar, X } from 'lucide-react';
+import { BookOpen, Clock, Calendar, X } from 'lucide-react';
 
 type Program = {
     id: string;
@@ -7,8 +7,6 @@ type Program = {
     description: string;
     category: string;
     duration: string;
-    modules: number;
-    credits: number;
     startDate: string;
     status: 'Đang hoạt động' | 'Tạm dừng' | 'Hoàn thành';
 };
@@ -35,7 +33,6 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
         name?: string;
         category?: string;
         duration?: string;
-        credits?: string;
     }>({});
 
     return (
@@ -48,8 +45,6 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                     description: form.get('description'),
                     category: form.get('category'),
                     duration: form.get('duration'),
-                    modules: Number(form.get('modules')),
-                    credits: Number(form.get('credits')),
                     startDate: form.get('startDate'),
                     status: form.get('status'),
                 };
@@ -89,14 +84,14 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                             {errors.name && <div className="text-xs text-red-600 mt-1">{errors.name}</div>}
                         </div>
                         <div>
-                            <label className="block text-xs text-gray-600 mb-1">Lĩnh vực *</label>
+                            <label className="block text-xs text-gray-600 mb-1">Danh mục *</label>
                             <select
                                 name="category"
                                 defaultValue={editing?.category}
                                 required
                                 className={`w-full h-8 rounded-md border px-2 text-xs ${errors.category ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                             >
-                                <option value="">Chọn lĩnh vực</option>
+                                <option value="">Chọn danh mục</option>
                                 <option>Kỹ thuật</option>
                                 <option>Lập trình</option>
                                 <option>Thiết kế</option>
@@ -136,40 +131,6 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                     </div>
                 </div>
 
-                {/* Thông tin học tập */}
-                <div className="space-y-3">
-                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                        <div className="h-5 w-5 rounded-lg bg-blue-50 text-blue-600 grid place-items-center">
-                            <GraduationCap size={12} />
-                        </div>
-                        <h3 className="text-xs font-medium text-gray-900">Thông tin học tập</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs text-gray-600 mb-1">Số module *</label>
-                            <input
-                                name="modules"
-                                type="number"
-                                defaultValue={editing?.modules ?? 1}
-                                required
-                                min="1"
-                                className="w-full h-8 rounded-md border px-2 text-xs"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs text-gray-600 mb-1">Tổng tín chỉ *</label>
-                            <input
-                                name="credits"
-                                type="number"
-                                defaultValue={editing?.credits ?? 1}
-                                required
-                                min="1"
-                                className={`w-full h-8 rounded-md border px-2 text-xs ${errors.credits ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                            />
-                            {errors.credits && <div className="text-xs text-red-600 mt-1">{errors.credits}</div>}
-                        </div>
-                    </div>
-                </div>
 
                 {/* Trạng thái - chỉ hiển thị khi editing */}
                 {editing && (
