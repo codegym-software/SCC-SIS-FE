@@ -189,10 +189,8 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                             {/* Actions */}
                             <div className="col-span-3">
                                 <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <button className="h-8 w-8 rounded hover:bg-gray-100 flex items-center justify-center">
-                                            <span className="text-gray-400">⋯</span>
-                                        </button>
+                                    <DropdownMenuTrigger className="h-8 w-8 rounded hover:bg-gray-100 flex items-center justify-center">
+                                        <span className="text-gray-400">⋯</span>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent className="w-48">
                                         <DropdownMenuItem onClick={() => handleViewDetails(student)}>

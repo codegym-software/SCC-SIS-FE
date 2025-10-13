@@ -50,12 +50,11 @@ const ClassList: React.FC<ClassListProps> = ({
                     </div>
                 </div>
 
-                <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-11 gap-3">
+                <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-10 gap-3">
                     <div className="col-span-3">Lớp học</div>
                     <div className="col-span-2">Chương trình</div>
                     <div className="col-span-2">Thời gian</div>
                     <div className="col-span-1">Địa điểm</div>
-                    <div className="col-span-1">Giảng viên</div>
                     <div className="col-span-1">Trạng thái</div>
                     <div className="col-span-1"></div>
                 </div>
@@ -64,7 +63,7 @@ const ClassList: React.FC<ClassListProps> = ({
                     {filtered.map((c) => (
                         <div
                             key={c.id}
-                            className="px-3 py-3 pr-12 grid grid-cols-11 gap-3 items-center border-t first:border-t-0 relative"
+                            className="px-3 py-3 pr-12 grid grid-cols-10 gap-3 items-center border-t first:border-t-0 relative"
                         >
                             <div className="col-span-12 md:col-span-3">
                                 <div className="flex items-start gap-3">
@@ -95,25 +94,6 @@ const ClassList: React.FC<ClassListProps> = ({
                             <div className="col-span-6 md:col-span-1 text-sm flex items-center gap-1 pl-4">
                                 <MapPin size={14} className="text-gray-500" />
                                 {c.location}
-                            </div>
-                            <div className="col-span-6 md:col-span-1 text-sm pl-4">
-                                {c.instructors && c.instructors.length > 0 ? (
-                                    <div className="flex flex-col gap-1">
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-6 w-6 rounded-full bg-purple-100 text-purple-700 grid place-items-center text-xs font-medium">
-                                                {c.instructors[0].initial}
-                                            </div>
-                                            <span className="text-sm">{c.instructors[0].name}</span>
-                                        </div>
-                                        {c.instructors.length > 1 && (
-                                            <div className="text-xs text-gray-500 ml-8">
-                                                +{c.instructors.length - 1} giảng viên khác
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="text-sm text-gray-500">Chưa phân công</div>
-                                )}
                             </div>
                             <div className="col-span-6 md:col-span-1 pl-4">
                                 <span

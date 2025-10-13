@@ -13,7 +13,9 @@ import UserView from './view';
 // Import API
 import { listUsers, createUser, updateUser } from '../../../../shared/api/users';
 import { getProfile } from '../../../../shared/api/auth';
+import { listAllCenters } from '../../../../shared/api/centers';
 import type { UserDto } from '../../../../shared/types/user';
+import type { CenterDto } from '../../../../shared/types/centers';
 
 // UI user type để giữ nguyên render hiện tại
 type UIUser = {
@@ -49,6 +51,7 @@ export default function UsersPage() {
     const [query, setQuery] = useState('');
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const [page, setPage] = useState(1);
+    const [centers, setCenters] = useState<CenterDto[]>([]);
     const pageSize = 5;
     const toast = useToast();
     const { can } = usePermission();
@@ -108,9 +111,35 @@ export default function UsersPage() {
         }
     }
 
-    // Load users on mount
+    // Fetch centers for user creation
+    async function fetchCenters() {
+        try {
+            console.log('Fetching centers...');
+            const response = await listAllCenters();
+            console.log('Centers response:', response);
+            console.log('Centers data (direct):', response);
+            
+            // listAllCenters() đã trả về data trực tiếp, không cần .data
+            setCenters(response);
+        } catch (error) {
+            console.error('Failed to fetch centers:', error);
+            console.error('Error details:', error.response?.data);
+            console.error('Error status:', error.response?.status);
+            // Fallback data để test
+            const fallbackCenters = [
+                { id: 1, name: 'Trung tâm Hà Nội 1', code: 'HN001' },
+                { id: 2, name: 'Trung tâm TP.HCM 1', code: 'HCM001' },
+                { id: 3, name: 'Trung tâm Đà Nẵng 1', code: 'DN001' }
+            ];
+            console.log('Using fallback centers:', fallbackCenters);
+            setCenters(fallbackCenters);
+        }
+    }
+
+    // Load users and centers on mount
     useEffect(() => {
         fetchUsers();
+        fetchCenters();
     }, []);
 
     // Filter users based on query
@@ -126,12 +155,17 @@ export default function UsersPage() {
     const handleCreateUser = async (userData: any) => {
         try {
             setLoading(true);
-            const res = await createUser(userData);
+        console.log('Creating user with data:', userData);
+        console.log('User data structure:', JSON.stringify(userData, null, 2));
+        const res = await createUser(userData);
+        console.log('User created successfully:', res.data);
             toast.success('Thành công', 'Đã tạo người dùng mới!');
             setOpenCreate(false);
             fetchUsers(); // Refresh the list
         } catch (e: any) {
-            console.error('Failed to create user');
+            console.error('Failed to create user:', e);
+            console.error('Error response:', e.response?.data);
+            console.error('Error status:', e.response?.status);
             toast.error('Lỗi', 'Không thể tạo người dùng mới');
         } finally {
             setLoading(false);
@@ -241,6 +275,7 @@ export default function UsersPage() {
                     open={openCreate}
                     onClose={() => setOpenCreate(false)}
                     onSubmit={handleCreateUser}
+                    centers={centers}
                 />
             </Modal>
 
@@ -270,6 +305,7 @@ export default function UsersPage() {
                         onSubmit={(userData) => handleUpdateUser(openEdit.id, userData)}
                         onCancel={() => setOpenEdit(null)}
                         isSubmitting={loading}
+                        centers={centers}
                     />
                 )}
             </Modal>

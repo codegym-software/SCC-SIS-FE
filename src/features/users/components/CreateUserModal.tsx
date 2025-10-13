@@ -28,6 +28,7 @@ interface CreateUserModalProps {
     onSubmit: (payload: any) => void; // parent sẽ gọi API createUser(payload)
     onCancel?: () => void;
     isSubmitting?: boolean;
+    centers?: import('../../../shared/types/centers').CenterDto[]; // centers từ API
 }
 
 interface UserRole {
@@ -36,7 +37,7 @@ interface UserRole {
     center: string;
 }
 
-export default function CreateUserModal({ open, onClose, editing, onSubmit, onCancel, isSubmitting }: CreateUserModalProps) {
+export default function CreateUserModal({ open, onClose, editing, onSubmit, onCancel, isSubmitting, centers = [] }: CreateUserModalProps) {
     const toast = useToast();
     
     if (!open) return null;
@@ -85,7 +86,11 @@ export default function CreateUserModal({ open, onClose, editing, onSubmit, onCa
 
     const roles = ['Chọn vai trò', 'Giảng viên', 'Giáo vụ', 'Quản lý đào tạo', 'Super Admin'];
 
-    const centers = ['Chọn trung tâm', 'Trung tâm Hà Nội 1', 'Trung tâm TP.HCM 1', 'Trung tâm Đà Nẵng 1'];
+    const centerOptions = ['Chọn trung tâm', ...centers.map(c => c.name)];
+    console.log('Centers received in modal:', centers);
+    console.log('Centers length:', centers.length);
+    console.log('Center options:', centerOptions);
+    console.log('Center options length:', centerOptions.length);
 
     const genders = ['Nam', 'Nữ', 'Khác'];
 
@@ -107,15 +112,20 @@ export default function CreateUserModal({ open, onClose, editing, onSubmit, onCa
         }
     };
 
-    // Map 'Nam'|'Nữ'|'Khác' -> 'male'|'female'|undefined
-    const mapGender = (g: string) => (g === 'Nam' ? 'male' : g === 'Nữ' ? 'female' : undefined);
+    // Map 'Nam'|'Nữ'|'Khác' -> 'MALE'|'FEMALE'|undefined (Backend expects UPPERCASE)
+    const mapGender = (g: string) => (g === 'Nam' ? 'MALE' : g === 'Nữ' ? 'FEMALE' : undefined);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // ==== VALIDATION theo rule “final” (BE cũng sẽ check, đây là UX sớm) ====
+        console.log('Form submission - userRoles:', userRoles);
+        console.log('Form submission - centers:', centers);
+        console.log('Form submission - formData:', formData);
+
+        // ==== VALIDATION theo rule "final" (BE cũng sẽ check, đây là UX sớm) ====
         // Không cho chọn "Chọn vai trò"
         if (userRoles.some((r) => !r.role || r.role === 'Chọn vai trò')) {
+            console.log('Validation failed: Invalid role selected');
             toast.error('Lỗi xác thực', 'Vui lòng chọn vai trò hợp lệ');
             return;
         }
@@ -137,6 +147,7 @@ export default function CreateUserModal({ open, onClose, editing, onSubmit, onCa
                 return;
             }
             if (userRoles.some((r) => !r.center || r.center === 'Chọn trung tâm')) {
+                console.log('Validation failed: No center selected for center-scoped role');
                 toast.error('Lỗi xác thực', 'Vui lòng chọn trung tâm cho vai trò center-scoped');
                 return;
             }
@@ -148,9 +159,28 @@ export default function CreateUserModal({ open, onClose, editing, onSubmit, onCa
             if (!roleId) {
                 throw new Error(`Vai trò chưa được map ID: ${r.role}`);
             }
-            const centerId = GLOBAL_ROLES.has(r.role) ? null : CENTER_LABEL_TO_ID[r.center];
-            if (!GLOBAL_ROLES.has(r.role) && !centerId) {
-                throw new Error(`Trung tâm chưa được map ID: ${r.center}`);
+            let centerId = null;
+            if (!GLOBAL_ROLES.has(r.role)) {
+                console.log('Looking for center:', r.center);
+                console.log('Available centers:', centers);
+                const center = centers.find(c => c.name === r.center);
+                console.log('Found center:', center);
+                centerId = center?.id || center?.centerId;
+                console.log('Center ID (id):', center?.id);
+                console.log('Center ID (centerId):', center?.centerId);
+                console.log('Final Center ID:', centerId);
+                if (!centerId) {
+                    console.error('Center mapping failed:', {
+                        selectedCenter: r.center,
+                        availableCenters: centers.map(c => ({ 
+                            name: c.name, 
+                            id: c.id, 
+                            centerId: c.centerId 
+                        })),
+                        foundCenter: center
+                    });
+                    throw new Error(`Trung tâm chưa được map ID: ${r.center}`);
+                }
             }
             return { roleId, centerId };
         });
@@ -161,7 +191,7 @@ export default function CreateUserModal({ open, onClose, editing, onSubmit, onCa
             email: formData.email,
             phone: formData.phone,
             dob: formData.dateOfBirth || undefined, // yyyy-MM-dd
-            gender: mapGender(formData.gender), // 'male' | 'female' | undefined
+            gender: mapGender(formData.gender), // 'MALE' | 'FEMALE' | undefined
             nationalIdNo: formData.idCard || undefined,
             startDate: formData.startDate || undefined,
             specialty: formData.specialization || undefined,
@@ -175,6 +205,8 @@ export default function CreateUserModal({ open, onClose, editing, onSubmit, onCa
             roles: rolesDto,
         };
 
+        console.log('Submitting user data:', payload);
+        console.log('Gender value being sent:', payload.gender);
         onSubmit(payload); // parent sẽ gọi API & toast
         onClose();
     };
@@ -337,7 +369,7 @@ export default function CreateUserModal({ open, onClose, editing, onSubmit, onCa
                                                 onChange={(e) => handleRoleChange(index, 'center', e.target.value)}
                                                 className="appearance-none w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                             >
-                                                {centers.map((center) => (
+                                                {centerOptions.map((center) => (
                                                     <option key={center} value={center}>
                                                         {center}
                                                     </option>

@@ -18,10 +18,8 @@ interface RoleActionsProps {
 const RoleActions: React.FC<RoleActionsProps> = ({ onEdit, onDelete, onAssign, onViewDetails }) => {
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <button className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center">
-                    ⋯
-                </button>
+            <DropdownMenuTrigger className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center">
+                ⋯
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-48">
                 <DropdownMenuGroup>

@@ -13,10 +13,16 @@ api.interceptors.request.use(async (config) => {
 
     // Build URL hiển thị đẹp để log
     const fullUrl = (config.baseURL ?? '') + (config.url?.startsWith('/') ? config.url : `/${config.url ?? ''}`);
+    
+    console.log('API Request:', fullUrl);
+    console.log('Token available:', !!token);
 
     if (token) {
         config.headers = config.headers ?? {};
         (config.headers as any)['Authorization'] = `Bearer ${token}`;
+        console.log('Authorization header set');
+    } else {
+        console.warn('No token available for request:', fullUrl);
     }
 
     return config;
@@ -25,6 +31,7 @@ api.interceptors.request.use(async (config) => {
 // ========== RESPONSE INTERCEPTOR ==========
 api.interceptors.response.use(
     (res) => {
+        console.log('API Response Success:', res.config.url, res.status);
         return res;
     },
     async (err: AxiosError) => {
@@ -36,12 +43,16 @@ api.interceptors.response.use(
 
         // Log error without sensitive data
         console.error(`HTTP Error ${status}: ${fullUrl}`);
+        console.error('Error details:', data);
 
         // Nếu 401: điều hướng login lại cho tiện
         if (status === 401) {
+            console.warn('401 Unauthorized - redirecting to login');
             try {
                 await keycloak.login();
-            } catch {}
+            } catch (loginError) {
+                console.error('Login redirect failed:', loginError);
+            }
         }
 
         return Promise.reject(err);

@@ -17,10 +17,8 @@ interface ProgramActionsProps {
 const ProgramActions: React.FC<ProgramActionsProps> = ({ onView, onEdit, onDelete }) => {
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <button className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center">
-                    <MoreHorizontal size={16} />
-                </button>
+            <DropdownMenuTrigger className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center">
+                <MoreHorizontal size={16} />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-48">
                 <DropdownMenuGroup>

@@ -23,10 +23,8 @@ const StudentActions: React.FC<StudentActionsProps> = ({
 }) => {
   return (
       <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-              <button className="h-8 w-8 rounded hover:bg-gray-100 flex items-center justify-center">
-                  <Ellipsis size={16} />
-              </button>
+          <DropdownMenuTrigger className="h-8 w-8 rounded hover:bg-gray-100 flex items-center justify-center">
+              <Ellipsis size={16} />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-48">
               <DropdownMenuGroup>

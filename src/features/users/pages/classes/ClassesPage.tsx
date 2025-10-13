@@ -151,7 +151,7 @@ export default function ClassesPage() {
                         description: String(form.get('description') || ''),
                         program: String(form.get('program') || ''),
                         startDate: String(form.get('startDate') || ''),
-                        schedule: String(form.get('schedule') || ''),
+                        schedule: `${String(form.get('scheduleDays') || '')} - ${String(form.get('scheduleTime') || '')}`,
                         location: String(form.get('location') || ''),
                         students: editing?.students ?? 0, // Giữ nguyên số học viên hiện tại khi chỉnh sửa
                         maxStudents: Number(form.get('maxStudents') || 0),
@@ -171,8 +171,8 @@ export default function ClassesPage() {
                     if (!payload.startDate) {
                         newErrors.startDate = 'Vui lòng chọn ngày bắt đầu';
                     }
-                    if (!payload.schedule || payload.schedule.trim().length < 5) {
-                        newErrors.schedule = 'Lịch học tối thiểu 5 ký tự';
+                    if (!form.get('scheduleDays') || !form.get('scheduleTime')) {
+                        newErrors.schedule = 'Vui lòng chọn đầy đủ ngày và giờ học';
                     }
                     if (!payload.location || payload.location.trim().length < 2) {
                         newErrors.location = 'Địa điểm tối thiểu 2 ký tự';
@@ -268,14 +268,44 @@ export default function ClassesPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-600 mb-1">Lịch học </label>
-                                <input
-                                    name="schedule"
-                                    defaultValue={editing?.schedule}
+                                <label className="block text-xs text-gray-600 mb-1">Ngày học *</label>
+                                <select
+                                    name="scheduleDays"
+                                    defaultValue={editing?.schedule ? editing.schedule.split(' - ')[0] : ''}
                                     required
-                                    className={`w-full h-9 rounded-md border px-3 text-sm ${errors.schedule ? 'border-red-500' : ''}`}
-                                    placeholder="Thứ 2, 4, 6 - 19:00-21:30"
-                                />
+                                    className={`w-full h-9 rounded-md border px-3 text-sm ${errors.schedule ? 'border-red-500' : 'border-gray-300'}`}
+                                >
+                                    <option value="">Chọn ngày học</option>
+                                    <option value="Thứ 2, 4, 6">Thứ 2, 4, 6</option>
+                                    <option value="Thứ 3, 5, 7">Thứ 3, 5, 7</option>
+                                    <option value="Thứ 2, 4">Thứ 2, 4</option>
+                                    <option value="Thứ 3, 6">Thứ 3, 6</option>
+                                    <option value="Thứ 7, CN">Thứ 7, CN</option>
+                                    <option value="Thứ 2, 3, 4, 5, 6">Thứ 2, 3, 4, 5, 6</option>
+                                    <option value="Thứ 7">Thứ 7</option>
+                                    <option value="Thứ 3, 5">Thứ 3, 5</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-600 mb-1">Giờ học *</label>
+                                <select
+                                    name="scheduleTime"
+                                    defaultValue={editing?.schedule ? editing.schedule.split(' - ')[1] : ''}
+                                    required
+                                    className={`w-full h-9 rounded-md border px-3 text-sm ${errors.schedule ? 'border-red-500' : 'border-gray-300'}`}
+                                >
+                                    <option value="">Chọn giờ học</option>
+                                    <option value="19:00-21:30">19:00-21:30</option>
+                                    <option value="18:30-21:00">18:30-21:00</option>
+                                    <option value="18:00-20:30">18:00-20:30</option>
+                                    <option value="19:00-21:30">19:00-21:30</option>
+                                    <option value="08:00-12:00">08:00-12:00</option>
+                                    <option value="18:00-20:00">18:00-20:00</option>
+                                    <option value="14:00-17:00">14:00-17:00</option>
+                                    <option value="08:00-11:00">08:00-11:00</option>
+                                    <option value="19:30-21:30">19:30-21:30</option>
+                                    <option value="09:00-17:00">09:00-17:00</option>
+                                </select>
                                 {errors.schedule && <div className="text-xs text-red-600 mt-1">{errors.schedule}</div>}
                             </div>
                             <div>

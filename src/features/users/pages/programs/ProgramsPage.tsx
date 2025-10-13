@@ -236,7 +236,7 @@ export default function ProgramsPage() {
                     onChange={(e) => setCategoryFilter(e.target.value)}
                     className="h-9 rounded-md border px-3 text-sm"
                 >
-                    <option>Tất cả</option>
+                    <option>Danh mục</option>
                     <option>Kỹ thuật</option>
                     <option>Lập trình</option>
                     <option>Thiết kế</option>
@@ -247,7 +247,7 @@ export default function ProgramsPage() {
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="h-9 rounded-md border px-3 text-sm"
                 >
-                    <option>Tất cả</option>
+                    <option>Trạng thái</option>
                     <option>Đang hoạt động</option>
                     <option>Tạm dừng</option>
                     <option>Hoàn thành</option>
