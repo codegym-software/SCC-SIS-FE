@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { updateRole, transformFormDataToUpdateRequest } from '../api'
+import { updateRole, transformFormDataToUpdateRequest, getRoleById } from '../api'
 import type { Role, RoleFormData } from '../model/types'
 
 interface EditRoleModalProps {
@@ -13,23 +13,46 @@ interface EditRoleModalProps {
 export default function EditRoleModal({ open, onClose, onSuccess, role, permissions }: EditRoleModalProps) {
     const [errors, setErrors] = useState<{ name?: string; code?: string; permissions?: string }>({})
     const [selected, setSelected] = useState<Set<number>>(new Set())
+    const [loading, setLoading] = useState(false)
+    const [roleDetail, setRoleDetail] = useState<Role | null>(null)
     const [formData, setFormData] = useState({
         name: '',
         code: '',
         active: true,
     })
 
-    // Update form data when role changes
+    // Load role detail when role changes
     useEffect(() => {
-        if (role) {
-            setFormData({
-                name: role.name,
-                code: role.code,
-                active: role.active,
-            })
-            setSelected(new Set(role.permissionIds || []))
+        const loadRoleDetail = async () => {
+            if (role && open) {
+                try {
+                    setLoading(true)
+                    const detail = await getRoleById(role.roleId)
+                    setRoleDetail(detail)
+                    setFormData({
+                        name: detail.name,
+                        code: detail.code,
+                        active: detail.active,
+                    })
+                    setSelected(new Set(detail.permissionIds || []))
+                } catch (error) {
+                    console.error('Failed to load role detail:', error)
+                    // Fallback to basic role data
+                    setRoleDetail(role)
+                    setFormData({
+                        name: role.name,
+                        code: role.code,
+                        active: role.active,
+                    })
+                    setSelected(new Set(role.permissionIds || []))
+                } finally {
+                    setLoading(false)
+                }
+            }
         }
-    }, [role])
+        
+        loadRoleDetail()
+    }, [role, open])
 
     function togglePermission(id: number) {
         setSelected(prev => {
@@ -42,7 +65,7 @@ export default function EditRoleModal({ open, onClose, onSuccess, role, permissi
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        if (!role) return
+        if (!roleDetail) return
 
         // validations
         const newErrors: typeof errors = {}
@@ -60,8 +83,8 @@ export default function EditRoleModal({ open, onClose, onSuccess, role, permissi
                 permissionIds: Array.from(selected),
             }
 
-            const updateRequest = transformFormDataToUpdateRequest(role.roleId, roleFormData)
-            await updateRole(role.roleId, updateRequest)
+            const updateRequest = transformFormDataToUpdateRequest(roleDetail.roleId, roleFormData)
+            await updateRole(roleDetail.roleId, updateRequest)
 
             onSuccess()
             onClose()
@@ -84,6 +107,12 @@ export default function EditRoleModal({ open, onClose, onSuccess, role, permissi
                             <button type="button" className="h-8 w-8 rounded hover:bg-gray-100" onClick={onClose}>×</button>
                         </div>
                         <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {loading ? (
+                                <div className="md:col-span-2 flex items-center justify-center py-8">
+                                    <div className="text-sm text-gray-500">Đang tải thông tin vai trò...</div>
+                                </div>
+                            ) : (
+                                <>
                             <div>
                                 <label className="block text-xs text-gray-600 mb-1">Tên vai trò *</label>
                                 <input
@@ -140,10 +169,14 @@ export default function EditRoleModal({ open, onClose, onSuccess, role, permissi
                                 })}
                                 {errors.permissions && <div className="text-xs text-red-600 mt-1">{errors.permissions}</div>}
                             </div>
+                                </>
+                            )}
                         </div>
                         <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
                             <button type="button" className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={onClose}>Hủy</button>
-                            <button type="submit" className="h-9 px-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">Lưu thay đổi</button>
+                            <button type="submit" disabled={loading} className="h-9 px-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                                {loading ? 'Đang tải...' : 'Lưu thay đổi'}
+                            </button>
                         </div>
                     </form>
                 </div>

@@ -4,7 +4,8 @@ import type {
     RoleListResponse,
     CreateRoleRequest,
     UpdateRoleRequest,
-    RoleFormData
+    RoleFormData,
+    PermissionGroupsResponse
 } from './model/types';
 
 // Get all roles with optional active filter
@@ -52,3 +53,9 @@ export const transformFormDataToUpdateRequest = (id: number, formData: RoleFormD
     active: formData.active,
     permissionIds: formData.permissionIds,
 });
+
+// Get permission groups
+export const getPermissionGroups = async (): Promise<PermissionGroupsResponse> => {
+    const response = await api.get<PermissionGroupsResponse>('/api/permissions/groups');
+    return response.data;
+};

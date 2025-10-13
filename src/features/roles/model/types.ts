@@ -46,3 +46,22 @@ export interface RoleFormData {
     active: boolean;
     permissionIds: number[];
 }
+
+// Types for Permissions Groups API
+export interface Permission {
+    permissionId: number;
+    code: string;
+    name: string;
+    active: boolean;
+    granted: boolean | null;
+}
+
+export interface PermissionGroup {
+    category: string;
+    categoryLabel: string;
+    order: number;
+    total: number;
+    items: Permission[];
+}
+
+export type PermissionGroupsResponse = PermissionGroup[];

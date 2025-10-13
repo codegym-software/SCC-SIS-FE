@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useEffect } from 'react'
-import { Shield, Users2, Settings, UserPlus, Plus, MoreHorizontal, Eye, Pencil, Trash2, Loader2 } from 'lucide-react'
-import { getRoles, deleteRole } from '../api'
-import type { Role } from '../model/types'
+import { useMemo, useState, useEffect } from 'react'
+import { Shield, Settings, Plus, MoreHorizontal, Eye, Pencil, Trash2 } from 'lucide-react'
+import { getRoles, deleteRole, getPermissionGroups } from '../api'
+import type { Role, PermissionGroup, Permission } from '../model/types'
 import CreateRoleModal from '../components/CreateRoleModal'
 import EditRoleModal from '../components/EditRoleModal'
 import RoleDetailModal from '../components/RoleDetailModal'
@@ -16,37 +16,13 @@ export default function RolesPage() {
 
     // API data states
     const [roles, setRoles] = useState<Role[]>([])
+    const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[]>([])
     const [openCreate, setOpenCreate] = useState(false)
     const [openEdit, setOpenEdit] = useState<Role | null>(null)
     const [openDelete, setOpenDelete] = useState<Role | null>(null)
     const [openView, setOpenView] = useState<Role | null>(null)
 
-    // Available permissions (hardcoded for now, should come from API later)
-    const PERMISSIONS: Record<string, { id: number; name: string }[]> = {
-        'Trung tâm': [
-            { id: 1, name: 'Xem trung tâm' },
-            { id: 2, name: 'Tạo trung tâm' },
-            { id: 3, name: 'Chỉnh sửa trung tâm' },
-            { id: 4, name: 'Xóa trung tâm' }
-        ],
-        'Người dùng': [
-            { id: 5, name: 'Xem người dùng' },
-            { id: 6, name: 'Tạo người dùng' },
-            { id: 7, name: 'Chỉnh sửa người dùng' },
-            { id: 8, name: 'Xóa người dùng' }
-        ],
-        'Vai trò': [
-            { id: 9, name: 'Xem vai trò' },
-            { id: 10, name: 'Tạo vai trò' },
-            { id: 11, name: 'Chỉnh sửa vai trò' },
-            { id: 12, name: 'Gán vai trò' }
-        ],
-        'Lớp học': [
-            { id: 13, name: 'Xem lớp học' },
-            { id: 14, name: 'Tạo lớp học' },
-            { id: 15, name: 'Quản lý lớp học' }
-        ],
-    }
+
 
     // Load roles from API
     const loadRoles = async () => {
@@ -63,49 +39,40 @@ export default function RolesPage() {
         }
     }
 
-    const stats = useMemo(() => ([
-        {
-            label: 'Tổng Vai trò',
-            value: String(roles.length),
-            icon: Shield,
-            iconColor: 'from-violet-500 to-indigo-500',
-            change: '+2 tháng này',
-            changeColor: 'text-emerald-600 bg-emerald-50'
-        },
-        {
-            label: 'Người dùng có vai trò',
-            value: String(roles.reduce((s, r) => s + r.userCount, 0)),
-            icon: Users2,
-            iconColor: 'from-blue-500 to-cyan-500',
-            change: '+5 tuần này',
-            changeColor: 'text-blue-600 bg-blue-50'
-        },
-        {
-            label: 'Quyền hạn',
-            value: String(roles.reduce((s, r) => s + r.permissionCount, 0)),
-            icon: Settings,
-            iconColor: 'from-orange-500 to-amber-500',
-            change: null,
-            changeColor: null
-        },
-        {
-            label: 'Đang hoạt động',
-            value: String(roles.filter(r => r.active).length),
-            icon: UserPlus,
-            iconColor: 'from-emerald-500 to-green-500',
-            change: '+3 tuần này',
-            changeColor: 'text-emerald-600 bg-emerald-50'
-        },
-    ]), [roles])
+    // Convert permission groups to the format expected by modals
+    const permissionsForModals = useMemo(() => {
+        const result: Record<string, { id: number; name: string; }[]> = {};
+        permissionGroups.forEach(group => {
+            result[group.categoryLabel] = group.items
+                .filter((p: Permission) => p.active)
+                .map((p: Permission) => ({ id: p.permissionId, name: p.name }));
+        });
+        return result;
+    }, [permissionGroups]);
 
-    // Load roles on component mount
+
+
+    // Load data on component mount
     useEffect(() => {
         loadRoles()
+        loadPermissionGroups()
     }, [])
 
-    const filtered = useMemo(() => roles.filter(r => r.name.toLowerCase().includes(query.toLowerCase())), [roles, query])
+    const loadPermissionGroups = async () => {
+        try {
+            setLoading(true)
+            setError(null)
+            const groups = await getPermissionGroups()
+            setPermissionGroups(groups)
+        } catch (err) {
+            console.error('Failed to load permission groups:', err)
+            setError('Không thể tải danh sách quyền')
+        } finally {
+            setLoading(false)
+        }
+    }
 
-    const [permissions] = useState(PERMISSIONS)
+    const filtered = useMemo(() => roles.filter(r => r.name.toLowerCase().includes(query.toLowerCase())), [roles, query])
 
 
     return (
@@ -128,7 +95,7 @@ export default function RolesPage() {
                 {[
                     { label: 'Tổng Vai trò', value: String(roles.length) },
                     { label: 'Đang hoạt động', value: String(roles.filter(r => r.active).length) },
-                    { label: 'Quyền hạn', value: String(roles.reduce((s, r) => s + r.permissionCount, 0)) },
+                    { label: 'Quyền hạn', value: String(permissionGroups.reduce((total, group) => total + group.items.filter(p => p.active).length, 0)) },
                     { label: 'Người dùng có vai trò', value: String(roles.reduce((s, r) => s + r.userCount, 0)) },
                 ].map((s) => (
                     <div key={s.label} className="bg-white border border-gray-200 rounded-2xl p-6">
@@ -264,18 +231,43 @@ export default function RolesPage() {
                         </div>
                         <div className="flex-1">
                             <div className="text-sm font-medium">Danh sách Quyền hạn</div>
-                            <div className="text-xs text-gray-500">Tất cả các quyền có thể được cấp trong hệ thống ({Object.values(permissions).reduce((s, a) => s + a.length, 0)} quyền)</div>
+                            <div className="text-xs text-gray-500">
+                                {loading ? 'Đang tải...' : 
+                                 error ? error :
+                                 `Tất cả các quyền có thể được cấp trong hệ thống (${permissionGroups.reduce((total, group) => total + group.items.filter(p => p.active).length, 0)} quyền)`}
+                            </div>
                         </div>
                     </div>
 
                     {/* Permission groups */}
                     <div className="p-3 space-y-6">
-                        {Object.entries(permissions).map(([group, items]) => (
-                            <div key={group}>
-                                <div className="text-sm font-medium mb-2">{group}</div>
+                        {loading && (
+                            <div className="flex items-center justify-center py-8">
+                                <div className="text-sm text-gray-500">Đang tải danh sách quyền...</div>
+                            </div>
+                        )}
+                        
+                        {error && (
+                            <div className="flex items-center justify-center py-8">
+                                <div className="text-sm text-red-500">{error}</div>
+                            </div>
+                        )}
+                        
+                        {!loading && !error && permissionGroups
+                            .sort((a, b) => a.order - b.order)
+                            .map((group) => (
+                            <div key={group.category}>
+                                <div className="text-sm font-medium mb-2 flex items-center justify-between">
+                                    <span>{group.categoryLabel}</span>
+                                    <span className="text-xs text-gray-500">
+                                        {group.items.filter(p => p.active).length} quyền
+                                    </span>
+                                </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {items.map((permission) => (
-                                        <div key={permission.id} className="rounded-xl border border-gray-200">
+                                    {group.items
+                                        .filter(permission => permission.active)
+                                        .map((permission) => (
+                                        <div key={permission.permissionId} className="rounded-xl border border-gray-200">
                                             <div className="px-3 py-3 flex items-start gap-2">
                                                 <div className="h-7 w-7 rounded-lg bg-blue-50 text-blue-600 grid place-items-center flex-shrink-0">
                                                     <Shield size={14} />
@@ -283,13 +275,10 @@ export default function RolesPage() {
                                                 <div>
                                                     <div className="text-sm font-medium">{permission.name}</div>
                                                     <div className="text-xs text-gray-500">
-                                                        {permission.name.includes('Xem') ? 'Quyền xem thông tin' :
-                                                            permission.name.includes('Tạo') ? 'Quyền tạo mới' :
-                                                                permission.name.includes('Chỉnh sửa') ? 'Quyền chỉnh sửa thông tin' :
-                                                                    permission.name.includes('Xóa') ? 'Quyền xóa dữ liệu' :
-                                                                        permission.name.includes('Quản lý') ? 'Quyền quản lý toàn diện' :
-                                                                            permission.name.includes('Gán') ? 'Quyền gán vai trò' :
-                                                                                'Quyền hệ thống'}
+                                                        Code: {permission.code}
+                                                    </div>
+                                                    <div className="text-xs text-gray-400 mt-1">
+                                                        ID: {permission.permissionId}
                                                     </div>
                                                 </div>
                                             </div>
@@ -298,6 +287,12 @@ export default function RolesPage() {
                                 </div>
                             </div>
                         ))}
+                        
+                        {!loading && !error && permissionGroups.length === 0 && (
+                            <div className="flex items-center justify-center py-8">
+                                <div className="text-sm text-gray-500">Không có quyền nào được tìm thấy.</div>
+                            </div>
+                        )}
                     </div>
                 </section>
             )}
@@ -307,7 +302,7 @@ export default function RolesPage() {
                 open={openCreate}
                 onClose={() => setOpenCreate(false)}
                 onSuccess={loadRoles}
-                permissions={PERMISSIONS}
+                permissions={permissionsForModals}
             />
 
             {/* Edit */}
@@ -316,7 +311,7 @@ export default function RolesPage() {
                 onClose={() => setOpenEdit(null)}
                 onSuccess={loadRoles}
                 role={openEdit}
-                permissions={PERMISSIONS}
+                permissions={permissionsForModals}
             />
 
             {/* View */}
@@ -324,6 +319,7 @@ export default function RolesPage() {
                 open={!!openView}
                 onClose={() => setOpenView(null)}
                 role={openView}
+                permissions={permissionsForModals}
             />
 
             {/* Delete confirm */}
