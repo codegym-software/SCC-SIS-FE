@@ -39,7 +39,7 @@ const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program
         <div>
             <div className="px-4 py-3 border-b flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-purple-500 to-violet-500 grid place-items-center text-white">
+                    <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 grid place-items-center text-white">
                         <BookOpen size={16} />
                     </div>
                     <div>
@@ -72,7 +72,7 @@ const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program
                         </div>
                         <div>
                             <label className="block text-xs text-gray-500 mb-1">Danh mục</label>
-                            <span className="inline-flex items-center px-2 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
                                 {program.category}
                             </span>
                         </div>
@@ -150,7 +150,7 @@ const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program
                 </button>
                 {onEdit && (
                     <button
-                        className="h-9 px-3 rounded-md bg-purple-600 text-white hover:bg-purple-700"
+                        className="h-9 px-3 rounded-md bg-blue-600 text-white hover:bg-blue-700"
                         onClick={onEdit}
                     >
                         Chỉnh sửa

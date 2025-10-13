@@ -358,7 +358,7 @@ export default function ClassesPage() {
                     </button>
                     <button
                         type="submit"
-                        className="h-9 px-3 rounded-md bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all duration-300"
+                        className="h-9 px-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300"
                     >
                         {editing ? 'Cập nhật' : 'Tạo lớp học'}
                     </button>
@@ -371,7 +371,7 @@ export default function ClassesPage() {
         <div className="space-y-6">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 grid place-items-center text-white">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 grid place-items-center text-white">
                         <BookOpen size={18} />
                     </div>
                     <div>
@@ -381,7 +381,7 @@ export default function ClassesPage() {
                 </div>
                 <button
                     onClick={() => setOpenCreate(true)}
-                    className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm px-3 py-2 hover:from-blue-700 hover:to-indigo-700 transition-all duration-300"
+                    className="inline-flex items-center gap-2 rounded-md bg-blue-600 text-white text-sm px-3 py-2 hover:bg-blue-700 transition-all duration-300"
                 >
                     + Tạo Lớp học mới
                 </button>

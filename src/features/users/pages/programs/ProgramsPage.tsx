@@ -190,7 +190,7 @@ export default function ProgramsPage() {
         <div className="space-y-6">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-violet-500 grid place-items-center text-white">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 grid place-items-center text-white">
                         <BookOpen size={18} />
                     </div>
                     <div>
@@ -205,7 +205,7 @@ export default function ProgramsPage() {
                 <button
                     onClick={() => setActiveTab('programs')}
                     className={`px-4 h-9 rounded-full text-sm inline-flex items-center gap-2 ${
-                        activeTab === 'programs' ? 'bg-purple-600 text-white' : 'bg-white border'
+                        activeTab === 'programs' ? 'bg-blue-600 text-white' : 'bg-white border'
                     }`}
                 >
                     <BookOpen size={14} /> Chương trình
@@ -227,7 +227,7 @@ export default function ProgramsPage() {
                     <input
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        className="w-full h-9 pl-10 pr-3 rounded-md border text-sm outline-none focus:ring-2 focus:ring-purple-200"
+                        className="w-full h-9 pl-10 pr-3 rounded-md border text-sm outline-none focus:ring-2 focus:ring-gray-200"
                         placeholder="Tìm kiếm..."
                     />
                 </div>

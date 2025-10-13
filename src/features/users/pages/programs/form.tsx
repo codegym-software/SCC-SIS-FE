@@ -66,7 +66,7 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                 {/* Thông tin cơ bản */}
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                        <div className="h-5 w-5 rounded-lg bg-purple-50 text-purple-600 grid place-items-center">
+                        <div className="h-5 w-5 rounded-lg bg-blue-50 text-blue-600 grid place-items-center">
                             <BookOpen size={12} />
                         </div>
                         <h3 className="text-xs font-medium text-gray-900">Thông tin cơ bản</h3>
@@ -167,7 +167,7 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                 </button>
                 <button
                     type="submit"
-                    className="h-9 px-3 rounded-md bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+                    className="h-9 px-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                     disabled={isSubmitting}
                 >
                     {isSubmitting && (

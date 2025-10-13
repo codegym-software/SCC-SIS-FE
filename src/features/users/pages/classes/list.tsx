@@ -39,7 +39,7 @@ const ClassList: React.FC<ClassListProps> = ({
         <>
             <section className="rounded-2xl border border-gray-200 bg-white">
                 <div className="px-3 py-3 border-b flex items-start gap-2">
-                    <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 grid place-items-center text-white flex-shrink-0">
+                    <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 grid place-items-center text-white flex-shrink-0">
                         <BookOpen size={16} />
                     </div>
                     <div>
@@ -67,7 +67,7 @@ const ClassList: React.FC<ClassListProps> = ({
                         >
                             <div className="col-span-12 md:col-span-3">
                                 <div className="flex items-start gap-3">
-                                    <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 grid place-items-center text-white flex-shrink-0">
+                                    <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 grid place-items-center text-white flex-shrink-0">
                                         <BookOpen size={16} />
                                     </div>
                                     <div>
