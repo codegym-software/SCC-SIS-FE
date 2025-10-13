@@ -57,26 +57,33 @@ export default function UsersPage() {
     const toast = useToast()
     const { can } = usePermission()
 
-    // Debug profile (token ok?)
+    // Debug profile (token ok?) - an toàn unmount
     useEffect(() => {
+        let isMounted = true
         getProfile()
-            .then(res => console.log('[PROFILE]', res.data))
-            .catch(err => console.error('[PROFILE ERR]', err?.response?.status, err?.response?.data))
+            .then(res => { if (isMounted) console.log('[PROFILE]', res.data) })
+            .catch(err => { if (isMounted) console.error('[PROFILE ERR]', err?.response?.status, err?.response?.data) })
+        return () => { isMounted = false }
     }, [])
 
     // Load dropdowns (roles, centers lite) 1 lần khi mount
+    // ❗Loại bỏ `toast` khỏi dependency để tránh vòng lặp
     useEffect(() => {
-        (async () => {
-            try {
-                const [r, c] = await Promise.all([getRoles(true), getCentersLite()])
-                setRoles(Array.isArray(r.data) ? r.data : [])
-                setCenters(Array.isArray(c.data) ? c.data : [])
-            } catch (e: any) {
-                console.error('[DROPDOWN LOAD ERR]', e?.response?.status, e?.response?.data)
-                toast.error('Lỗi', 'Không tải được danh sách vai trò/trung tâm')
-            }
-        })()
-    }, [toast])
+        let isMounted = true
+            ; (async () => {
+                try {
+                    const [r, c] = await Promise.all([getRoles(true), getCentersLite()])
+                    if (!isMounted) return
+                    setRoles(Array.isArray(r.data) ? r.data : [])
+                    setCenters(Array.isArray(c.data) ? c.data : [])
+                } catch (e: any) {
+                    if (!isMounted) return
+                    console.error('[DROPDOWN LOAD ERR]', e?.response?.status, e?.response?.data)
+                    toast.error('Lỗi', 'Không tải được danh sách vai trò/trung tâm')
+                }
+            })()
+        return () => { isMounted = false }
+    }, []) // <-- không để [toast] nữa
 
     // Fetch list (server-side filter) rồi áp thêm rule "phải có assignment ở center đã chọn"
     const fetchUsers = async () => {
@@ -124,22 +131,26 @@ export default function UsersPage() {
         }
     }
 
-    // gọi ngay khi mount & mỗi khi filter đổi
+    // gọi ngay khi mount & mỗi khi filter đổi (an toàn thứ tự + reset trang)
     useEffect(() => {
-        fetchUsers()
-        fetchRoleStats()
-        setPage(1)
+        const loadData = async () => {
+            await fetchUsers()
+            await fetchRoleStats()
+            setPage(1)
+        }
+        loadData()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedCenterId, selectedRoleCode])
 
-    // debounce search 300ms - chỉ gọi fetchUsers, không gọi fetchRoleStats vì search không ảnh hưởng đến role stats
+    // debounce search 300ms - chỉ fetch list, không cần thống kê
     useEffect(() => {
         const t = setTimeout(() => {
             fetchUsers()
             setPage(1)
         }, 300)
         return () => clearTimeout(t)
-    }, [query])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [query, selectedCenterId, selectedRoleCode])
 
     // client-side pagination tạm thời
     const totalPages = Math.max(1, Math.ceil(users.length / pageSize))

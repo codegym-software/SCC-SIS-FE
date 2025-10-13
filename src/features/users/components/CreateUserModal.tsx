@@ -1,11 +1,10 @@
+// src/features/users/components/CreateUserModal.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { X, Plus, Calendar, ChevronDown } from "lucide-react";
 
 import { getRoles } from "../../../shared/api/roles";
-// ⬇️ dùng LITE thay vì full
 import { getCentersLite } from "../../../shared/api/centers";
 import type { RoleDto } from "../../../shared/types/role";
-// ⬇️ dùng CenterLiteDto
 import type { CenterLiteDto } from "../../../shared/types/centers";
 
 interface CreateUserModalProps {
@@ -22,6 +21,15 @@ type Row = {
 
 const ALL_CENTERS_VALUE = "__ALL__" as const;
 const genders = ["Nam", "Nữ", "Khác"] as const;
+
+// Chuẩn hoá dữ liệu trả về về mảng, chống case BE trả object lồng
+const toArray = <T,>(raw: any): T[] => {
+  if (Array.isArray(raw)) return raw as T[];
+  if (Array.isArray(raw?.data)) return raw.data as T[];
+  if (Array.isArray(raw?.items)) return raw.items as T[];
+  if (Array.isArray(raw?.content)) return raw.content as T[];
+  return [];
+};
 
 export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserModalProps) {
   const [formData, setFormData] = useState({
@@ -45,26 +53,38 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
   const [rows, setRows] = useState<Row[]>([{ id: "1", roleId: "", centerId: "" }]);
 
   const [rolesData, setRolesData] = useState<RoleDto[]>([]);
-  // ⬇️ dùng CenterLiteDto
   const [centersData, setCentersData] = useState<CenterLiteDto[]>([]);
   const [loadingMeta, setLoadingMeta] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    let isMounted = true;
     setLoadingMeta(true);
+
     Promise.all([getRoles(true), getCentersLite()])
       .then(([rolesRes, centersRes]) => {
-        setRolesData(rolesRes.data || []);
-        setCentersData(centersRes.data || []);
+        if (!isMounted) return;
+        const rolesArr = toArray<RoleDto>(rolesRes?.data);
+        const centersArr = toArray<CenterLiteDto>(centersRes?.data);
+        setRolesData(rolesArr);
+        setCentersData(centersArr);
       })
       .catch((err) => {
         console.error("[CreateUserModal] Load roles/centers failed:", err);
         alert("Tải dữ liệu vai trò/trung tâm thất bại");
       })
-      .finally(() => setLoadingMeta(false));
+      .finally(() => {
+        if (isMounted) setLoadingMeta(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [open]);
 
-  const getRoleById = (roleId?: number | "") => rolesData.find((r) => r.roleId === roleId);
+  const getRoleById = (roleId?: number | "") =>
+    (Array.isArray(rolesData) ? rolesData : []).find((r) => r.roleId === roleId);
+
   const isGlobalRole = (roleId?: number | "") => getRoleById(roleId)?.scope === "GLOBAL";
   const isCenterScopedRole = (roleId?: number | "") => getRoleById(roleId)?.scope === "CENTER";
 
@@ -110,7 +130,8 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
     return roleIds.size >= 3;
   }, [rows, rolesData]);
 
-  const mapGender = (g: string) => (g === "Nam" ? "male" : g === "Nữ" ? "female" : undefined);
+  // Map gender sang enum UPPERCASE cho khớp BE
+  const mapGender = (g: string) => (g === "Nam" ? "MALE" : g === "Nữ" ? "FEMALE" : "OTHER");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,7 +178,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
         continue;
       }
       if (r.centerId === ALL_CENTERS_VALUE) {
-        expanded.push(...centersData.map((c) => ({ roleId, centerId: c.centerId })));
+        expanded.push(...(Array.isArray(centersData) ? centersData : []).map((c) => ({ roleId, centerId: c.centerId })));
       } else {
         expanded.push({ roleId, centerId: r.centerId as number });
       }
@@ -188,7 +209,6 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
     onSubmit(payload);
     onClose();
   };
-
 
   if (!open) return null;
 
@@ -342,7 +362,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                           className="appearance-none w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         >
                           <option value="">Chọn vai trò</option>
-                          {rolesData.map((r) => (
+                          {(Array.isArray(rolesData) ? rolesData : []).map((r) => (
                             <option key={r.roleId} value={r.roleId}>
                               {r.name}
                             </option>
@@ -357,19 +377,15 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                         </label>
                         <select
                           disabled={loadingMeta || roleIsGlobal || !role}
-                          value={
-                            roleIsGlobal ? "" : row.centerId === null ? "" : (row.centerId as any) || ""
-                          }
+                          value={roleIsGlobal ? "" : row.centerId === null ? "" : (row.centerId as any) || ""}
                           onChange={(e) => handleRowChange(index, "centerId", e.target.value)}
                           className="appearance-none w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         >
                           {!roleIsCenter && <option value="">(Không áp dụng)</option>}
                           {roleIsCenter && <option value="">Chọn trung tâm</option>}
-                          {roleIsCenter && (
-                            <option value={ALL_CENTERS_VALUE}>Tất cả trung tâm</option>
-                          )}
+                          {roleIsCenter && <option value={ALL_CENTERS_VALUE}>Tất cả trung tâm</option>}
                           {roleIsCenter &&
-                            centersData.map((c) => (
+                            (Array.isArray(centersData) ? centersData : []).map((c) => (
                               <option key={c.centerId} value={c.centerId}>
                                 {c.name}
                               </option>
