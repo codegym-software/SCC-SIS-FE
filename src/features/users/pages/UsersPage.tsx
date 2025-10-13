@@ -1,8 +1,8 @@
 // src/features/users/pages/UsersPage.tsx
-import React, { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useToast } from '../../../shared/hooks/useToast'
 import { usePermission } from '../../../shared/components/PermissionProvider'
-import { Eye, Pencil, ShieldOff, ShieldCheck, MoreHorizontal, Plus, Search, ChevronDown } from 'lucide-react'
+import { ShieldOff, ShieldCheck, MoreHorizontal, Plus, Search, ChevronDown, Eye, Pencil } from 'lucide-react'
 import CreateUserModal from '../components/CreateUserModal'
 
 import { listUserViews, getRoleStats } from '../../../shared/api/userViews'
@@ -57,35 +57,28 @@ export default function UsersPage() {
     const toast = useToast()
     const { can } = usePermission()
 
-    // Debug profile (token ok?) - an toàn unmount
+    // Debug profile (token ok?)
     useEffect(() => {
-        let isMounted = true
         getProfile()
-            .then(res => { if (isMounted) console.log('[PROFILE]', res.data) })
-            .catch(err => { if (isMounted) console.error('[PROFILE ERR]', err?.response?.status, err?.response?.data) })
-        return () => { isMounted = false }
+            .then(res => console.log('[PROFILE]', res.data))
+            .catch(err => console.error('[PROFILE ERR]', err?.response?.status, err?.response?.data))
     }, [])
 
     // Load dropdowns (roles, centers lite) 1 lần khi mount
-    // ❗Loại bỏ `toast` khỏi dependency để tránh vòng lặp
     useEffect(() => {
-        let isMounted = true
-            ; (async () => {
-                try {
-                    const [r, c] = await Promise.all([getRoles(true), getCentersLite()])
-                    if (!isMounted) return
-                    setRoles(Array.isArray(r.data) ? r.data : [])
-                    setCenters(Array.isArray(c.data) ? c.data : [])
-                } catch (e: any) {
-                    if (!isMounted) return
-                    console.error('[DROPDOWN LOAD ERR]', e?.response?.status, e?.response?.data)
-                    toast.error('Lỗi', 'Không tải được danh sách vai trò/trung tâm')
-                }
-            })()
-        return () => { isMounted = false }
-    }, []) // <-- không để [toast] nữa
+        (async () => {
+            try {
+                const [r, c] = await Promise.all([getRoles(true), getCentersLite()])
+                setRoles(Array.isArray(r.data) ? r.data : [])
+                setCenters(Array.isArray(c.data) ? c.data : [])
+            } catch (e: any) {
+                console.error('[DROPDOWN LOAD ERR]', e?.response?.status, e?.response?.data)
+                toast.error('Lỗi', 'Không tải được danh sách vai trò/trung tâm')
+            }
+        })()
+    }, [toast])
 
-    // Fetch list (server-side filter) rồi áp thêm rule "phải có assignment ở center đã chọn"
+    // Fetch list (server-side filter) rồi áp thêm rule “phải có assignment ở center đã chọn”
     const fetchUsers = async () => {
         setLoading(true)
         setError(null)
@@ -131,26 +124,24 @@ export default function UsersPage() {
         }
     }
 
-    // gọi ngay khi mount & mỗi khi filter đổi (an toàn thứ tự + reset trang)
+    // gọi ngay khi mount & mỗi khi filter đổi
     useEffect(() => {
-        const loadData = async () => {
-            await fetchUsers()
-            await fetchRoleStats()
-            setPage(1)
-        }
-        loadData()
+        fetchUsers()
+        fetchRoleStats()
+        setPage(1)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedCenterId, selectedRoleCode])
 
-    // debounce search 300ms - chỉ fetch list, không cần thống kê
+    // debounce search 300ms
     useEffect(() => {
         const t = setTimeout(() => {
             fetchUsers()
+            fetchRoleStats()
             setPage(1)
         }, 300)
         return () => clearTimeout(t)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [query, selectedCenterId, selectedRoleCode])
+    }, [query])
 
     // client-side pagination tạm thời
     const totalPages = Math.max(1, Math.ceil(users.length / pageSize))

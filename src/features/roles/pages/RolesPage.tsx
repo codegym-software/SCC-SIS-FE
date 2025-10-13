@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { Shield, Settings, Plus, MoreHorizontal, Eye, Pencil, Trash2 } from 'lucide-react'
 import { getRoles, deleteRole, getPermissionGroups } from '../api'
+import { useToast } from '../../../shared/hooks/useToast'
 import type { Role, PermissionGroup, Permission } from '../model/types'
 import CreateRoleModal from '../components/CreateRoleModal'
 import EditRoleModal from '../components/EditRoleModal'
@@ -8,6 +9,7 @@ import RoleDetailModal from '../components/RoleDetailModal'
 
 
 export default function RolesPage() {
+    const toast = useToast()
     const [query, setQuery] = useState('')
     const [tab, setTab] = useState<'permissions' | 'roles'>('roles')
     const [openMenuId, setOpenMenuId] = useState<number | null>(null)
@@ -301,7 +303,14 @@ export default function RolesPage() {
             <CreateRoleModal
                 open={openCreate}
                 onClose={() => setOpenCreate(false)}
-                onSuccess={loadRoles}
+                onSuccess={async () => {
+                    try {
+                        await loadRoles()
+                        toast.success('Tạo vai trò thành công', 'Vai trò mới đã được thêm vào hệ thống')
+                    } catch (error) {
+                        toast.error('Lỗi tạo vai trò', 'Không thể tạo vai trò. Vui lòng thử lại')
+                    }
+                }}
                 permissions={permissionsForModals}
             />
 
@@ -309,7 +318,14 @@ export default function RolesPage() {
             <EditRoleModal
                 open={!!openEdit}
                 onClose={() => setOpenEdit(null)}
-                onSuccess={loadRoles}
+                onSuccess={async () => {
+                    try {
+                        await loadRoles()
+                        toast.success('Cập nhật vai trò thành công', 'Thông tin vai trò đã được cập nhật')
+                    } catch (error) {
+                        toast.error('Lỗi cập nhật vai trò', 'Không thể cập nhật vai trò. Vui lòng thử lại')
+                    }
+                }}
                 role={openEdit}
                 permissions={permissionsForModals}
             />
@@ -352,8 +368,10 @@ export default function RolesPage() {
                                                 await deleteRole(openDelete.roleId)
                                                 await loadRoles()
                                                 setOpenDelete(null)
+                                                toast.success('Xóa vai trò thành công', `Vai trò "${openDelete.name}" đã được xóa khỏi hệ thống`)
                                             } catch (error) {
                                                 console.error('Error deleting role:', error)
+                                                toast.error('Lỗi xóa vai trò', 'Không thể xóa vai trò. Vui lòng thử lại')
                                             }
                                         }}
                                     >
