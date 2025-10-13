@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react'
-import { BookOpen, Users, Calendar, MapPin, User, Search, Edit, UserCheck, GraduationCap, X, Plus } from 'lucide-react'
+import { BookOpen, Users, Calendar, MapPin, User, Search, Edit, UserCheck, GraduationCap, X, Plus, MoreHorizontal } from 'lucide-react'
+import { getClasses, getPrograms, createClass, updateClass, type ClassResponse, type ClassLiteResponse, type CreateClassRequest, type UpdateClassRequest } from '../../../shared/api/classes'
+import { useToast } from '../../../shared/hooks/useToast'
 
 type Class = {
   id: string
@@ -39,124 +41,91 @@ export default function ClassesPage() {
   const [openManageStudents, setOpenManageStudents] = useState<Class | null>(null)
   const [openAssignInstructor, setOpenAssignInstructor] = useState<Class | null>(null)
 
-  const [classes, setClasses] = useState<Class[]>([
-    {
-      id: '1',
-      name: 'Lập trình Java Cơ bản - K15',
-      description: 'Khóa học Java dành cho người mới bắt đầu',
-      program: 'Công nghệ Thông tin',
-      startDate: '2024-12-25',
-      schedule: 'Thứ 2, 4, 6 - 19:00-21:30',
-      location: 'Phòng A101',
-      students: 28,
-      maxStudents: 30,
-      instructor: 'Nguyễn Văn A',
-      instructorInitial: 'N',
-      status: 'Chuẩn bị'
-    },
-    {
-      id: '2',
-      name: 'Web Development - K08',
-      description: 'Phát triển ứng dụng web hiện đại',
-      program: 'Công nghệ Thông tin',
-      startDate: '2024-11-20',
-      schedule: 'Thứ 3, 5, 7 - 18:30-21:00',
-      location: 'Phòng B201',
-      students: 22,
-      maxStudents: 25,
-      instructor: 'Trần Thị B',
-      instructorInitial: 'T',
-      status: 'Đang học'
-    },
-    {
-      id: '3',
-      name: 'Python Programming - K12',
-      description: 'Học lập trình Python từ cơ bản đến nâng cao',
-      program: 'Công nghệ Thông tin',
-      startDate: '2024-12-01',
-      schedule: 'Thứ 2, 4 - 18:00-20:30',
-      location: 'Phòng C301',
-      students: 30,
-      maxStudents: 35,
-      instructor: 'Lê Văn C',
-      instructorInitial: 'L',
-      status: 'Đang học'
-    },
-    {
-      id: '4',
-      name: 'Digital Marketing - K05',
-      description: 'Chiến lược marketing số toàn diện',
-      program: 'Digital Marketing',
-      startDate: '2024-10-15',
-      schedule: 'Thứ 3, 6 - 19:00-21:30',
-      location: 'Phòng D401',
-      students: 18,
-      maxStudents: 20,
-      instructor: 'Nguyễn Văn A',
-      instructorInitial: 'N',
-      status: 'Đang học'
-    },
-    {
-      id: '5',
-      name: 'React Native - K03',
-      description: 'Phát triển ứng dụng di động với React Native',
-      program: 'Công nghệ Thông tin',
-      startDate: '2025-01-15',
-      schedule: 'Thứ 7, CN - 08:00-12:00',
-      location: 'Phòng E501',
-      students: 0,
-      maxStudents: 15,
-      instructor: 'Trần Thị B',
-      instructorInitial: 'T',
-      status: 'Chuẩn bị'
+  // API states
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [classes, setClasses] = useState<Class[]>([])
+  const [programs, setPrograms] = useState<{ id: number, name: string }[]>([])
+
+  const toast = useToast()
+
+  // Load classes from API
+  const loadClasses = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await getClasses()
+      const classesData: Class[] = (response.data as ClassResponse[]).map(cls => ({
+        id: String(cls.classId),
+        name: cls.name,
+        description: cls.description || 'Chưa có mô tả',
+        program: cls.programName,
+        startDate: new Date(cls.startDate).toLocaleDateString('vi-VN'),
+        schedule: 'Chưa cập nhật', // API chưa có schedule field
+        location: cls.room || 'Chưa cập nhật',
+        students: 0, // API chưa có students count - sẽ được cập nhật từ API khác
+        maxStudents: cls.capacity,
+        instructor: 'Chưa phân công', // API chưa có instructor info - sẽ được cập nhật từ API khác
+        instructorInitial: '?',
+        status: cls.status === 'PLANNED' ? 'Chuẩn bị' :
+          cls.status === 'ONGOING' ? 'Đang học' :
+            cls.status === 'FINISHED' ? 'Hoàn thành' : 'Tạm dừng'
+      }))
+      setClasses(classesData)
+    } catch (err: any) {
+      console.error('Failed to load classes:', err)
+      setError(err?.response?.data?.message || 'Không thể tải danh sách lớp học')
+      toast.error('Lỗi', 'Không thể tải danh sách lớp học')
+    } finally {
+      setLoading(false)
     }
-  ])
+  }
+
+  // Load programs from API
+  const loadPrograms = async () => {
+    try {
+      const response = await getPrograms()
+      setPrograms(response.data || [])
+    } catch (err: any) {
+      console.error('Failed to load programs:', err)
+    }
+  }
+
+  // Initial load
+  useEffect(() => {
+    loadClasses()
+    loadPrograms()
+  }, [])
 
   const stats = useMemo(() => [
     {
       label: 'Tổng Lớp học',
-      value: String(classes.length),
-      icon: BookOpen,
-      iconColor: 'from-green-500 to-emerald-500',
-      change: '+3 tháng này',
-      changeColor: 'text-green-600 bg-green-50'
+      value: String(classes.length)
     },
     {
       label: 'Đang hoạt động',
-      value: String(classes.filter(c => c.status === 'Đang học').length),
-      icon: Users,
-      iconColor: 'from-green-500 to-emerald-500',
-      change: 'Lớp đang học',
-      changeColor: 'text-green-600 bg-green-50'
+      value: String(classes.filter(c => c.status === 'Đang học').length)
     },
     {
       label: 'Tổng Học viên',
-      value: String(classes.reduce((sum, c) => sum + c.students, 0)),
-      icon: Users,
-      iconColor: 'from-blue-500 to-cyan-500',
-      change: 'Đang học',
-      changeColor: 'text-blue-600 bg-blue-50'
+      value: String(classes.reduce((sum, c) => sum + c.students, 0))
     },
     {
       label: 'Giảng viên',
-      value: '3',
-      icon: User,
-      iconColor: 'from-purple-500 to-violet-500',
-      change: 'Available',
-      changeColor: 'text-purple-600 bg-purple-50'
+      value: '3'
     }
   ], [classes])
 
   const filtered = useMemo(() => {
-    let result = classes.filter(c => 
+    let result = classes.filter(c =>
       c.name.toLowerCase().includes(query.toLowerCase()) ||
       c.description.toLowerCase().includes(query.toLowerCase())
     )
-    
+
     if (statusFilter !== 'Tất cả trạng thái') {
       result = result.filter(c => c.status === statusFilter)
     }
-    
+
     return result
   }, [classes, query, statusFilter])
 
@@ -181,10 +150,10 @@ export default function ClassesPage() {
         setStudents(prev => [...prev, student])
         setNewStudent({ name: '', email: '' })
         setShowAddStudent(false)
-        
+
         // Cập nhật số học viên trong lớp
-        setClasses(prev => prev.map(c => 
-          c.id === classItem.id 
+        setClasses(prev => prev.map(c =>
+          c.id === classItem.id
             ? { ...c, students: c.students + 1 }
             : c
         ))
@@ -193,10 +162,10 @@ export default function ClassesPage() {
 
     const handleRemoveStudent = (studentId: string) => {
       setStudents(prev => prev.filter(s => s.id !== studentId))
-      
+
       // Cập nhật số học viên trong lớp
-      setClasses(prev => prev.map(c => 
-        c.id === classItem.id 
+      setClasses(prev => prev.map(c =>
+        c.id === classItem.id
           ? { ...c, students: Math.max(0, c.students - 1) }
           : c
       ))
@@ -252,7 +221,7 @@ export default function ClassesPage() {
                 <span className="font-medium">Học viên trong lớp</span>
                 <span className="text-blue-600 font-medium">{students.length}/{classItem.maxStudents}</span>
               </div>
-              <button 
+              <button
                 onClick={() => setShowAddStudent(true)}
                 disabled={students.length >= classItem.maxStudents}
                 className="h-8 px-3 rounded-md bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
@@ -285,13 +254,13 @@ export default function ClassesPage() {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <button 
+                  <button
                     onClick={handleAddStudent}
                     className="h-8 px-3 rounded-md bg-blue-600 text-white text-sm hover:bg-blue-700"
                   >
                     Thêm
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       setShowAddStudent(false)
                       setNewStudent({ name: '', email: '' })
@@ -318,7 +287,7 @@ export default function ClassesPage() {
                     <span className="px-2 py-1 rounded-full bg-green-50 text-green-700 text-xs font-medium">
                       {student.status}
                     </span>
-                    <button 
+                    <button
                       onClick={() => handleRemoveStudent(student.id)}
                       className="h-6 w-6 rounded-md bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center text-xs"
                     >
@@ -347,13 +316,13 @@ export default function ClassesPage() {
       { id: '3', name: 'Lê Văn C', specialization: 'Database Management', email: 'c.le@education.vn', assigned: false }
     ])
     const [assignedInstructor, setAssignedInstructor] = useState(classItem.instructor)
-    
+
     // Tìm ID của giảng viên hiện tại được phân công
     const getCurrentAssignedId = () => {
       const currentInstructor = instructors.find(i => i.name === classItem.instructor)
       return currentInstructor ? currentInstructor.id : ''
     }
-    
+
     const [assignedInstructorId, setAssignedInstructorId] = useState(getCurrentAssignedId())
 
     // Đồng bộ trạng thái khi modal mở
@@ -361,7 +330,7 @@ export default function ClassesPage() {
       const currentId = getCurrentAssignedId()
       setAssignedInstructorId(currentId)
       setAssignedInstructor(classItem.instructor)
-      
+
       // Cập nhật trạng thái assigned cho giảng viên hiện tại
       setInstructors(prev => prev.map(i => ({
         ...i,
@@ -374,24 +343,24 @@ export default function ClassesPage() {
       if (instructor) {
         // Cập nhật ID giảng viên được phân công trước
         setAssignedInstructorId(instructorId)
-        
+
         // Cập nhật giảng viên được phân công
         setAssignedInstructor(instructor.name)
-        
+
         // Cập nhật trạng thái giảng viên - chỉ giảng viên được chọn là assigned
         setInstructors(prev => prev.map(i => ({
           ...i,
           assigned: i.id === instructorId
         })))
-        
+
         // Cập nhật thông tin lớp học
-        setClasses(prev => prev.map(c => 
-          c.id === classItem.id 
-            ? { 
-                ...c, 
-                instructor: instructor.name,
-                instructorInitial: instructor.name.charAt(0).toUpperCase()
-              }
+        setClasses(prev => prev.map(c =>
+          c.id === classItem.id
+            ? {
+              ...c,
+              instructor: instructor.name,
+              instructorInitial: instructor.name.charAt(0).toUpperCase()
+            }
             : c
         ))
       }
@@ -400,24 +369,24 @@ export default function ClassesPage() {
     const handleUnassignInstructor = () => {
       // Reset ID giảng viên được phân công trước
       setAssignedInstructorId('')
-      
+
       // Cập nhật giảng viên được phân công
       setAssignedInstructor('Chưa phân công')
-      
+
       // Cập nhật trạng thái giảng viên - tất cả đều không được phân công
       setInstructors(prev => prev.map(i => ({
         ...i,
         assigned: false
       })))
-      
+
       // Cập nhật thông tin lớp học
-      setClasses(prev => prev.map(c => 
-        c.id === classItem.id 
-          ? { 
-              ...c, 
-              instructor: 'Chưa phân công',
-              instructorInitial: '?'
-            }
+      setClasses(prev => prev.map(c =>
+        c.id === classItem.id
+          ? {
+            ...c,
+            instructor: 'Chưa phân công',
+            instructorInitial: '?'
+          }
           : c
       ))
     }
@@ -460,7 +429,7 @@ export default function ClassesPage() {
                         <button className="px-3 py-1 rounded-md bg-purple-100 text-purple-700 text-xs font-medium">
                           Đã phân công
                         </button>
-                        <button 
+                        <button
                           onClick={handleUnassignInstructor}
                           className="px-3 py-1 rounded-md bg-red-100 text-red-700 text-xs font-medium hover:bg-red-200"
                         >
@@ -468,7 +437,7 @@ export default function ClassesPage() {
                         </button>
                       </>
                     ) : (
-                      <button 
+                      <button
                         onClick={() => handleAssignInstructor(instructor.id)}
                         className="px-3 py-1 rounded-md bg-gray-800 text-white text-xs font-medium hover:bg-gray-700"
                       >
@@ -504,56 +473,87 @@ export default function ClassesPage() {
   }
 
   function CreateEditForm({ editing }: { editing?: Class | null }) {
-    const [errors, setErrors] = useState<{name?: string; program?: string; startDate?: string; schedule?: string; location?: string; maxStudents?: string}>({})
-    
+    const [errors, setErrors] = useState<{ name?: string; program?: string; startDate?: string; schedule?: string; location?: string; maxStudents?: string }>({})
+
     return (
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault()
           const form = new FormData(e.currentTarget as HTMLFormElement)
-          const payload: Class = {
-            id: editing?.id ?? String(Date.now()),
+
+          const formData = {
             name: String(form.get('name') || ''),
             description: String(form.get('description') || ''),
             program: String(form.get('program') || ''),
             startDate: String(form.get('startDate') || ''),
+            endDate: String(form.get('endDate') || ''),
             schedule: String(form.get('schedule') || ''),
             location: String(form.get('location') || ''),
-            students: editing?.students ?? 0, // Giữ nguyên số học viên hiện tại khi chỉnh sửa
             maxStudents: Number(form.get('maxStudents') || 0),
-            instructor: editing?.instructor ?? 'Chưa phân công', // Giữ nguyên giảng viên hiện tại
-            instructorInitial: editing?.instructorInitial ?? '?',
-            status: (String(form.get('status') || 'Chuẩn bị') as Class['status'])
+            status: String(form.get('status') || 'Chuẩn bị')
           }
-          
+
           const newErrors: typeof errors = {}
-          
+
           // Validation
-          if (!payload.name || payload.name.trim().length < 3) {
+          if (!formData.name || formData.name.trim().length < 3) {
             newErrors.name = 'Tên lớp học tối thiểu 3 ký tự'
           }
-          if (!payload.program) {
+          if (!formData.program) {
             newErrors.program = 'Vui lòng chọn chương trình'
           }
-          if (!payload.startDate) {
+          if (!formData.startDate) {
             newErrors.startDate = 'Vui lòng chọn ngày bắt đầu'
           }
-          if (!payload.schedule || payload.schedule.trim().length < 5) {
+          if (!formData.schedule || formData.schedule.trim().length < 5) {
             newErrors.schedule = 'Lịch học tối thiểu 5 ký tự'
           }
-          if (!payload.location || payload.location.trim().length < 2) {
+          if (!formData.location || formData.location.trim().length < 2) {
             newErrors.location = 'Địa điểm tối thiểu 2 ký tự'
           }
-          if (!payload.maxStudents || payload.maxStudents < 1) {
+          if (!formData.maxStudents || formData.maxStudents < 1) {
             newErrors.maxStudents = 'Sĩ số tối đa phải lớn hơn 0'
           }
-          
+
           setErrors(newErrors)
-          
+
           if (Object.keys(newErrors).length > 0) return
-          
-          setClasses(prev => editing ? prev.map(x => x.id === editing.id ? payload : x) : [payload, ...prev])
-          editing ? setOpenEdit(null) : setOpenCreate(false)
+
+          try {
+            if (editing) {
+              // Update existing class
+              const updatePayload: UpdateClassRequest = {
+                name: formData.name,
+                description: formData.description,
+                startDate: formData.startDate,
+                endDate: formData.endDate || undefined,
+                room: formData.location,
+                capacity: formData.maxStudents
+              }
+              await updateClass(Number(editing.id), updatePayload)
+              toast.success('Thành công', 'Đã cập nhật lớp học')
+            } else {
+              // Create new class
+              const createPayload: CreateClassRequest = {
+                programId: 1, // TODO: Get from selected program
+                name: formData.name,
+                description: formData.description,
+                startDate: formData.startDate,
+                endDate: formData.endDate || undefined,
+                room: formData.location,
+                capacity: formData.maxStudents
+              }
+              await createClass(createPayload)
+              toast.success('Thành công', 'Đã tạo lớp học mới')
+            }
+
+            // Reload classes list
+            await loadClasses()
+            editing ? setOpenEdit(null) : setOpenCreate(false)
+          } catch (err: any) {
+            console.error('Failed to save class:', err)
+            toast.error('Lỗi', err?.response?.data?.message || 'Không thể lưu lớp học')
+          }
         }}
       >
         <div className="px-4 py-3 border-b flex items-center justify-between">
@@ -578,10 +578,9 @@ export default function ClassesPage() {
                 <label className="block text-xs text-gray-600 mb-1">Chương trình học *</label>
                 <select name="program" defaultValue={editing?.program} required className={`w-full h-9 rounded-md border px-2 text-sm ${errors.program ? 'border-red-500' : ''}`}>
                   <option value="">Chọn chương trình</option>
-                  <option>Công nghệ Thông tin</option>
-                  <option>Digital Marketing</option>
-                  <option>Thiết kế Đồ họa</option>
-                  <option>Kinh doanh</option>
+                  {programs.map(program => (
+                    <option key={program.id} value={program.name}>{program.name}</option>
+                  ))}
                 </select>
                 {errors.program && <div className="text-xs text-red-600 mt-1">{errors.program}</div>}
               </div>
@@ -645,47 +644,38 @@ export default function ClassesPage() {
             <p className="text-xs text-gray-500">Quản lý thông tin lớp học và danh sách học viên</p>
           </div>
         </div>
-        <button onClick={() => setOpenCreate(true)} className="inline-flex items-center gap-2 rounded-md bg-green-600 text-white text-sm px-3 py-2 hover:bg-green-700">
+        <button onClick={() => setOpenCreate(true)} className="inline-flex items-center gap-2 rounded-md bg-[#030213] text-white text-sm px-4 py-2 hover:bg-black focus:ring-2 focus:ring-gray-300">
           + Tạo Lớp học mới
         </button>
       </div>
 
       {/* Stats */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => {
-          const IconComponent = s.icon
-          return (
-            <div key={s.label} className="rounded-xl border border-gray-200 bg-white p-5 relative">
-              <div className="text-xs text-gray-500 mb-3">{s.label}</div>
-              <div className="text-2xl font-semibold mb-2">{s.value}</div>
-              {s.change && (
-                <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${s.changeColor}`}>
-                  {s.change}
-                </div>
-              )}
-              <div className={`absolute top-4 right-4 h-8 w-8 rounded-lg bg-gradient-to-br ${s.iconColor} grid place-items-center text-white`}>
-                <IconComponent size={16} />
-              </div>
-            </div>
-          )
-        })}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((s) => (
+          <div key={s.label} className="bg-white border border-gray-200 rounded-2xl p-6">
+            <p className="text-sm font-medium text-gray-900">{s.label}</p>
+            <p className={`text-3xl font-bold mt-8 ${s.label === 'Đang hoạt động' ? 'text-[#00a63e]' : 'text-gray-900'}`}>
+              {s.value}
+            </p>
+          </div>
+        ))}
       </section>
 
       {/* Search and Filter */}
-      <div className="flex items-center gap-4">
-        <div className="flex-1 relative">
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-6 flex flex-wrap items-center gap-4">
+        <div className="relative flex-grow">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full h-9 pl-10 pr-3 rounded-md border text-sm outline-none focus:ring-2 focus:ring-green-200"
+            className="w-full bg-[#f3f3f5] border-transparent rounded-lg pl-10 pr-4 py-2 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
             placeholder="Tìm kiếm lớp học..."
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="h-9 rounded-md border px-3 text-sm"
+          className="appearance-none h-9 bg-[#f3f3f5] rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500"
         >
           <option>Tất cả trạng thái</option>
           <option>Chuẩn bị</option>
@@ -696,117 +686,141 @@ export default function ClassesPage() {
       </div>
 
       {/* Classes List */}
-      <section className="rounded-2xl border border-gray-200 bg-white">
-        <div className="px-3 py-3 border-b flex items-start gap-2">
-          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 grid place-items-center text-white flex-shrink-0">
-            <BookOpen size={16} />
-          </div>
-          <div>
-            <div className="text-sm font-medium">Danh sách Lớp học</div>
-            <div className="text-xs text-gray-500">Quản lý tất cả lớp học trong hệ thống ({filtered.length} kết quả)</div>
-          </div>
+      <section className="bg-white border border-gray-200 rounded-2xl p-6">
+        <div>
+          <h3 className="text-base font-medium text-gray-900">Danh sách Lớp học</h3>
+          <p className="text-sm text-[#717182] mt-1">
+            {loading ? 'Đang tải...' : error ? error : `Quản lý tất cả lớp học trong hệ thống (${filtered.length} kết quả)`}
+          </p>
         </div>
 
-        <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-12 gap-3">
-          <div className="col-span-3">Lớp học</div>
-          <div className="col-span-2">Chương trình</div>
-          <div className="col-span-2">Thời gian</div>
-          <div className="col-span-1">Địa điểm</div>
-          <div className="col-span-1">Học viên</div>
-          <div className="col-span-1">Giảng viên</div>
-          <div className="col-span-1">Trạng thái</div>
-          <div className="col-span-1"></div>
-        </div>
+        <div className="mt-6 -mx-6">
+          <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-gray-200 text-sm font-medium text-gray-500">
+            <div className="col-span-3">Lớp học</div>
+            <div className="col-span-2">Chương trình</div>
+            <div className="col-span-2">Thời gian</div>
+            <div className="col-span-1">Địa điểm</div>
+            <div className="col-span-1">Học viên</div>
+            <div className="col-span-1">Giảng viên</div>
+            <div className="col-span-1">Trạng thái</div>
+            <div className="col-span-1 text-right"></div>
+          </div>
 
-        <div className="divide-y">
-          {filtered.map((c) => (
-            <div key={c.id} className="px-3 py-3 pr-12 grid grid-cols-12 gap-3 items-center border-t first:border-t-0 relative">
-              <div className="col-span-12 md:col-span-3">
-                <div className="flex items-start gap-3">
-                  <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 grid place-items-center text-white flex-shrink-0">
-                    <BookOpen size={16} />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">{c.name}</div>
-                    <div className="text-xs text-gray-500">{c.description}</div>
-                  </div>
+          <div className="text-sm">
+            {filtered.map((c) => (
+              <div key={c.id} className="grid grid-cols-12 gap-4 items-center px-6 py-4 border-b border-gray-200">
+                {/* Thông tin cơ bản */}
+                <div className="col-span-3">
+                  <p className="font-medium text-gray-900">{c.name}</p>
+                  <p className="text-[#717182] text-sm">{c.description}</p>
                 </div>
-              </div>
-              <div className="col-span-12 md:col-span-2">
-                <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">{c.program}</span>
-              </div>
-              <div className="col-span-12 md:col-span-2">
-                <div className="flex items-center gap-1 text-sm">
-                  <Calendar size={14} className="text-gray-500" />
-                  {c.startDate}
+
+                {/* Chương trình */}
+                <div className="col-span-2">
+                  <span className="text-xs font-medium self-start px-2 py-0.5 rounded-md bg-gray-100 text-gray-700">
+                    {c.program}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Calendar size={12} className="text-gray-400" />
-                  {c.schedule}
-                </div>
-              </div>
-              <div className="col-span-6 md:col-span-1 text-sm flex items-center gap-1 pl-4">
-                <MapPin size={14} className="text-gray-500" />
-                {c.location}
-              </div>
-              <div className="col-span-6 md:col-span-1 text-sm flex items-center gap-1 pl-4">
-                <Users size={14} className="text-gray-500" />
-                {c.students}/{c.maxStudents}
-              </div>
-              <div className="col-span-6 md:col-span-1 text-sm flex items-center gap-2 pl-4">
-                <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-xs font-medium">
-                  {c.instructorInitial}
-                </div>
-                {c.instructor}
-              </div>
-              <div className="col-span-6 md:col-span-1 pl-4">
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                  c.status === 'Đang học' ? 'bg-green-50 text-green-700' :
-                  c.status === 'Chuẩn bị' ? 'bg-blue-50 text-blue-700' :
-                  c.status === 'Hoàn thành' ? 'bg-green-50 text-green-700' :
-                  'bg-gray-50 text-gray-700'
-                }`}>
-                  {c.status}
-                </span>
-              </div>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 z-40">
-                <div className="relative z-40">
-                  <button className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center" onClick={() => setOpenMenuId(openMenuId === c.id ? null : c.id)}>⋯</button>
-                  {openMenuId === c.id && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />
-                      <div className="absolute right-0 mt-1 w-48 rounded-lg border bg-white shadow-lg z-[70]">
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" onClick={() => { setOpenMenuId(null); setOpenEdit(c) }}>
-                          <Edit size={14} />
-                          Chỉnh sửa
-                        </button>
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" onClick={() => { setOpenMenuId(null); setOpenManageStudents(c) }}>
-                          <UserCheck size={14} />
-                          Quản lý học viên
-                        </button>
-                        <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" onClick={() => { setOpenMenuId(null); setOpenAssignInstructor(c) }}>
-                          <GraduationCap size={14} />
-                          Phân công giảng viên
-                        </button>
-                      </div>
-                    </>
+
+                {/* Thời gian */}
+                <div className="col-span-2">
+                  <p className="text-gray-900">{c.startDate}</p>
+                  {c.schedule !== 'Chưa cập nhật' && (
+                    <p className="text-[#717182] text-sm">{c.schedule}</p>
                   )}
                 </div>
+
+                {/* Địa điểm */}
+                <div className="col-span-1">
+                  <p className="text-gray-900">{c.location !== 'Chưa cập nhật' ? c.location : '—'}</p>
+                </div>
+
+                {/* Học viên */}
+                <div className="col-span-1">
+                  <p className="text-gray-900">{c.students}/{c.maxStudents}</p>
+                </div>
+
+                {/* Giảng viên */}
+                <div className="col-span-1">
+                  {c.instructor !== 'Chưa phân công' ? (
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-xs font-medium">
+                        {c.instructorInitial}
+                      </div>
+                      <span className="text-gray-900 text-sm">{c.instructor}</span>
+                    </div>
+                  ) : (
+                    <span className="text-gray-500">Chưa phân công</span>
+                  )}
+                </div>
+
+                {/* Trạng thái */}
+                <div className="col-span-1">
+                  <span className={`text-xs font-medium self-start px-2 py-0.5 rounded-md ${c.status === 'Đang học' ? 'bg-[#dcfce7] text-[#016630]' :
+                    c.status === 'Chuẩn bị' ? 'bg-blue-50 text-blue-700' :
+                      c.status === 'Hoàn thành' ? 'bg-green-50 text-green-700' :
+                        'bg-[#f3f4f6] text-[#1e2939]'
+                    }`}>
+                    {c.status}
+                  </span>
+                </div>
+
+                {/* Menu */}
+                <div className="col-span-1 flex justify-end">
+                  <div className="relative">
+                    <button
+                      className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center"
+                      onClick={() => setOpenMenuId(openMenuId === c.id ? null : c.id)}
+                    >
+                      <MoreHorizontal size={16} />
+                    </button>
+                    {openMenuId === c.id && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                        <div className="absolute right-0 mt-2 w-52 rounded-lg border bg-white shadow-lg z-20">
+                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" onClick={() => { setOpenMenuId(null); setOpenEdit(c) }}>
+                            <Edit size={16} />
+                            Chỉnh sửa
+                          </button>
+                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" onClick={() => { setOpenMenuId(null); setOpenManageStudents(c) }}>
+                            <UserCheck size={16} />
+                            Quản lý học viên
+                          </button>
+                          <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" onClick={() => { setOpenMenuId(null); setOpenAssignInstructor(c) }}>
+                            <GraduationCap size={16} />
+                            Phân công giảng viên
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+
         </div>
 
         {/* Pagination */}
-        <div className="px-3 py-3 border-t flex items-center justify-between text-sm text-gray-500">
-          <div>Hiển thị 1 - {Math.min(5, filtered.length)} trong số {filtered.length} kết quả</div>
-          <div className="flex items-center gap-2">
-            <button className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm">Previous</button>
-            <button className="h-8 px-3 rounded-md bg-green-600 text-white text-sm">1</button>
-            <button className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm">2</button>
-            <button className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm">Next</button>
-          </div>
-        </div>
+        <nav className="flex justify-center items-center gap-2 mt-8 text-sm font-medium">
+          <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg opacity-50">
+            <MoreHorizontal className="w-4 h-4 rotate-90" />
+            <span>Previous</span>
+          </button>
+
+          <button className="w-9 h-9 flex items-center justify-center rounded-lg border bg-white border-gray-200">
+            1
+          </button>
+
+          <button className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-900">
+            2
+          </button>
+
+          <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
+            <span>Next</span>
+            <MoreHorizontal className="w-4 h-4 -rotate-90" />
+          </button>
+        </nav>
       </section>
 
       {/* Create Modal */}

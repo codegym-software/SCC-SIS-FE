@@ -78,7 +78,7 @@ export default function UsersPage() {
         })()
     }, [toast])
 
-    // Fetch list (server-side filter) rồi áp thêm rule “phải có assignment ở center đã chọn”
+    // Fetch list (server-side filter) rồi áp thêm rule "phải có assignment ở center đã chọn"
     const fetchUsers = async () => {
         setLoading(true)
         setError(null)
@@ -132,15 +132,13 @@ export default function UsersPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedCenterId, selectedRoleCode])
 
-    // debounce search 300ms
+    // debounce search 300ms - chỉ gọi fetchUsers, không gọi fetchRoleStats vì search không ảnh hưởng đến role stats
     useEffect(() => {
         const t = setTimeout(() => {
             fetchUsers()
-            fetchRoleStats()
             setPage(1)
         }, 300)
         return () => clearTimeout(t)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [query])
 
     // client-side pagination tạm thời
