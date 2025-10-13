@@ -1,0 +1,119 @@
+// src/shared/types/classes.ts
+export type ClassStatus = 'PLANNED' | 'ONGOING' | 'FINISHED' | 'CANCELLED';
+export type EnrollmentStatus = 'ACTIVE' | 'DROPPED' | 'SUSPENDED';
+
+export type CreateClassRequest = {
+    programId: number;
+    name: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+    room?: string;
+    capacity?: number;
+};
+
+export type UpdateClassRequest = {
+    name: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+    room?: string;
+    capacity?: number;
+};
+
+export type ClassResponse = {
+    classId: number;
+    centerId: number;
+    centerName: string;
+    programId: number;
+    programName: string;
+    programCode: string;
+    name: string;
+    description: string;
+    startDate: string;
+    endDate: string;
+    status: ClassStatus;
+    room: string;
+    capacity: number;
+    createdAt: string;
+    updatedAt: string;
+    createdBy: number;
+    updatedBy: number;
+};
+
+export type ClassLiteResponse = {
+    classId: number;
+    name: string;
+    programName: string;
+    centerName: string;
+    status: ClassStatus;
+};
+
+export type AssignLecturerRequest = {
+    startDate: string;
+    note?: string;
+};
+
+export type RemoveLecturerRequest = {
+    endDate?: string;
+    note?: string;
+};
+
+export type ClassLecturerResponse = {
+    id: number;
+    classId: number;
+    teacherId: number;
+    teacherName: string;
+    teacherEmail: string;
+    effStartDate: string;
+    effEndDate: string;
+    createdAt: string;
+    createdBy: string;
+};
+
+export type EnrollmentResponse = {
+    enrollmentId: number;
+    classId: number;
+    studentId: number;
+    studentName: string;
+    studentEmail: string;
+    status: string;
+    enrolledAt: string;
+    leftAt: string;
+    note: string;
+};
+
+export type EnrollmentRequest = {
+    studentId: number;
+    enrolledAt?: string;
+    note?: string;
+};
+
+export type UpdateEnrollmentRequest = {
+    status: EnrollmentStatus;
+    leftAt?: string;
+    note?: string;
+};
+
+// Types cho UI components
+export type ClassFormData = {
+    name: string;
+    description: string;
+    program: string;
+    startDate: string;
+    endDate?: string;
+    schedule: string;
+    location: string;
+    maxStudents: number;
+    status: 'Chuẩn bị' | 'Đang học' | 'Hoàn thành' | 'Tạm dừng';
+};
+
+export type StudentFormData = {
+    name: string;
+    email: string;
+};
+
+export type ClassStats = {
+    label: string;
+    value: string;
+};

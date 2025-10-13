@@ -1,38 +1,46 @@
-import http from './http'
-import type { CenterDto, CreateCenterDto, UpdateCenterDto } from '../types/centers'
+// src/shared/api/centers.ts
+import api from './http';
+import type {
+    CenterDto,
+    CenterLiteDto,
+    CreateCenterDto,
+    UpdateCenterDto,
+} from '../types/centers';
 
-export const listAllCenters = async (): Promise<CenterDto[]> => {
-  try {
-    const response = await http.get('/api/centers')
-    console.log('Raw centers response:', response);
-    console.log('Response data type:', typeof response.data);
-    console.log('Response data value:', response.data);
-    
-    // Backend có thể trả về data ở format khác
-    const data = response.data || response.data?.data || response.data?.content || [];
-    console.log('Extracted centers from API:', data);
-    return data;
-  } catch (error) {
-    console.error('API Error in listAllCenters:', error)
-    throw error
-  }
-}
+// ---------- Dropdown lite cho FE (dùng ở UsersPage, CreateUserModal...)
+export const getCentersLite = () =>
+    api.get<CenterLiteDto[]>('/api/centers/lite');
 
-export const createCenter = async (data: CreateCenterDto): Promise<CenterDto> => {
-  const response = await http.post('/api/centers', data)
-  return response.data
-}
+// ---------- Quản trị Centers (dev1 giữ nguyên)
+export const createCenter = (payload: CreateCenterDto) =>
+    api.post<CenterDto>('/api/centers', payload);
 
-export const updateCenter = async (id: number, data: UpdateCenterDto): Promise<CenterDto> => {
-  const response = await http.put(`/api/centers/${id}`, data)
-  return response.data
-}
+export const listActiveCenters = () =>
+    api.get<CenterDto[]>('/api/centers');           // active-only
 
-export const deactivateCenter = async (id: number): Promise<void> => {
-  await http.delete(`/api/centers/${id}`)
-}
+export const listAllCenters = () =>
+    api.get<CenterDto[]>('/api/centers/all');       // gồm cả vô hiệu
 
-export const reactivateCenter = async (id: number): Promise<CenterDto> => {
-  const response = await http.post(`/api/centers/${id}/reactivate`)
-  return response.data
-}
+export const getCenterById = (id: number) =>
+    api.get<CenterDto>(`/api/centers/${id}`);
+
+export const updateCenter = (id: number, payload: UpdateCenterDto) =>
+    api.put<CenterDto>(`/api/centers/${id}`, payload);
+
+export const deactivateCenter = (id: number) =>
+    api.delete<void>(`/api/centers/${id}`);
+
+export const reactivateCenter = (id: number) =>
+    api.put<CenterDto>(`/api/centers/${id}/reactivate`, {});
+
+// Helpers (tuỳ nhu cầu)
+export const getCentersByStatus = (active: boolean) =>
+    active ? listActiveCenters() : listAllCenters();
+
+export const getCentersByProvince = async (province: string) => {
+    const res = await listAllCenters();
+    return {
+        ...res,
+        data: res.data.filter((c) => c.province === province),
+    };
+};
