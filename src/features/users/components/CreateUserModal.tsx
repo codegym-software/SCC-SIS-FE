@@ -79,7 +79,6 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
             rolesData = dataObj.items;
           }
         }
-
         const rolesArr = toArray<RoleDto>(rolesData);
         const centersArr = toArray<CenterLiteDto>(centersRes?.data);
         setRolesData(rolesArr);

@@ -61,7 +61,6 @@ export default function UsersPage() {
         (async () => {
             try {
                 const [r, c] = await Promise.all([getRoles(true), getCentersLite()])
-
                 // Xử lý different data formats
                 let rolesData = [];
                 if (Array.isArray(r.data)) {
