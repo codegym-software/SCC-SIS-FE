@@ -9,7 +9,6 @@ import { listUserViews, getRoleStats } from '../../../shared/api/userViews'
 import { getCentersLite } from '../../../shared/api/centers'
 import { getRoles } from '../../../shared/api/roles'
 import { createUser } from '../../../shared/api/users'
-import { getProfile } from '../../../shared/api/auth'
 
 import type { UserViewDto, RoleCode } from '../../../shared/types/userView'
 import type { CenterLiteDto } from '../../../shared/types/centers'
@@ -56,13 +55,6 @@ export default function UsersPage() {
 
     const toast = useToast()
     const { can } = usePermission()
-
-    // Debug profile (token ok?)
-    useEffect(() => {
-        getProfile()
-            .then(res => console.log('[PROFILE]', res.data))
-            .catch(err => console.error('[PROFILE ERR]', err?.response?.status, err?.response?.data))
-    }, [])
 
     // Load dropdowns (roles, centers lite) 1 lần khi mount
     useEffect(() => {
