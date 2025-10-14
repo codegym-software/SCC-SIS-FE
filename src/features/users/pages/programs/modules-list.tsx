@@ -22,6 +22,9 @@ interface ModulesListProps {
     onEdit: (module: Module) => void;
     onDelete: (module: Module) => void;
     onCreate: () => void;
+    currentPage: number;
+    itemsPerPage: number;
+    onPageChange: (page: number) => void;
 }
 
 const ModulesList: React.FC<ModulesListProps> = ({ 
@@ -31,7 +34,10 @@ const ModulesList: React.FC<ModulesListProps> = ({
     onView, 
     onEdit, 
     onDelete, 
-    onCreate 
+    onCreate,
+    currentPage,
+    itemsPerPage,
+    onPageChange
 }) => {
     const filtered = useMemo(() => {
         let result = modules.filter(
@@ -48,13 +54,16 @@ const ModulesList: React.FC<ModulesListProps> = ({
         return result;
     }, [modules, query, statusFilter]);
 
+    // Pagination logic
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedModules = filtered.slice(startIndex, endIndex);
+
     return (
         <section className="rounded-2xl border border-gray-200 bg-white">
             {/* Header card */}
             <div className="px-3 py-3 border-b flex items-start gap-2">
-                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 grid place-items-center text-white flex-shrink-0">
-                    <FolderOpen size={16} />
-                </div>
                 <div>
                     <div className="text-sm font-medium">Danh sách Module</div>
                     <div className="text-xs text-gray-500">
@@ -66,7 +75,7 @@ const ModulesList: React.FC<ModulesListProps> = ({
                         onClick={onCreate}
                         className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 text-white text-xs px-2.5 py-1.5 hover:bg-blue-700"
                     >
-                        <FolderOpen size={16} /> <span>Tạo module mới</span>
+                        <span>Tạo module mới</span>
                     </button>
                 </div>
             </div>
@@ -109,16 +118,13 @@ const ModulesList: React.FC<ModulesListProps> = ({
             </div>
 
             <div className="divide-y">
-                {filtered.map((module) => (
+                {paginatedModules.map((module) => (
                     <div
                         key={module.id}
                         className="px-3 py-3 pr-12 grid grid-cols-12 gap-3 items-center border-t first:border-t-0 relative"
                     >
                         <div className="col-span-12 md:col-span-4">
                             <div className="flex items-start gap-3">
-                                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 grid place-items-center text-white flex-shrink-0">
-                                    <FolderOpen size={16} />
-                                </div>
                                 <div>
                                     <div className="text-sm font-medium">{module.name}</div>
                                     <div className="text-xs text-gray-500">ID: {module.moduleId}</div>
@@ -178,19 +184,44 @@ const ModulesList: React.FC<ModulesListProps> = ({
             </div>
 
             {/* Pagination */}
-            <div className="px-3 py-3 border-t flex items-center justify-between text-sm text-gray-500">
-                <div>
-                    Hiển thị 1 - {Math.min(4, filtered.length)} trong số {filtered.length} kết quả
+            {totalPages > 1 && (
+                <div className="px-3 py-3 border-t flex items-center justify-between text-sm text-gray-500">
+                    <div>
+                        Hiển thị {startIndex + 1} - {Math.min(endIndex, filtered.length)} trong số {filtered.length} kết quả
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => onPageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Previous
+                        </button>
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                            <button
+                                key={page}
+                                onClick={() => onPageChange(page)}
+                                className={`h-8 px-3 rounded-md text-sm ${
+                                    currentPage === page 
+                                        ? 'bg-blue-600 text-white' 
+                                        : 'border bg-white hover:bg-gray-50'
+                                }`}
+                            >
+                                {page}
+                            </button>
+                        ))}
+                        
+                        <button 
+                            onClick={() => onPageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm">
-                        Previous
-                    </button>
-                    <button className="h-8 px-3 rounded-md bg-blue-600 text-white text-sm">1</button>
-                    <button className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm">2</button>
-                    <button className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm">Next</button>
-                </div>
-            </div>
+            )}
         </section>
     );
 };

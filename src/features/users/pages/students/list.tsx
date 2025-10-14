@@ -19,6 +19,8 @@ interface StudentListProps {
     students: Student[];
     onView?: (student: Student) => void;
     onEdit?: (student: Student) => void;
+    onChangeStatus?: (student: Student) => void;
+    onDelete?: (student: Student) => void;
     openMenuId?: string | null;
     onMenuToggle?: (id: string) => void;
 }
@@ -27,6 +29,8 @@ const StudentList: React.FC<StudentListProps> = ({
     students, 
     onView, 
     onEdit,
+    onChangeStatus,
+    onDelete,
     openMenuId, 
     onMenuToggle 
 }) => {
@@ -63,9 +67,6 @@ const StudentList: React.FC<StudentListProps> = ({
     return (
         <section className="rounded-2xl border border-gray-200 bg-white">
             <div className="px-3 py-3 border-b flex items-start gap-2">
-                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 grid place-items-center text-white flex-shrink-0">
-                    <User size={16} />
-                </div>
                 <div>
                     <div className="text-sm font-medium">Danh sách Học viên</div>
                     <div className="text-xs text-gray-500">
@@ -137,8 +138,8 @@ const StudentList: React.FC<StudentListProps> = ({
                             <StudentActions 
                                 onView={() => onView?.(student)}
                                 onEdit={() => onEdit?.(student)}
-                                onChangeStatus={() => console.log('Change status:', student.name)}
-                                onRemove={() => console.log('Remove student:', student.name)}
+                                onChangeStatus={() => onChangeStatus?.(student)}
+                                onRemove={() => onDelete?.(student)}
                             />
                         </div>
                     </div>

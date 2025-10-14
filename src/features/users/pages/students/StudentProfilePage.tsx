@@ -4,6 +4,8 @@ import StudentSearch from './search';
 import StudentList from './list';
 import StudentView from './view';
 import StudentEdit from './edit';
+import ChangeStatusModal from './components/ChangeStatusModal';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
 
 type Student = {
     id: string;
@@ -32,6 +34,20 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
     );
 }
 
+function StatusModal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+    if (!open) return null;
+    return (
+        <div className="fixed inset-0 z-[60]">
+            <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 flex items-center justify-center p-4">
+                <div className="w-96 max-w-sm">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function StudentProfilePage() {
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
@@ -40,6 +56,66 @@ export default function StudentProfilePage() {
     const [openEdit, setOpenEdit] = useState<Student | null>(null);
     const [openCreate, setOpenCreate] = useState(false);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<Student | null>(null);
+    const [openChangeStatus, setOpenChangeStatus] = useState<Student | null>(null);
+
+    // Generate additional students
+    const generateAdditionalStudents = (): Student[] => {
+        const firstNames = [
+            'Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Phan', 'Vũ', 'Võ', 'Đặng', 'Bùi',
+            'Đỗ', 'Hồ', 'Ngô', 'Dương', 'Lý', 'Đinh', 'Đào', 'Mai', 'Lâm', 'Thái',
+            'Cao', 'Đinh', 'Lương', 'Tôn', 'Vương', 'Đinh', 'Lê', 'Phan', 'Võ', 'Bùi'
+        ];
+        
+        const lastNames = [
+            'Minh', 'Văn', 'Thị', 'Quốc', 'Đức', 'Hùng', 'Mai', 'Lan', 'Hương', 'Thu',
+            'Anh', 'Tuấn', 'Nam', 'Hải', 'Long', 'Phong', 'Khang', 'Bảo', 'Đức', 'Thành',
+            'Huy', 'Duy', 'Khoa', 'Linh', 'Nga', 'Hoa', 'Ly', 'My', 'Vy', 'Uyên'
+        ];
+        
+        const classes = [
+            'Lập trình Java Cơ bản - K15', 'Web Development - K08', 'Data Science - K01',
+            'Python Programming - K12', 'Digital Marketing - K05', 'UI/UX Design - K03',
+            'Mobile App Development - K07', 'Cloud Computing - K09', 'AI/ML - K11', 'Cybersecurity - K13'
+        ];
+        
+        const programs = ['Công nghệ Thông tin', 'Digital Marketing', 'Thiết kế', 'Kinh doanh'];
+        const statuses: Student['status'][] = ['Đang học', 'Bảo lưu', 'Tốt nghiệp', 'Tạm dừng'];
+        
+        return Array.from({ length: 50 }, (_, index) => {
+            const studentNumber = index + 6; // Start from SV006
+            const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+            const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+            const fullName = `${firstName} ${lastName}`;
+            const initial = fullName.split(' ').map(n => n[0]).join('');
+            
+            const randomClass = classes[Math.floor(Math.random() * classes.length)];
+            const randomProgram = programs[Math.floor(Math.random() * programs.length)];
+            const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+            
+            // Generate random date between 2023-2025
+            const year = 2023 + Math.floor(Math.random() * 3);
+            const month = Math.floor(Math.random() * 12) + 1;
+            const day = Math.floor(Math.random() * 28) + 1;
+            const registrationDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            
+            // Generate random phone number
+            const phoneNumber = `09${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`;
+            
+            return {
+                id: `student-${studentNumber}`,
+                studentId: `SV${String(studentNumber).padStart(3, '0')}`,
+                name: fullName,
+                email: `${fullName.toLowerCase().replace(/\s+/g, '.')}@student.edu`,
+                phone: phoneNumber,
+                initial,
+                class: randomClass,
+                program: randomProgram,
+                registrationDate,
+                status: randomStatus
+            };
+        });
+    };
 
     // Mock data for students
     const [students, setStudents] = useState<Student[]>([
@@ -102,7 +178,8 @@ export default function StudentProfilePage() {
             program: 'Công nghệ Thông tin',
             registrationDate: '2023-09-01',
             status: 'Tốt nghiệp'
-        }
+        },
+        ...generateAdditionalStudents()
     ]);
 
     const handleView = (student: Student) => {
@@ -132,6 +209,28 @@ export default function StudentProfilePage() {
         setOpenMenuId(openMenuId === id ? null : id);
     };
 
+    const handleDeleteStudent = (student: Student) => {
+        setDeleteConfirm(student);
+    };
+
+    const confirmDeleteStudent = () => {
+        if (deleteConfirm) {
+            setStudents(prev => prev.filter(s => s.id !== deleteConfirm.id));
+            setDeleteConfirm(null);
+        }
+    };
+
+    const handleChangeStatus = (student: Student) => {
+        setOpenChangeStatus(student);
+    };
+
+    const handleSaveStatusChange = (studentId: string, newStatus: Student['status']) => {
+        setStudents(prev => 
+            prev.map(s => s.id === studentId ? { ...s, status: newStatus } : s)
+        );
+        setOpenChangeStatus(null);
+    };
+
     // Filter students based on query and filters
     const filteredStudents = students.filter(student => {
         const matchesQuery = !query || 
@@ -150,9 +249,6 @@ export default function StudentProfilePage() {
             {/* Page Header */}
             <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 grid place-items-center text-white">
-                        <User size={18} />
-                    </div>
                     <div>
                         <h1 className="text-lg font-semibold">Hồ sơ Học viên</h1>
                         <p className="text-xs text-gray-500">Quản lý thông tin và hồ sơ học viên</p>
@@ -177,6 +273,8 @@ export default function StudentProfilePage() {
                 students={filteredStudents}
                 onView={handleView}
                 onEdit={handleEdit}
+                onChangeStatus={handleChangeStatus}
+                onDelete={handleDeleteStudent}
                 openMenuId={openMenuId}
                 onMenuToggle={handleMenuToggle}
             />
@@ -217,6 +315,29 @@ export default function StudentProfilePage() {
                     </div>
                 </div>
             </Modal>
+
+            {/* Change Status Modal */}
+            <StatusModal open={!!openChangeStatus} onClose={() => setOpenChangeStatus(null)}>
+                {openChangeStatus && (
+                    <ChangeStatusModal
+                        student={openChangeStatus}
+                        onClose={() => setOpenChangeStatus(null)}
+                        onSave={handleSaveStatusChange}
+                    />
+                )}
+            </StatusModal>
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                open={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                onConfirm={confirmDeleteStudent}
+                title="Xác nhận xóa học viên"
+                description={`Bạn có chắc chắn muốn xóa học viên "${deleteConfirm?.name}" khỏi hệ thống? Hành động này không thể hoàn tác.`}
+                confirmText="Xóa"
+                cancelText="Hủy"
+                variant="danger"
+            />
         </div>
     );
 }

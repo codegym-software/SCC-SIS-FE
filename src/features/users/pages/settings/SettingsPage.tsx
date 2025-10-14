@@ -40,6 +40,7 @@ export default function SettingsPage() {
         theme: 'light',
         language: 'vi',
         fontSize: 'medium',
+        backgroundImage: null as string | null,
     });
 
     const [isSaving, setIsSaving] = useState(false);
@@ -165,6 +166,14 @@ export default function SettingsPage() {
 
             // Save to localStorage
             localStorage.setItem('appearanceSettings', JSON.stringify(appearanceSettings));
+            
+            // Apply background image if exists
+            if (appearanceSettings.backgroundImage) {
+                document.documentElement.style.setProperty('--dashboard-bg-image', `url(${appearanceSettings.backgroundImage})`);
+            } else {
+                document.documentElement.style.removeProperty('--dashboard-bg-image');
+            }
+            
             toast.success('Thành công', 'Đã áp dụng cài đặt giao diện thành công!');
         } catch (error) {
             toast.error('Lỗi', 'Không thể áp dụng cài đặt giao diện');

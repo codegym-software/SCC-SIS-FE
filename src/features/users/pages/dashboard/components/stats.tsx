@@ -20,7 +20,7 @@ interface StatsProps {
 
 const Stats: React.FC<StatsProps> = ({ stats, isLoaded }) => {
   return (
-    <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {stats.map((s, index) => {
         const IconComponent = s.icon;
         return (
@@ -40,7 +40,7 @@ const Stats: React.FC<StatsProps> = ({ stats, isLoaded }) => {
 
             <div className="relative z-10">
               <div className="flex items-start justify-between mb-4">
-                <div className="text-xs text-gray-600 font-semibold uppercase tracking-wide">
+                <div className="text-xs text-gray-600 font-semibold uppercase tracking-wide whitespace-nowrap">
                   {s.label}
                 </div>
                 <div
@@ -52,7 +52,7 @@ const Stats: React.FC<StatsProps> = ({ stats, isLoaded }) => {
               <div className="text-3xl font-bold text-gray-900 mb-2 group-hover:text-gray-800 transition-colors">
                 {s.value}
               </div>
-              <div className="text-sm text-gray-600 mb-4">{s.sub}</div>
+              <div className="text-sm text-gray-600 mb-4 whitespace-nowrap">{s.sub}</div>
               {s.change && (
                 <div
                   className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${

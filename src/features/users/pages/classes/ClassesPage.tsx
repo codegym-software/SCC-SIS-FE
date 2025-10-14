@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Search, X } from 'lucide-react';
+import { Search, X, ChevronDown, Check } from 'lucide-react';
 import ClassList from '@/features/users/pages/classes/list.tsx';
 import ManageStudentsModal from '@/features/users/pages/classes/components/ManageStudentsModal';
 import AssignInstructorModal from '@/features/users/pages/classes/components/AssignInstructorModal';
@@ -39,6 +39,84 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
     );
 }
 
+// MultiSelect component for days and time selection
+function MultiSelect({ 
+    options, 
+    selectedValues, 
+    onChange, 
+    placeholder, 
+    name,
+    error 
+}: { 
+    options: string[]; 
+    selectedValues: string[]; 
+    onChange: (values: string[]) => void; 
+    placeholder: string;
+    name: string;
+    error?: string;
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+
+    const handleToggle = (value: string) => {
+        if (selectedValues.includes(value)) {
+            onChange(selectedValues.filter(v => v !== value));
+        } else {
+            onChange([...selectedValues, value]);
+        }
+    };
+
+    const formatDisplayValue = (values: string[]) => {
+        if (values.length === 0) return placeholder;
+        if (values.length === 1) return values[0];
+        if (values.length <= 3) return values.join(', ');
+        return `${values.length} mục đã chọn`;
+    };
+
+    return (
+        <div className="relative">
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className={`w-full h-9 rounded-md border px-3 text-sm text-left flex items-center justify-between ${
+                    error ? 'border-red-500' : 'border-gray-300'
+                }`}
+            >
+                <span className={selectedValues.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
+                    {formatDisplayValue(selectedValues)}
+                </span>
+                <ChevronDown size={16} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {isOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-auto">
+                    {options.map((option) => (
+                        <label
+                            key={option}
+                            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                        >
+                            <input
+                                type="checkbox"
+                                checked={selectedValues.includes(option)}
+                                onChange={() => handleToggle(option)}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-900">{option}</span>
+                            {selectedValues.includes(option) && (
+                                <Check size={16} className="text-blue-600 ml-auto" />
+                            )}
+                        </label>
+                    ))}
+                </div>
+            )}
+            
+            {error && <div className="text-xs text-red-600 mt-1">{error}</div>}
+            
+            {/* Hidden input for form submission */}
+            <input type="hidden" name={name} value={selectedValues.join(',')} />
+        </div>
+    );
+}
+
 export default function ClassesPage() {
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
@@ -47,6 +125,16 @@ export default function ClassesPage() {
     const [openManageStudents, setOpenManageStudents] = useState<Class | null>(null);
     const [openAssignInstructor, setOpenAssignInstructor] = useState<Class | null>(null);
 
+    const handleUpdateInstructors = (classId: string, updatedInstructors: Instructor[]) => {
+        setClasses(prev => 
+            prev.map(cls => 
+                cls.id === classId 
+                    ? { ...cls, instructors: updatedInstructors }
+                    : cls
+            )
+        );
+    };
+
     const [classes, setClasses] = useState<Class[]>([
         {
             id: '1',
@@ -54,7 +142,7 @@ export default function ClassesPage() {
             description: 'Khóa học Java dành cho người mới bắt đầu',
             program: 'Công nghệ Thông tin',
             startDate: '2024-12-25',
-            schedule: 'Thứ 2, 4, 6 - 19:00-21:30',
+            schedule: 'Thứ 2, Thứ 4, Thứ 6 - 19:00-21:30',
             location: 'Phòng A101',
             students: 9,
             maxStudents: 30,
@@ -71,7 +159,7 @@ export default function ClassesPage() {
             description: 'Phát triển ứng dụng web hiện đại',
             program: 'Công nghệ Thông tin',
             startDate: '2024-11-20',
-            schedule: 'Thứ 3, 5, 7 - 18:30-21:00',
+            schedule: 'Thứ 3, Thứ 5, Thứ 7 - 18:30-21:00',
             location: 'Phòng B201',
             students: 22,
             maxStudents: 25,
@@ -86,7 +174,7 @@ export default function ClassesPage() {
             description: 'Học lập trình Python từ cơ bản đến nâng cao',
             program: 'Công nghệ Thông tin',
             startDate: '2024-12-01',
-            schedule: 'Thứ 2, 4 - 18:00-20:30',
+            schedule: 'Thứ 2, Thứ 4 - 18:00-20:30',
             location: 'Phòng C301',
             students: 30,
             maxStudents: 35,
@@ -102,7 +190,7 @@ export default function ClassesPage() {
             description: 'Chiến lược marketing số toàn diện',
             program: 'Digital Marketing',
             startDate: '2024-10-15',
-            schedule: 'Thứ 3, 6 - 19:00-21:30',
+            schedule: 'Thứ 3, Thứ 6 - 19:00-21:30',
             location: 'Phòng D401',
             students: 18,
             maxStudents: 20,
@@ -140,6 +228,35 @@ export default function ClassesPage() {
             maxStudents?: string;
         }>({});
 
+        // Parse existing schedule for editing
+        const parseSchedule = (schedule: string) => {
+            if (!schedule) return { days: [], times: [] };
+            const [days, times] = schedule.split(' - ');
+            return {
+                days: days ? days.split(', ').filter(day => day.trim()) : [],
+                times: times ? [times].filter(time => time.trim()) : []
+            };
+        };
+
+        const initialSchedule = editing ? parseSchedule(editing.schedule) : { days: [], times: [] };
+        const [selectedDays, setSelectedDays] = useState<string[]>(initialSchedule.days);
+        const [selectedTime, setSelectedTime] = useState<string>(initialSchedule.times[0] || '');
+
+        // Debug: Log the parsed schedule
+        console.log('Editing schedule:', editing?.schedule);
+        console.log('Parsed days:', initialSchedule.days);
+        console.log('Parsed time:', initialSchedule.times[0]);
+
+        // Options for days and times
+        const dayOptions = [
+            'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'
+        ];
+
+        const timeOptions = [
+            '08:00-12:00', '14:00-17:00', '18:00-20:30', '18:30-21:00', 
+            '19:00-21:30', '19:30-21:30', '08:00-11:00', '09:00-17:00'
+        ];
+
         return (
             <form
                 onSubmit={(e) => {
@@ -151,7 +268,7 @@ export default function ClassesPage() {
                         description: String(form.get('description') || ''),
                         program: String(form.get('program') || ''),
                         startDate: String(form.get('startDate') || ''),
-                        schedule: `${String(form.get('scheduleDays') || '')} - ${String(form.get('scheduleTime') || '')}`,
+                        schedule: `${selectedDays.join(', ')} - ${selectedTime}`,
                         location: String(form.get('location') || ''),
                         students: editing?.students ?? 0, // Giữ nguyên số học viên hiện tại khi chỉnh sửa
                         maxStudents: Number(form.get('maxStudents') || 0),
@@ -171,7 +288,7 @@ export default function ClassesPage() {
                     if (!payload.startDate) {
                         newErrors.startDate = 'Vui lòng chọn ngày bắt đầu';
                     }
-                    if (!form.get('scheduleDays') || !form.get('scheduleTime')) {
+                    if (selectedDays.length === 0 || !selectedTime) {
                         newErrors.schedule = 'Vui lòng chọn đầy đủ ngày và giờ học';
                     }
                     if (!payload.location || payload.location.trim().length < 2) {
@@ -269,42 +386,29 @@ export default function ClassesPage() {
                             </div>
                             <div>
                                 <label className="block text-xs text-gray-600 mb-1">Ngày học *</label>
-                                <select
+                                <MultiSelect
+                                    options={dayOptions}
+                                    selectedValues={selectedDays}
+                                    onChange={setSelectedDays}
+                                    placeholder="Chọn ngày học"
                                     name="scheduleDays"
-                                    defaultValue={editing?.schedule ? editing.schedule.split(' - ')[0] : ''}
-                                    required
-                                    className={`w-full h-9 rounded-md border px-3 text-sm ${errors.schedule ? 'border-red-500' : 'border-gray-300'}`}
-                                >
-                                    <option value="">Chọn ngày học</option>
-                                    <option value="Thứ 2, 4, 6">Thứ 2, 4, 6</option>
-                                    <option value="Thứ 3, 5, 7">Thứ 3, 5, 7</option>
-                                    <option value="Thứ 2, 4">Thứ 2, 4</option>
-                                    <option value="Thứ 3, 6">Thứ 3, 6</option>
-                                    <option value="Thứ 7, CN">Thứ 7, CN</option>
-                                    <option value="Thứ 2, 3, 4, 5, 6">Thứ 2, 3, 4, 5, 6</option>
-                                    <option value="Thứ 7">Thứ 7</option>
-                                    <option value="Thứ 3, 5">Thứ 3, 5</option>
-                                </select>
+                                    error={errors.schedule}
+                                />
                             </div>
                             <div>
                                 <label className="block text-xs text-gray-600 mb-1">Giờ học *</label>
                                 <select
                                     name="scheduleTime"
-                                    defaultValue={editing?.schedule ? editing.schedule.split(' - ')[1] : ''}
-                                    required
+                                    value={selectedTime}
+                                    onChange={(e) => setSelectedTime(e.target.value)}
                                     className={`w-full h-9 rounded-md border px-3 text-sm ${errors.schedule ? 'border-red-500' : 'border-gray-300'}`}
                                 >
                                     <option value="">Chọn giờ học</option>
-                                    <option value="19:00-21:30">19:00-21:30</option>
-                                    <option value="18:30-21:00">18:30-21:00</option>
-                                    <option value="18:00-20:30">18:00-20:30</option>
-                                    <option value="19:00-21:30">19:00-21:30</option>
-                                    <option value="08:00-12:00">08:00-12:00</option>
-                                    <option value="18:00-20:00">18:00-20:00</option>
-                                    <option value="14:00-17:00">14:00-17:00</option>
-                                    <option value="08:00-11:00">08:00-11:00</option>
-                                    <option value="19:30-21:30">19:30-21:30</option>
-                                    <option value="09:00-17:00">09:00-17:00</option>
+                                    {timeOptions.map((time) => (
+                                        <option key={time} value={time}>
+                                            {time}
+                                        </option>
+                                    ))}
                                 </select>
                                 {errors.schedule && <div className="text-xs text-red-600 mt-1">{errors.schedule}</div>}
                             </div>
@@ -371,9 +475,6 @@ export default function ClassesPage() {
         <div className="space-y-6">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 grid place-items-center text-white">
-                        <BookOpen size={18} />
-                    </div>
                     <div>
                         <h1 className="text-lg font-semibold">Quản lý Lớp học</h1>
                         <p className="text-xs text-gray-500">Quản lý thông tin lớp học và danh sách học viên</p>
@@ -446,6 +547,7 @@ export default function ClassesPage() {
                     <AssignInstructorModal 
                         classItem={openAssignInstructor} 
                         onClose={() => setOpenAssignInstructor(null)}
+                        onUpdateInstructors={handleUpdateInstructors}
                     />
                 )}
             </Modal>
