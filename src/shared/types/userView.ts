@@ -11,6 +11,7 @@ export interface UserAssignment {
     scope: RoleScope;   // backend trả về
     centerId: number | null;
     centerName: string | null;
+    assignedAt?: string; // Optional: timestamp khi được gán vai trò
 }
 
 export interface UserViewDto {

@@ -2,8 +2,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useToast } from '../../../shared/hooks/useToast'
 import { usePermission } from '../../../shared/components/PermissionProvider'
-import { ShieldOff, ShieldCheck, MoreHorizontal, Plus, Search, ChevronDown, Eye, Pencil } from 'lucide-react'
+import { MoreHorizontal, Plus, Search, ChevronDown, Eye, Pencil } from 'lucide-react'
 import CreateUserModal from '../components/CreateUserModal'
+import AssignRoleModal from '../components/AssignRoleModal'
 
 import { listUserViews, getRoleStats } from '../../../shared/api/userViews'
 import { getCentersLite } from '../../../shared/api/centers'
@@ -31,7 +32,7 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
 export default function UsersPage() {
     const [openCreate, setOpenCreate] = useState(false)
     const [openView, setOpenView] = useState<UserViewDto | null>(null)
-    const [openEdit, setOpenEdit] = useState<UserViewDto | null>(null)
+    const [openAssignRole, setOpenAssignRole] = useState<UserViewDto | null>(null)
     const [query, setQuery] = useState('')
     const [openMenuId, setOpenMenuId] = useState<number | null>(null)
 
@@ -360,25 +361,11 @@ export default function UsersPage() {
                                                         {can('users:update') && (
                                                             <button
                                                                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                                                                onClick={() => { setOpenMenuId(null); setOpenEdit(u) }}
+                                                                onClick={() => { setOpenMenuId(null); setOpenAssignRole(u) }}
                                                             >
-                                                                <Pencil size={16} /> Chỉnh sửa
+                                                                <Pencil size={16} /> Cập nhật vai trò
                                                             </button>
                                                         )}
-                                                        <button
-                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                                                            onClick={() => {
-                                                                setOpenMenuId(null)
-                                                                const action = u.active ? 'Vô hiệu hóa' : 'Kích hoạt'
-                                                                if (confirm(`${action} ${u.fullName}?`)) {
-                                                                    // TODO: gọi API toggle active khi có
-                                                                    setUsers(prev => prev.map(x => x.userId === u.userId ? { ...x, active: !u.active } : x))
-                                                                    toast.success(`${action} thành công`)
-                                                                }
-                                                            }}
-                                                        >
-                                                            {u.active ? (<><ShieldOff size={16} /> Vô hiệu hóa</>) : (<><ShieldCheck size={16} /> Kích hoạt</>)}
-                                                        </button>
                                                     </div>
                                                 </>
                                             )}
@@ -460,38 +447,16 @@ export default function UsersPage() {
                 )}
             </Modal>
 
-            {/* Edit modal (demo) */}
-            <Modal open={!!openEdit} onClose={() => setOpenEdit(null)}>
-                {openEdit && (
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault()
-                            // TODO: gọi API update khi có
-                            setOpenEdit(null)
-                            toast.success('Đã lưu thay đổi (demo)')
-                        }}
-                    >
-                        <div className="px-4 py-3 border-b flex items-center justify-between">
-                            <div className="font-medium">Chỉnh sửa người dùng</div>
-                            <button type="button" className="h-8 w-8 rounded hover:bg-gray-100" onClick={() => setOpenEdit(null)}>×</button>
-                        </div>
-                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs text-gray-600 mb-1">Họ và tên</label>
-                                <input defaultValue={openEdit.fullName} className="w-full h-9 rounded-md border px-3 text-sm" />
-                            </div>
-                            <div>
-                                <label className="block text-xs text-gray-600 mb-1">Chuyên môn</label>
-                                <input defaultValue={openEdit.specialty ?? ''} className="w-full h-9 rounded-md border px-3 text-sm" />
-                            </div>
-                        </div>
-                        <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
-                            <button type="button" className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={() => setOpenEdit(null)}>Hủy</button>
-                            <button type="submit" className="h-9 px-3 rounded-md bg-gray-900 text-white hover:bg-black">Lưu thay đổi</button>
-                        </div>
-                    </form>
-                )}
-            </Modal>
+            {/* Assign Role Modal */}
+            <AssignRoleModal
+                open={!!openAssignRole}
+                onClose={() => setOpenAssignRole(null)}
+                onSuccess={() => {
+                    fetchUsers()
+                    toast.success('Cập nhật vai trò thành công')
+                }}
+                user={openAssignRole}
+            />
         </div>
     )
 }
