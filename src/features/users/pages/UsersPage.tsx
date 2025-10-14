@@ -9,7 +9,6 @@ import { listUserViews, getRoleStats } from '../../../shared/api/userViews'
 import { getCentersLite } from '../../../shared/api/centers'
 import { getRoles } from '../../../shared/api/roles'
 import { createUser } from '../../../shared/api/users'
-import { getProfile } from '../../../shared/api/auth'
 
 import type { UserViewDto, RoleCode } from '../../../shared/types/userView'
 import type { CenterLiteDto } from '../../../shared/types/centers'
@@ -57,26 +56,41 @@ export default function UsersPage() {
     const toast = useToast()
     const { can } = usePermission()
 
-    // Debug profile (token ok?)
-    useEffect(() => {
-        getProfile()
-            .then(res => console.log('[PROFILE]', res.data))
-            .catch(err => console.error('[PROFILE ERR]', err?.response?.status, err?.response?.data))
-    }, [])
-
     // Load dropdowns (roles, centers lite) 1 lần khi mount
     useEffect(() => {
         (async () => {
             try {
                 const [r, c] = await Promise.all([getRoles(true), getCentersLite()])
-                setRoles(Array.isArray(r.data) ? r.data : [])
-                setCenters(Array.isArray(c.data) ? c.data : [])
+
+                // Xử lý different data formats
+                let rolesData = [];
+                if (Array.isArray(r.data)) {
+                    rolesData = r.data;
+                } else if (r.data && typeof r.data === 'object') {
+                    // Có thể data nằm trong property khác
+                    const dataObj = r.data as any;
+                    if (Array.isArray(dataObj.roles)) {
+                        rolesData = dataObj.roles;
+                    } else if (Array.isArray(dataObj.data)) {
+                        rolesData = dataObj.data;
+                    } else if (Array.isArray(dataObj.items)) {
+                        rolesData = dataObj.items;
+                    } else {
+                        console.log('[DEBUG] Unknown data structure, keys:', Object.keys(dataObj));
+                        rolesData = [];
+                    }
+                }
+
+                const centersData = Array.isArray(c.data) ? c.data : []
+
+                setRoles(rolesData)
+                setCenters(centersData)
             } catch (e: any) {
                 console.error('[DROPDOWN LOAD ERR]', e?.response?.status, e?.response?.data)
                 toast.error('Lỗi', 'Không tải được danh sách vai trò/trung tâm')
             }
         })()
-    }, [toast])
+    }, [])
 
     // Fetch list (server-side filter) rồi áp thêm rule “phải có assignment ở center đã chọn”
     const fetchUsers = async () => {
@@ -228,7 +242,7 @@ export default function UsersPage() {
                         onChange={(e) => setSelectedCenterId(e.target.value === '' ? '' : Number(e.target.value))}
                         className="appearance-none w-full bg-[#f3f3f5] rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500"
                     >
-                        <option value="">Tất cả trung tâm</option>
+                        <option value="">Tất cả trung tâm ({centers.length})</option>
                         {centers.map(c => (
                             <option key={c.centerId} value={c.centerId}>{c.name}</option>
                         ))}
@@ -243,7 +257,7 @@ export default function UsersPage() {
                         onChange={(e) => setSelectedRoleCode(e.target.value as RoleCode | '')}
                         className="appearance-none w-full bg-[#f3f3f5] rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500"
                     >
-                        <option value="">Tất cả vai trò</option>
+                        <option value="">Tất cả vai trò ({roles.length})</option>
                         {roles.map(r => (
                             <option key={r.roleId} value={r.code}>{r.name}</option>
                         ))}

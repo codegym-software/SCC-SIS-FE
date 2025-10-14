@@ -64,7 +64,23 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
     Promise.all([getRoles(true), getCentersLite()])
       .then(([rolesRes, centersRes]) => {
         if (!isMounted) return;
-        const rolesArr = toArray<RoleDto>(rolesRes?.data);
+
+        // Xử lý roles data structure tương tự UsersPage
+        let rolesData = [];
+        if (Array.isArray(rolesRes?.data)) {
+          rolesData = rolesRes.data;
+        } else if (rolesRes?.data && typeof rolesRes.data === 'object') {
+          const dataObj = rolesRes.data as any;
+          if (Array.isArray(dataObj.roles)) {
+            rolesData = dataObj.roles;
+          } else if (Array.isArray(dataObj.data)) {
+            rolesData = dataObj.data;
+          } else if (Array.isArray(dataObj.items)) {
+            rolesData = dataObj.items;
+          }
+        }
+
+        const rolesArr = toArray<RoleDto>(rolesData);
         const centersArr = toArray<CenterLiteDto>(centersRes?.data);
         setRolesData(rolesArr);
         setCentersData(centersArr);
@@ -89,7 +105,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
     const role = getRoleById(roleId);
     return role?.code === "SUPER_ADMIN" || role?.code === "TRAINING_MANAGER";
   };
-  
+
   const isCenterScopedRole = (roleId?: number | "") => {
     const role = getRoleById(roleId);
     return role && !isGlobalRole(roleId);
@@ -150,7 +166,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
     }
 
     const hasGlobal = rows.some((r) => isGlobalRole(r.roleId));
-    
+
     if (hasGlobal) {
       // GLOBAL roles (SUPER_ADMIN, TRAINING_MANAGER): không được có vai trò khác
       if (rows.length !== 1) {
@@ -172,7 +188,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
           }
         }
       }
-      
+
       // Tối đa 3 vai trò CENTER
       const distinctRoleIds = new Set(rows.map((r) => r.roleId as number));
       if (distinctRoleIds.size > 3) {
