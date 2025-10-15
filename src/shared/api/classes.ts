@@ -1,149 +1,133 @@
 // src/shared/api/classes.ts
-import api from "./http";
+import api from './http';
 
-// Types cho Classes API
+// ===== TYPES =====
+export type StudyDay = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
+export type StudyTime = 'MORNING' | 'AFTERNOON' | 'EVENING';
 export type ClassStatus = 'PLANNED' | 'ONGOING' | 'FINISHED' | 'CANCELLED';
-export type EnrollmentStatus = 'ACTIVE' | 'DROPPED' | 'SUSPENDED';
+export type DeliveryMode = 'ONLINE' | 'OFFLINE' | 'HYBRID';
 
-export type CreateClassRequest = {
-  programId: number;
-  name: string;
-  description?: string;
-  startDate?: string;
-  endDate?: string;
-  room?: string;
-  capacity?: number;
+// ===== PROGRAM DTOs =====
+export type ProgramLiteDto = {
+    programId: number;
+    code: string;
+    name: string;
+    description: string | null;
+    durationHours: number;
+    deliveryMode: DeliveryMode;
+    categoryCode: string;
+    level: string;
+    isActive: boolean;
 };
 
-export type UpdateClassRequest = {
-  name: string;
-  description?: string;
-  startDate?: string;
-  endDate?: string;
-  room?: string;
-  capacity?: number;
+// ===== CLASS DTOs =====
+export type CreateClassDto = {
+    centerId?: number; // Optional - chỉ Super Admin mới truyền
+    programId: number;
+    name: string;
+    description?: string;
+    startDate?: string; // ISO date: "2025-01-15"
+    endDate?: string;   // ISO date: "2025-06-30"
+    room?: string;
+    capacity?: number;
+    studyDays?: StudyDay[]; // ["MONDAY", "THURSDAY"]
+    studyTime?: StudyTime;  // "EVENING"
 };
 
-export type ClassResponse = {
-  classId: number;
-  centerId: number;
-  centerName: string;
-  programId: number;
-  programName: string;
-  programCode: string;
-  name: string;
-  description: string;
-  startDate: string;
-  endDate: string;
-  status: ClassStatus;
-  room: string;
-  capacity: number;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: number;
-  updatedBy: number;
+export type UpdateClassDto = {
+    programId?: number;
+    name?: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+    room?: string;
+    capacity?: number;
+    status?: ClassStatus;
+    studyDays?: StudyDay[];
+    studyTime?: StudyTime;
 };
 
-export type ClassLiteResponse = {
-  classId: number;
-  name: string;
-  programName: string;
-  centerName: string;
-  status: ClassStatus;
+export type ClassDto = {
+    classId: number;
+    centerId: number;
+    centerName: string;
+    programId: number;
+    programName: string;
+    name: string;
+    description: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    status: ClassStatus;
+    room: string | null;
+    capacity: number | null;
+    studyDays: StudyDay[] | null;
+    studyTime: StudyTime | null;
+    createdAt: string;
+    updatedAt: string;
+    createdBy: number | null;
+    updatedBy: number | null;
 };
 
-export type AssignLecturerRequest = {
-  startDate: string;
-  note?: string;
+export type ClassLiteDto = {
+    classId: number;
+    name: string;
+    programName: string;
+    centerName: string;
+    status: ClassStatus;
 };
 
-export type RemoveLecturerRequest = {
-  endDate?: string;
-  note?: string;
-};
+// ===== PROGRAM APIs =====
+/**
+ * Lấy danh sách Chương trình học cho dropdown (phiên bản rút gọn)
+ */
+export const getProgramsLite = (category?: string) => 
+    api.get<ProgramLiteDto[]>('/api/programs/lite', { 
+        params: category ? { category } : undefined 
+    });
 
-export type ClassLecturerResponse = {
-  id: number;
-  classId: number;
-  teacherId: number;
-  teacherName: string;
-  teacherEmail: string;
-  effStartDate: string;
-  effEndDate: string;
-  createdAt: string;
-  createdBy: string;
-};
+/**
+ * Lấy tất cả Chương trình học đang hoạt động
+ */
+export const getPrograms = () => 
+    api.get<ProgramLiteDto[]>('/api/programs');
 
-export type EnrollmentResponse = {
-  enrollmentId: number;
-  classId: number;
-  studentId: number;
-  studentName: string;
-  studentEmail: string;
-  status: string;
-  enrolledAt: string;
-  leftAt: string;
-  note: string;
-};
+// ===== CLASS APIs =====
+/**
+ * Tạo Lớp học mới
+ * - Super Admin: truyền centerId trong body
+ * - Academic Staff: không cần centerId (tự động lấy từ user)
+ */
+export const createClass = (payload: CreateClassDto) => 
+    api.post<ClassDto>('/api/classes', payload);
 
-export type EnrollmentRequest = {
-  studentId: number;
-  enrolledAt?: string;
-  note?: string;
-};
+/**
+ * Hiển thị Danh sách Lớp học
+ * - Super Admin: có thể filter theo centerId, status
+ * - Academic Staff: tự động lọc theo center của mình
+ */
+export const listClasses = (params?: { centerId?: number; status?: ClassStatus }) => 
+    api.get<ClassDto[]>('/api/classes', { params });
 
-export type UpdateEnrollmentRequest = {
-  status: EnrollmentStatus;
-  leftAt?: string;
-  note?: string;
-};
+/**
+ * Lấy chi tiết Lớp học theo ID
+ */
+export const getClassById = (classId: number) => 
+    api.get<ClassDto>(`/api/classes/${classId}`);
 
-// Classes API
-export const createClass = (payload: CreateClassRequest) =>
-  api.post("/api/classes", payload);
+/**
+ * Lấy danh sách Lớp học cho dropdown (phiên bản rút gọn)
+ */
+export const getClassesLite = () => 
+    api.get<ClassLiteDto[]>('/api/classes/lite');
 
-export const getClasses = (params?: { centerId?: number; status?: ClassStatus }) =>
-  api.get("/api/classes", { params });
+/**
+ * Sửa chi tiết Lớp học theo ID
+ */
+export const updateClass = (classId: number, payload: UpdateClassDto) => 
+    api.put<ClassDto>(`/api/classes/${classId}`, payload);
 
-export const getClassById = (id: number) =>
-  api.get(`/api/classes/${id}`);
-
-export const getClassesLite = () =>
-  api.get("/api/classes/lite");
-
-export const updateClass = (id: number, payload: UpdateClassRequest) =>
-  api.put(`/api/classes/${id}`, payload);
-
-export const getPrograms = () =>
-  api.get("/api/classes/programs");
-
-// Lecturers API
-export const assignLecturer = (classId: number, lecturerId: number, payload: AssignLecturerRequest) =>
-  api.post(`/api/classes/${classId}/lecturers/${lecturerId}`, payload);
-
-export const removeLecturer = (classId: number, lecturerId: number, payload?: RemoveLecturerRequest) =>
-  api.delete(`/api/classes/${classId}/lecturers/${lecturerId}`, { data: payload });
-
-export const getClassLecturers = (classId: number) =>
-  api.get(`/api/classes/${classId}/lecturers`);
-
-export const getClassLecturersHistory = (classId: number) =>
-  api.get(`/api/classes/${classId}/lecturers/all`);
-
-// Students API
-export const getClassStudents = (classId: number, params?: {
-  status?: EnrollmentStatus;
-  page?: number;
-  size?: number;
-  sort?: string;
-}) =>
-  api.get(`/api/classes/${classId}/students`, { params });
-
-export const enrollStudent = (classId: number, payload: EnrollmentRequest) =>
-  api.post(`/api/classes/${classId}/students`, payload);
-
-export const updateEnrollment = (classId: number, enrollmentId: number, payload: UpdateEnrollmentRequest) =>
-  api.patch(`/api/classes/${classId}/students/${enrollmentId}`, payload);
-
-export const removeStudent = (classId: number, enrollmentId: number, reason?: string) =>
-  api.delete(`/api/classes/${classId}/students/${enrollmentId}`, { params: { reason } });
+/**
+ * Xóa Lớp học theo ID
+ */
+export const deleteClass = (classId: number) => 
+    api.delete(`/api/classes/${classId}`);

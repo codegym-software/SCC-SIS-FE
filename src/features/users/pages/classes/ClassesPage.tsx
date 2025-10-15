@@ -3,6 +3,18 @@ import { Search, X, ChevronDown, Check } from 'lucide-react';
 import ClassList from '@/features/users/pages/classes/list.tsx';
 import ManageStudentsModal from '@/features/users/pages/classes/components/ManageStudentsModal';
 import AssignInstructorModal from '@/features/users/pages/classes/components/AssignInstructorModal';
+import { useToast } from '@/shared/hooks/useToast';
+import { 
+    listClasses, 
+    createClass, 
+    updateClass,
+    getProgramsLite,
+    type ClassDto,
+    type ProgramLiteDto,
+    type StudyDay,
+    type StudyTime,
+    type ClassStatus
+} from '@/shared/api/classes';
 
 type Instructor = {
     id: string;
@@ -11,18 +23,94 @@ type Instructor = {
     avatar?: string;
 };
 
+// Map ClassDto to UI Class type
 type Class = {
     id: string;
     name: string;
     description: string;
     program: string;
+    programId: number;
     startDate: string;
+    endDate?: string;
     schedule: string;
     location: string;
     students: number;
     maxStudents: number;
     instructors: Instructor[];
     status: 'Chuẩn bị' | 'Đang học' | 'Hoàn thành' | 'Tạm dừng';
+    studyDays?: StudyDay[];
+    studyTime?: StudyTime;
+    centerName?: string;
+};
+
+// Helper function to map API status to UI status
+const mapStatusToUI = (status: ClassStatus): Class['status'] => {
+    const statusMap: Record<ClassStatus, Class['status']> = {
+        'PLANNED': 'Chuẩn bị',
+        'ONGOING': 'Đang học',
+        'FINISHED': 'Hoàn thành',
+        'CANCELLED': 'Tạm dừng'
+    };
+    return statusMap[status];
+};
+
+// Helper function to map UI status to API status
+const mapStatusToAPI = (status: Class['status']): ClassStatus => {
+    const statusMap: Record<Class['status'], ClassStatus> = {
+        'Chuẩn bị': 'PLANNED',
+        'Đang học': 'ONGOING',
+        'Hoàn thành': 'FINISHED',
+        'Tạm dừng': 'CANCELLED'
+    };
+    return statusMap[status];
+};
+
+// Helper function to format schedule from API data
+const formatSchedule = (studyDays?: StudyDay[] | null, studyTime?: StudyTime | null): string => {
+    if (!studyDays || studyDays.length === 0) return '';
+    
+    const dayMap: Record<StudyDay, string> = {
+        'MONDAY': 'Thứ 2',
+        'TUESDAY': 'Thứ 3',
+        'WEDNESDAY': 'Thứ 4',
+        'THURSDAY': 'Thứ 5',
+        'FRIDAY': 'Thứ 6',
+        'SATURDAY': 'Thứ 7',
+        'SUNDAY': 'CN'
+    };
+    
+    const timeMap: Record<StudyTime, string> = {
+        'MORNING': '08:00-12:00',
+        'AFTERNOON': '14:00-17:00',
+        'EVENING': '18:00-21:30'
+    };
+    
+    const days = studyDays.map(d => dayMap[d]).join(', ');
+    const time = studyTime ? timeMap[studyTime] : '';
+    
+    return time ? `${days} - ${time}` : days;
+};
+
+// Helper function to map ClassDto to UI Class
+const mapClassDtoToUI = (dto: ClassDto): Class => {
+    return {
+        id: String(dto.classId),
+        name: dto.name,
+        description: dto.description || '',
+        program: dto.programName,
+        programId: dto.programId,
+        startDate: dto.startDate || '',
+        endDate: dto.endDate || '',
+        schedule: formatSchedule(dto.studyDays, dto.studyTime),
+        location: dto.room || '',
+        students: 0, // TODO: Get from enrollment API
+        maxStudents: dto.capacity || 0,
+        instructors: [], // TODO: Get from lecturer API
+        status: mapStatusToUI(dto.status),
+        studyDays: dto.studyDays || undefined,
+        studyTime: dto.studyTime || undefined,
+        centerName: dto.centerName
+    };
 };
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
@@ -118,6 +206,7 @@ function MultiSelect({
 }
 
 export default function ClassesPage() {
+    const toast = useToast();
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [openCreate, setOpenCreate] = useState(false);
@@ -137,266 +226,34 @@ export default function ClassesPage() {
         );
     };
 
-    const [classes, setClasses] = useState<Class[]>([
-        {
-            id: '1',
-            name: 'Lập trình Java Cơ bản - K15',
-            description: 'Khóa học Java dành cho người mới bắt đầu',
-            program: 'Công nghệ Thông tin',
-            startDate: '2024-12-25',
-            schedule: 'Thứ 2, Thứ 4, Thứ 6 - 19:00-21:30',
-            location: 'Phòng A101',
-            students: 9,
-            maxStudents: 30,
-            instructors: [
-                { id: '1', name: 'Nguyễn Văn A', initial: 'N' },
-                { id: '2', name: 'Trần Thị B', initial: 'T' },
-                { id: '3', name: 'Lê Văn C', initial: 'L' }
-            ],
-            status: 'Chuẩn bị',
-        },
-        {
-            id: '2',
-            name: 'Web Development - K08',
-            description: 'Phát triển ứng dụng web hiện đại',
-            program: 'Công nghệ Thông tin',
-            startDate: '2024-11-20',
-            schedule: 'Thứ 3, Thứ 5, Thứ 7 - 18:30-21:00',
-            location: 'Phòng B201',
-            students: 22,
-            maxStudents: 25,
-            instructors: [
-                { id: '4', name: 'Trần Thị B', initial: 'T' }
-            ],
-            status: 'Đang học',
-        },
-        {
-            id: '3',
-            name: 'Python Programming - K12',
-            description: 'Học lập trình Python từ cơ bản đến nâng cao',
-            program: 'Công nghệ Thông tin',
-            startDate: '2024-12-01',
-            schedule: 'Thứ 2, Thứ 4 - 18:00-20:30',
-            location: 'Phòng C301',
-            students: 30,
-            maxStudents: 35,
-            instructors: [
-                { id: '5', name: 'Lê Văn C', initial: 'L' },
-                { id: '6', name: 'Phạm Thị D', initial: 'P' }
-            ],
-            status: 'Đang học',
-        },
-        {
-            id: '4',
-            name: 'Digital Marketing - K05',
-            description: 'Chiến lược marketing số toàn diện',
-            program: 'Digital Marketing',
-            startDate: '2024-10-15',
-            schedule: 'Thứ 3, Thứ 6 - 19:00-21:30',
-            location: 'Phòng D401',
-            students: 18,
-            maxStudents: 20,
-            instructors: [
-                { id: '7', name: 'Nguyễn Văn A', initial: 'N' }
-            ],
-            status: 'Đang học',
-        },
-        {
-            id: '5',
-            name: 'React Native - K03',
-            description: 'Phát triển ứng dụng di động với React Native',
-            program: 'Công nghệ Thông tin',
-            startDate: '2025-01-15',
-            schedule: 'Thứ 7, CN - 08:00-12:00',
-            location: 'Phòng E501',
-            students: 0,
-            maxStudents: 15,
-            instructors: [
-                { id: '8', name: 'Trần Thị B', initial: 'T' }
-            ],
-            status: 'Chuẩn bị',
-        },
-        {
-            id: '6',
-            name: 'Lập trình Java Nâng Cao - K16',
-            description: 'Khóa học Java nâng cao cho lập trình viên có kinh nghiệm',
-            program: 'Công nghệ Thông tin',
-            startDate: '2025-10-14',
-            schedule: 'Thứ 2, Thứ 3, Thứ 4 - 19:00-21:30',
-            location: 'Phòng A107',
-            students: 12,
-            maxStudents: 25,
-            instructors: [
-                { id: '9', name: 'Phạm Văn E', initial: 'P' }
-            ],
-            status: 'Chuẩn bị',
-        },
-        {
-            id: '7',
-            name: 'Data Science - K09',
-            description: 'Khoa học dữ liệu và phân tích dữ liệu',
-            program: 'Công nghệ Thông tin',
-            startDate: '2024-11-10',
-            schedule: 'Thứ 2, Thứ 5 - 18:00-21:00',
-            location: 'Phòng F601',
-            students: 20,
-            maxStudents: 30,
-            instructors: [
-                { id: '10', name: 'Hoàng Thị F', initial: 'H' }
-            ],
-            status: 'Đang học',
-        },
-        {
-            id: '8',
-            name: 'UI/UX Design - K11',
-            description: 'Thiết kế giao diện và trải nghiệm người dùng',
-            program: 'Thiết kế Đồ họa',
-            startDate: '2024-12-15',
-            schedule: 'Thứ 3, Thứ 6 - 19:00-21:30',
-            location: 'Phòng G701',
-            students: 15,
-            maxStudents: 20,
-            instructors: [
-                { id: '11', name: 'Vũ Văn G', initial: 'V' }
-            ],
-            status: 'Đang học',
-        },
-        {
-            id: '9',
-            name: 'Mobile App Development - K13',
-            description: 'Phát triển ứng dụng di động đa nền tảng',
-            program: 'Công nghệ Thông tin',
-            startDate: '2025-02-01',
-            schedule: 'Thứ 4, Thứ 7 - 18:30-21:00',
-            location: 'Phòng H801',
-            students: 8,
-            maxStudents: 25,
-            instructors: [
-                { id: '12', name: 'Đặng Thị H', initial: 'Đ' }
-            ],
-            status: 'Chuẩn bị',
-        },
-        {
-            id: '10',
-            name: 'E-commerce Marketing - K07',
-            description: 'Marketing thương mại điện tử và bán hàng online',
-            program: 'Digital Marketing',
-            startDate: '2024-11-05',
-            schedule: 'Thứ 2, Thứ 4 - 19:30-21:30',
-            location: 'Phòng I901',
-            students: 25,
-            maxStudents: 30,
-            instructors: [
-                { id: '13', name: 'Bùi Văn I', initial: 'B' }
-            ],
-            status: 'Đang học',
-        },
-        {
-            id: '11',
-            name: 'Cybersecurity - K14',
-            description: 'An ninh mạng và bảo mật thông tin',
-            program: 'Công nghệ Thông tin',
-            startDate: '2025-03-10',
-            schedule: 'Thứ 3, Thứ 5 - 18:00-20:30',
-            location: 'Phòng J1001',
-            students: 0,
-            maxStudents: 20,
-            instructors: [
-                { id: '14', name: 'Lý Thị J', initial: 'L' }
-            ],
-            status: 'Chuẩn bị',
-        },
-        {
-            id: '12',
-            name: 'Business Analytics - K06',
-            description: 'Phân tích kinh doanh và ra quyết định dựa trên dữ liệu',
-            program: 'Kinh doanh',
-            startDate: '2024-10-20',
-            schedule: 'Thứ 6, CN - 14:00-17:00',
-            location: 'Phòng K1101',
-            students: 18,
-            maxStudents: 25,
-            instructors: [
-                { id: '15', name: 'Trịnh Văn K', initial: 'T' }
-            ],
-            status: 'Đang học',
-        },
-        {
-            id: '13',
-            name: 'Cloud Computing - K17',
-            description: 'Điện toán đám mây và triển khai ứng dụng',
-            program: 'Công nghệ Thông tin',
-            startDate: '2025-04-15',
-            schedule: 'Thứ 2, Thứ 4, Thứ 6 - 19:00-21:00',
-            location: 'Phòng L1201',
-            students: 0,
-            maxStudents: 20,
-            instructors: [
-                { id: '16', name: 'Phan Thị L', initial: 'P' }
-            ],
-            status: 'Chuẩn bị',
-        },
-        {
-            id: '14',
-            name: 'Social Media Marketing - K10',
-            description: 'Marketing trên mạng xã hội và quảng cáo trực tuyến',
-            program: 'Digital Marketing',
-            startDate: '2024-12-10',
-            schedule: 'Thứ 3, Thứ 5 - 19:00-21:30',
-            location: 'Phòng M1301',
-            students: 22,
-            maxStudents: 30,
-            instructors: [
-                { id: '17', name: 'Ngô Văn M', initial: 'N' }
-            ],
-            status: 'Đang học',
-        },
-        {
-            id: '15',
-            name: 'Game Development - K18',
-            description: 'Phát triển game và ứng dụng giải trí',
-            program: 'Công nghệ Thông tin',
-            startDate: '2025-05-20',
-            schedule: 'Thứ 7, CN - 09:00-12:00',
-            location: 'Phòng N1401',
-            students: 0,
-            maxStudents: 15,
-            instructors: [
-                { id: '18', name: 'Đinh Thị N', initial: 'Đ' }
-            ],
-            status: 'Chuẩn bị',
-        },
-        {
-            id: '16',
-            name: 'Content Marketing - K19',
-            description: 'Tạo nội dung marketing và chiến lược nội dung',
-            program: 'Digital Marketing',
-            startDate: '2025-01-25',
-            schedule: 'Thứ 2, Thứ 4 - 18:30-20:30',
-            location: 'Phòng O1501',
-            students: 0,
-            maxStudents: 25,
-            instructors: [
-                { id: '19', name: 'Võ Văn O', initial: 'V' }
-            ],
-            status: 'Chuẩn bị',
-        },
-        {
-            id: '17',
-            name: 'Machine Learning - K20',
-            description: 'Học máy và trí tuệ nhân tạo cơ bản',
-            program: 'Công nghệ Thông tin',
-            startDate: '2025-06-01',
-            schedule: 'Thứ 3, Thứ 5 - 19:00-21:30',
-            location: 'Phòng P1601',
-            students: 0,
-            maxStudents: 20,
-            instructors: [
-                { id: '20', name: 'Lê Thị P', initial: 'L' }
-            ],
-            status: 'Chuẩn bị',
-        }
-    ]);
+    // State for classes and programs
+    const [classes, setClasses] = useState<Class[]>([]);
+    const [programs, setPrograms] = useState<ProgramLiteDto[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Fetch classes and programs from API
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setIsLoading(true);
+                const [classesRes, programsRes] = await Promise.all([
+                    listClasses(),
+                    getProgramsLite()
+                ]);
+                
+                const mappedClasses = classesRes.data.map(mapClassDtoToUI);
+                setClasses(mappedClasses);
+                setPrograms(programsRes.data);
+            } catch (error) {
+                console.error('Failed to fetch data:', error);
+                toast.error('Lỗi tải dữ liệu', 'Không thể tải danh sách lớp học');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        
+        fetchData();
+    }, []);
 
     // Filter classes based on search and status
     const filteredClasses = classes.filter(c => {
@@ -443,70 +300,166 @@ export default function ClassesPage() {
         const [selectedDays, setSelectedDays] = useState<string[]>(initialSchedule.days);
         const [selectedTime, setSelectedTime] = useState<string>(initialSchedule.times[0] || '');
 
-        // Debug: Log the parsed schedule
-        console.log('Editing schedule:', editing?.schedule);
-        console.log('Parsed days:', initialSchedule.days);
-        console.log('Parsed time:', initialSchedule.times[0]);
-
         // Options for days and times
         const dayOptions = [
             'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'
         ];
 
         const timeOptions = [
-            '08:00-12:00', '14:00-17:00', '18:00-20:30', '18:30-21:00', 
-            '19:00-21:30', '19:30-21:30', '08:00-11:00', '09:00-17:00'
+            '08:00-12:00',
+            '14:00-17:00', 
+            '18:00-21:30',
+            '19:00-21:30'
         ];
 
         return (
             <form
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                     e.preventDefault();
                     const form = new FormData(e.currentTarget as HTMLFormElement);
-                    const payload: Class = {
-                        id: editing?.id ?? String(Date.now()),
-                        name: String(form.get('name') || ''),
-                        description: String(form.get('description') || ''),
-                        program: String(form.get('program') || ''),
-                        startDate: String(form.get('startDate') || ''),
-                        schedule: `${selectedDays.join(', ')} - ${selectedTime}`,
-                        location: String(form.get('location') || ''),
-                        students: editing?.students ?? 0, // Giữ nguyên số học viên hiện tại khi chỉnh sửa
-                        maxStudents: Number(form.get('maxStudents') || 0),
-                        instructors: editing?.instructors ?? [], // Giữ nguyên danh sách giảng viên hiện tại
-                        status: String(form.get('status') || 'Chuẩn bị') as Class['status'],
-                    };
-
+                    
+                    const programId = Number(form.get('programId'));
+                    
                     const newErrors: typeof errors = {};
+                    
+                    const name = String(form.get('name') || '');
+                    const startDate = String(form.get('startDate') || '');
+                    const endDate = String(form.get('endDate') || '');
+                    const room = String(form.get('location') || '');
+                    const capacity = Number(form.get('maxStudents') || 0);
+                    const status = String(form.get('status') || 'Chuẩn bị') as Class['status'];
 
                     // Validation
-                    if (!payload.name || payload.name.trim().length < 3) {
+                    if (!name || name.trim().length < 3) {
                         newErrors.name = 'Tên lớp học tối thiểu 3 ký tự';
                     }
-                    if (!payload.program) {
+                    if (!programId || isNaN(programId)) {
                         newErrors.program = 'Vui lòng chọn chương trình';
                     }
-                    if (!payload.startDate) {
+                    if (!startDate) {
                         newErrors.startDate = 'Vui lòng chọn ngày bắt đầu';
                     }
                     if (selectedDays.length === 0 || !selectedTime) {
                         newErrors.schedule = 'Vui lòng chọn đầy đủ ngày và giờ học';
                     }
-                    if (!payload.location || payload.location.trim().length < 2) {
+                    if (!room || room.trim().length < 2) {
                         newErrors.location = 'Phòng học tối thiểu 2 ký tự';
                     }
-                    if (!payload.maxStudents || payload.maxStudents < 1) {
+                    if (!capacity || capacity < 1) {
                         newErrors.maxStudents = 'Sĩ số tối đa phải lớn hơn 0';
                     }
 
                     setErrors(newErrors);
-
                     if (Object.keys(newErrors).length > 0) return;
 
-                    setClasses((prev) =>
-                        editing ? prev.map((x) => (x.id === editing.id ? payload : x)) : [payload, ...prev],
-                    );
-                    editing ? setOpenEdit(null) : setOpenCreate(false);
+                    // Map UI days to API StudyDay
+                    const dayMap: Record<string, StudyDay> = {
+                        'Thứ 2': 'MONDAY',
+                        'Thứ 3': 'TUESDAY',
+                        'Thứ 4': 'WEDNESDAY',
+                        'Thứ 5': 'THURSDAY',
+                        'Thứ 6': 'FRIDAY',
+                        'Thứ 7': 'SATURDAY',
+                        'CN': 'SUNDAY'
+                    };
+                    
+                    // Map UI time to API StudyTime
+                    const timeMap: Record<string, StudyTime> = {
+                        '08:00-12:00': 'MORNING',
+                        '08:00-11:00': 'MORNING',
+                        '09:00-17:00': 'AFTERNOON',
+                        '14:00-17:00': 'AFTERNOON',
+                        '18:00-20:30': 'EVENING',
+                        '18:00-21:30': 'EVENING',
+                        '18:30-21:00': 'EVENING',
+                        '19:00-21:30': 'EVENING',
+                        '19:30-21:30': 'EVENING'
+                    };
+
+                    const studyDays = selectedDays.map(d => dayMap[d]).filter(Boolean);
+                    const studyTime = timeMap[selectedTime];
+
+                    try {
+                        if (editing) {
+                            // Update existing class
+                            const description = String(form.get('description') || '');
+                            
+                            // Build payload - always include programId and name
+                            const updatePayload: any = {
+                                programId, // Always include programId
+                                name
+                            };
+                            
+                            if (description.trim()) updatePayload.description = description.trim();
+                            if (startDate) updatePayload.startDate = startDate;
+                            if (endDate) updatePayload.endDate = endDate;
+                            if (room.trim()) updatePayload.room = room.trim();
+                            if (capacity > 0) updatePayload.capacity = capacity;
+                            if (status) updatePayload.status = mapStatusToAPI(status);
+                            if (studyDays.length > 0) updatePayload.studyDays = studyDays;
+                            if (studyTime) updatePayload.studyTime = studyTime;
+                            
+                            const response = await updateClass(Number(editing.id), updatePayload);
+                            const updatedClass = mapClassDtoToUI(response.data);
+                            
+                            setClasses(prev => prev.map(x => (x.id === editing.id ? updatedClass : x)));
+                            setOpenEdit(null);
+                            
+                            toast.success('Cập nhật thành công!', `Lớp học ${name} đã được cập nhật`);
+                        } else {
+                            // Create new class
+                            const description = String(form.get('description') || '');
+                            
+                            // Build payload - only include fields with actual values
+                            const createPayload: any = {
+                                centerId: 1, // Required for Super Admin - TODO: add center selection dropdown
+                                programId,
+                                name
+                            };
+                            
+                            if (description.trim()) createPayload.description = description.trim();
+                            if (startDate) createPayload.startDate = startDate;
+                            if (endDate) createPayload.endDate = endDate;
+                            if (room.trim()) createPayload.room = room.trim();
+                            if (capacity > 0) createPayload.capacity = capacity;
+                            if (studyDays.length > 0) createPayload.studyDays = studyDays;
+                            if (studyTime) createPayload.studyTime = studyTime;
+                            
+                            const response = await createClass(createPayload);
+                            const newClass = mapClassDtoToUI(response.data);
+                            
+                            setClasses(prev => [newClass, ...prev]);
+                            setOpenCreate(false);
+                            
+                            toast.success('Tạo thành công!', `Lớp học ${name} đã được thêm vào hệ thống`);
+                        }
+                    } catch (error: any) {
+                        console.error('Failed to save class:', error);
+                        console.error('Error response:', error.response?.data);
+                        console.error('Error status:', error.response?.status);
+                        console.error('Full error:', JSON.stringify({
+                            message: error.message,
+                            status: error.response?.status,
+                            statusText: error.response?.statusText,
+                            data: error.response?.data,
+                            headers: error.response?.headers
+                        }, null, 2));
+                        
+                        const errorMessage = error.response?.data?.message 
+                            || error.response?.data?.error
+                            || error.message
+                            || 'Có lỗi xảy ra khi lưu lớp học';
+                        
+                        if (error.response?.status === 400) {
+                            toast.error('Dữ liệu không hợp lệ', errorMessage);
+                        } else if (error.response?.status === 409) {
+                            toast.error('Trùng lặp dữ liệu', 'Tên lớp học đã tồn tại trong hệ thống');
+                        } else if (error.response?.status === 500) {
+                            toast.error('Lỗi hệ thống', 'Vui lòng kiểm tra lại thông tin hoặc liên hệ quản trị viên');
+                        } else {
+                            toast.error('Lỗi', errorMessage);
+                        }
+                    }
                 }}
             >
                 <div className="px-4 py-3 border-b flex items-center justify-between">
@@ -542,16 +495,17 @@ export default function ClassesPage() {
                             <div>
                                 <label className="block text-xs text-gray-600 mb-1">Chương trình học *</label>
                                 <select
-                                    name="program"
-                                    defaultValue={editing?.program}
+                                    name="programId"
+                                    defaultValue={editing?.programId}
                                     required
                                     className={`w-full h-9 rounded-md border px-2 text-sm ${errors.program ? 'border-red-500' : ''}`}
                                 >
                                     <option value="">Chọn chương trình</option>
-                                    <option>Công nghệ Thông tin</option>
-                                    <option>Digital Marketing</option>
-                                    <option>Thiết kế Đồ họa</option>
-                                    <option>Kinh doanh</option>
+                                    {programs.map(program => (
+                                        <option key={program.programId} value={program.programId}>
+                                            {program.name}
+                                        </option>
+                                    ))}
                                 </select>
                                 {errors.program && <div className="text-xs text-red-600 mt-1">{errors.program}</div>}
                             </div>
@@ -713,19 +667,26 @@ export default function ClassesPage() {
                 </select>
             </div>
 
-            {/* Classes List */}
-            <ClassList
-                classes={currentClasses}
-                query={query}
-                statusFilter={statusFilter}
-                setOpenAssignInstructor={setOpenAssignInstructor}
-                onEdit={setOpenEdit}
-                onManageStudents={setOpenManageStudents}
-                totalClasses={filteredClasses.length}
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-            />
+            {/* Loading State */}
+            {isLoading ? (
+                <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">
+                    <div className="text-sm text-gray-500">Đang tải dữ liệu...</div>
+                </div>
+            ) : (
+                /* Classes List */
+                <ClassList
+                    classes={currentClasses}
+                    query={query}
+                    statusFilter={statusFilter}
+                    setOpenAssignInstructor={setOpenAssignInstructor}
+                    onEdit={setOpenEdit}
+                    onManageStudents={setOpenManageStudents}
+                    totalClasses={filteredClasses.length}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                />
+            )}
             {/* Create Modal */}
             <Modal open={openCreate} onClose={() => setOpenCreate(false)}>
                 <CreateEditForm />
