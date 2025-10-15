@@ -109,8 +109,8 @@ export default function RolesPage() {
 
             {/* Tabs */}
             <div className="flex items-center gap-2 mt-4">
-                <button onClick={() => setTab('permissions')} className={`px-4 h-9 rounded-full text-sm inline-flex items-center gap-2 ${tab === 'permissions' ? 'bg-gray-900 text-white' : 'bg-white border'}`}><Settings size={14} /> Quyền hạn</button>
-                <button onClick={() => setTab('roles')} className={`px-4 h-9 rounded-full text-sm inline-flex items-center gap-2 ${tab === 'roles' ? 'bg-gray-900 text-white' : 'bg-white border'}`}><Shield size={14} /> Vai trò</button>
+                <button onClick={() => setTab('permissions')} className={`px-4 h-9 rounded-full text-sm inline-flex items-center gap-2 ${tab === 'permissions' ? 'bg-gray-900 text-white' : 'bg-white border'}`}>Quyền hạn</button>
+                <button onClick={() => setTab('roles')} className={`px-4 h-9 rounded-full text-sm inline-flex items-center gap-2 ${tab === 'roles' ? 'bg-gray-900 text-white' : 'bg-white border'}`}>Vai trò</button>
             </div>
 
             {/* Top action button removed per request */}
@@ -226,9 +226,6 @@ export default function RolesPage() {
             {tab === 'permissions' && (
                 <section className="rounded-2xl border border-gray-200 bg-white">
                     <div className="px-3 py-3 border-b flex items-start gap-2">
-                        <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 grid place-items-center text-white flex-shrink-0">
-                            <Shield size={16} />
-                        </div>
                         <div className="flex-1">
                             <div className="text-sm font-medium">Danh sách Quyền hạn</div>
                             <div className="text-xs text-gray-500">
@@ -269,9 +266,6 @@ export default function RolesPage() {
                                         .map((permission) => (
                                         <div key={permission.permissionId} className="rounded-xl border border-gray-200">
                                             <div className="px-3 py-3 flex items-start gap-2">
-                                                <div className="h-7 w-7 rounded-lg bg-blue-50 text-blue-600 grid place-items-center flex-shrink-0">
-                                                    <Shield size={14} />
-                                                </div>
                                                 <div>
                                                     <div className="text-sm font-medium">{permission.name}</div>
                                                     <div className="text-xs text-gray-500">

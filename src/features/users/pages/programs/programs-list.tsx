@@ -77,7 +77,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
                 <div className="ml-auto">
                     <button
                         onClick={onCreate}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 text-white text-xs px-2.5 py-1.5 hover:bg-blue-700"
+                        className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 text-white text-sm px-3 py-2 hover:bg-black"
                     >
                         <span>Tạo chương trình mới</span>
                     </button>
@@ -128,7 +128,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
             {/* Header columns */}
             <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-8 gap-3">
                 <div className="col-span-4">Chương trình</div>
-                <div className="col-span-2">Thời gian</div>
+                <div className="col-span-2">Tổng thời lượng</div>
                 <div className="col-span-1">Trạng thái</div>
                 <div className="col-span-1"></div>
             </div>
@@ -156,10 +156,6 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
                             <div className="flex items-center gap-1 text-sm">
                                 <Clock size={14} className="text-gray-500" />
                                 {program.duration}
-                            </div>
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                                <Calendar size={12} className="text-gray-400" />
-                                {new Date(program.startDate).toLocaleDateString('vi-VN')}
                             </div>
                         </div>
                         <div className="col-span-6 md:col-span-1">
@@ -209,7 +205,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
                                 onClick={() => onPageChange(page)}
                                 className={`h-8 px-3 rounded-md text-sm ${
                                     currentPage === page 
-                                        ? 'bg-blue-600 text-white' 
+                                        ? 'bg-gray-900 text-white' 
                                         : 'border bg-white hover:bg-gray-50'
                                 }`}
                             >

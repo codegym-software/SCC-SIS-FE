@@ -37,10 +37,40 @@ function AppLayout({ children }: AppLayoutProps) {
         return saved ? JSON.parse(saved) : false;
     });
 
+    const [userAvatar, setUserAvatar] = useState<string | null>(null);
+
     // Save sidebar state to localStorage when it changes
     useEffect(() => {
         localStorage.setItem('sidebarCollapsed', JSON.stringify(sidebarCollapsed));
     }, [sidebarCollapsed]);
+
+    // Load user avatar from localStorage
+    useEffect(() => {
+        const savedAvatar = localStorage.getItem('userAvatar');
+        if (savedAvatar) {
+            setUserAvatar(savedAvatar);
+        }
+    }, []);
+
+    // Listen for avatar changes
+    useEffect(() => {
+        const handleStorageChange = () => {
+            const savedAvatar = localStorage.getItem('userAvatar');
+            setUserAvatar(savedAvatar);
+        };
+
+        const handleAvatarUpdate = (event: CustomEvent) => {
+            setUserAvatar(event.detail.avatar);
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        window.addEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
+        
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
+        };
+    }, []);
     
     // Menu configuration - easily extensible
     const menuGroups: MenuGroup[] = [
@@ -122,9 +152,17 @@ function AppLayout({ children }: AppLayoutProps) {
                             <>
                                 <div className="text-xs text-gray-500 mb-2">Hệ thống Giáo dục Số</div>
                                 <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium">
-                                        NV
-                                    </div>
+                                    {userAvatar ? (
+                                        <img
+                                            src={userAvatar}
+                                            alt="User Avatar"
+                                            className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-md"
+                                        />
+                                    ) : (
+                                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium">
+                                            NV
+                                        </div>
+                                    )}
                                     <div>
                                         <div className="text-sm font-medium">Nguyễn Quang Hưng </div>
                                         <div className="text-xs text-gray-500">Super Admin</div>
@@ -133,9 +171,17 @@ function AppLayout({ children }: AppLayoutProps) {
                             </>
                         )}
                         {sidebarCollapsed && (
-                            <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium mx-auto">
-                                NV
-                            </div>
+                            userAvatar ? (
+                                <img
+                                    src={userAvatar}
+                                    alt="User Avatar"
+                                    className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-md mx-auto"
+                                />
+                            ) : (
+                                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium mx-auto">
+                                    NV
+                                </div>
+                            )
                         )}
                     </div>
                     
@@ -210,7 +256,7 @@ function AppLayout({ children }: AppLayoutProps) {
 
                 {/* Main */}
                 <div className="flex-1 flex flex-col min-h-screen">
-                    <main className="flex-1 w-full min-h-screen">{children}</main>
+                    <main className="flex-1 w-full min-h-screen p-6">{children}</main>
                 </div>
             </div>
         </div>

@@ -35,17 +35,29 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
         duration?: string;
     }>({});
 
+    // Extract number from duration (e.g., "480 giờ" -> "480")
+    const getDurationNumber = (duration: string | undefined) => {
+        if (!duration) return '';
+        return duration.replace(/\s*giờ\s*$/, '');
+    };
+
+    // Add "giờ" to duration number
+    const formatDuration = (duration: string) => {
+        if (!duration) return '';
+        return `${duration} giờ`;
+    };
+
     return (
         <form
             onSubmit={(e) => {
                 e.preventDefault();
                 const form = new FormData(e.currentTarget as HTMLFormElement);
+                const durationValue = form.get('duration') as string;
                 const formData = {
                     name: form.get('name'),
                     description: form.get('description'),
                     category: form.get('category'),
-                    duration: form.get('duration'),
-                    startDate: form.get('startDate'),
+                    duration: formatDuration(durationValue), // Add "giờ" to the duration
                     status: form.get('status'),
                 };
                 onSubmit(formData);
@@ -103,21 +115,15 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                             <label className="block text-xs text-gray-600 mb-1">Thời gian *</label>
                             <input
                                 name="duration"
-                                defaultValue={editing?.duration}
+                                defaultValue={getDurationNumber(editing?.duration)}
                                 required
+                                type="number"
+                                min="1"
                                 className={`w-full h-8 rounded-md border px-2 text-xs ${errors.duration ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                                placeholder="18 tháng"
+                                placeholder="480"
                             />
+                            <div className="text-xs text-gray-500 mt-1">Nhập số giờ (VD: 480)</div>
                             {errors.duration && <div className="text-xs text-red-600 mt-1">{errors.duration}</div>}
-                        </div>
-                        <div>
-                            <label className="block text-xs text-gray-600 mb-1">Ngày bắt đầu</label>
-                            <input
-                                name="startDate"
-                                type="date"
-                                defaultValue={editing?.startDate}
-                                className="w-full h-8 rounded-md border px-2 text-xs"
-                            />
                         </div>
                     </div>
                     <div>
@@ -167,7 +173,7 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                 </button>
                 <button
                     type="submit"
-                    className="h-9 px-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                    className="h-9 px-3 rounded-md bg-gray-900 text-white hover:bg-black disabled:opacity-50 flex items-center gap-2"
                     disabled={isSubmitting}
                 >
                     {isSubmitting && (

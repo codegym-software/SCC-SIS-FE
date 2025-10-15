@@ -55,9 +55,32 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
   const [rolesData, setRolesData] = useState<RoleDto[]>([]);
   const [centersData, setCentersData] = useState<CenterLiteDto[]>([]);
   const [loadingMeta, setLoadingMeta] = useState(false);
+  const [ageError, setAgeError] = useState<string>("");
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      // Reset form and errors when modal closes
+      setFormData({
+        fullName: "Nguyễn Văn A",
+        email: "email@education.vn",
+        phone: "090xxxxxxx",
+        dateOfBirth: "",
+        gender: "Nam",
+        idCard: "123456789012",
+        startDate: "",
+        specialization: "Giáo dục",
+        experience: "5 năm",
+        address: "123 Đường ABC, Phường XYZ, Quận QWE",
+        city: "TP.HCM",
+        district: "Quận 1",
+        ward: "Phường ABC",
+        educationLevel: "Đại học",
+        notes: "Thông tin bổ sung...",
+      });
+      setRows([{ id: "1", roleId: "", centerId: "" }]);
+      setAgeError("");
+      return;
+    }
     let isMounted = true;
     setLoadingMeta(true);
 
@@ -90,6 +113,39 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    
+    // Validate age when date of birth changes
+    if (field === "dateOfBirth") {
+      validateAge(value);
+    }
+  };
+
+  const validateAge = (dateOfBirth: string) => {
+    if (!dateOfBirth) {
+      setAgeError("");
+      return true;
+    }
+
+    const birthDate = new Date(dateOfBirth);
+    const currentDate = new Date("2025-10-15"); // Thời gian hiện tại theo yêu cầu
+    const age = currentDate.getFullYear() - birthDate.getFullYear();
+    const monthDiff = currentDate.getMonth() - birthDate.getMonth();
+    
+    // Adjust age if birthday hasn't occurred this year
+    const actualAge = monthDiff < 0 || (monthDiff === 0 && currentDate.getDate() < birthDate.getDate()) 
+      ? age - 1 
+      : age;
+
+    if (actualAge < 18) {
+      setAgeError("Người dùng phải từ 18 tuổi trở lên");
+      return false;
+    } else if (actualAge > 65) {
+      setAgeError("Người dùng không được quá 65 tuổi");
+      return false;
+    } else {
+      setAgeError("");
+      return true;
+    }
   };
 
   const addRole = () => {
@@ -135,6 +191,11 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate age before submitting
+    if (formData.dateOfBirth && !validateAge(formData.dateOfBirth)) {
+      return; // Stop submission if age validation fails
+    }
 
     if (rows.some((r) => !r.roleId)) {
       alert("Vui lòng chọn vai trò hợp lệ");
@@ -287,9 +348,17 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                       id="dateOfBirth"
                       value={formData.dateOfBirth}
                       onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
-                      className="w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className={`w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+                        ageError ? "border-red-500 border-2" : ""
+                      }`}
                     />
                     <Calendar className="w-3.5 h-3.5 absolute right-3 top-9 text-gray-400 pointer-events-none" />
+                    {ageError && (
+                      <p className="text-red-500 text-xs mt-1">{ageError}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Độ tuổi từ 18 đến 65 tuổi (tính đến 15/10/2025)
+                    </p>
                   </div>
                   <div className="relative">
                     <label htmlFor="gender" className="block text-sm font-medium mb-1">

@@ -274,7 +274,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                                     <div className="flex items-center gap-3">
                                         <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
                                             selectedStudents.includes(student.id)
-                                                ? 'bg-blue-600 text-white'
+                                                ? 'bg-gray-900 text-white'
                                                 : 'bg-gray-100 text-gray-700'
                                         }`}>
                                             {selectedStudents.includes(student.id) ? (
@@ -332,7 +332,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                         <button
                             onClick={handleSubmit}
                             disabled={selectedStudents.length === 0 || isSubmitting}
-                            className="h-9 px-4 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                            className="h-9 px-4 rounded-md bg-gray-900 text-white hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                         >
                             {isSubmitting ? 'Đang thêm...' : `Thêm ${selectedStudents.length} học viên`}
                         </button>

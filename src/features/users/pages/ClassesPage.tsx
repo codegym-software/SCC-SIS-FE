@@ -224,7 +224,7 @@ export default function ClassesPage() {
               <button
                 onClick={() => setShowAddStudent(true)}
                 disabled={students.length >= classItem.maxStudents}
-                className="h-8 px-3 rounded-md bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="h-8 px-3 rounded-md bg-gray-900 text-white text-sm hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 + Thêm học viên
               </button>
@@ -256,7 +256,7 @@ export default function ClassesPage() {
                 <div className="flex gap-2 mt-3">
                   <button
                     onClick={handleAddStudent}
-                    className="h-8 px-3 rounded-md bg-blue-600 text-white text-sm hover:bg-blue-700"
+                    className="h-8 px-3 rounded-md bg-gray-900 text-white text-sm hover:bg-black"
                   >
                     Thêm
                   </button>

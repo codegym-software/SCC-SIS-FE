@@ -73,7 +73,7 @@ export default function ProgramsPage() {
             name: 'Công nghệ Thông tin',
             description: 'Chương trình đào tạo toàn diện về CNTT từ cơ bản đến nâng cao',
             category: 'Kỹ thuật',
-            duration: '18 tháng',
+            duration: '480 giờ',
             startDate: '2024-01-10',
             status: 'Đang hoạt động',
         },
@@ -82,7 +82,7 @@ export default function ProgramsPage() {
             name: 'Lập trình Java',
             description: 'Chuyên sâu về lập trình Java và các ứng dụng thực tế',
             category: 'Lập trình',
-            duration: '8 tháng',
+            duration: '240 giờ',
             startDate: '2024-01-25',
             status: 'Đang hoạt động',
         },
@@ -91,7 +91,7 @@ export default function ProgramsPage() {
             name: 'Thiết kế Đồ họa',
             description: 'Đào tạo thiết kế đồ họa chuyên nghiệp với các công cụ hiện đại',
             category: 'Thiết kế',
-            duration: '12 tháng',
+            duration: '360 giờ',
             startDate: '2024-02-01',
             status: 'Đang hoạt động',
         },
@@ -100,7 +100,7 @@ export default function ProgramsPage() {
             name: 'Digital Marketing',
             description: 'Chiến lược marketing số toàn diện cho doanh nghiệp hiện đại',
             category: 'Kinh doanh',
-            duration: '10 tháng',
+            duration: '300 giờ',
             startDate: '2024-02-15',
             status: 'Đang hoạt động',
         },
@@ -109,7 +109,7 @@ export default function ProgramsPage() {
             name: 'Data Science',
             description: 'Phân tích dữ liệu và trí tuệ nhân tạo cho doanh nghiệp',
             category: 'Kỹ thuật',
-            duration: '15 tháng',
+            duration: '450 giờ',
             startDate: '2024-03-01',
             status: 'Đang hoạt động',
         },
@@ -118,7 +118,7 @@ export default function ProgramsPage() {
             name: 'Web Development',
             description: 'Phát triển ứng dụng web hiện đại với React và Node.js',
             category: 'Lập trình',
-            duration: '9 tháng',
+            duration: '270 giờ',
             startDate: '2024-03-10',
             status: 'Đang hoạt động',
         },
@@ -127,7 +127,7 @@ export default function ProgramsPage() {
             name: 'Mobile Development',
             description: 'Phát triển ứng dụng di động với React Native và Flutter',
             category: 'Lập trình',
-            duration: '11 tháng',
+            duration: '330 giờ',
             startDate: '2024-03-20',
             status: 'Tạm dừng',
         },
@@ -136,7 +136,7 @@ export default function ProgramsPage() {
             name: 'Cybersecurity',
             description: 'Bảo mật thông tin và an ninh mạng cho tổ chức',
             category: 'Kỹ thuật',
-            duration: '14 tháng',
+            duration: '420 giờ',
             startDate: '2024-04-01',
             status: 'Đang hoạt động',
         },
@@ -145,7 +145,7 @@ export default function ProgramsPage() {
             name: 'Business Analytics',
             description: 'Phân tích kinh doanh và ra quyết định dựa trên dữ liệu',
             category: 'Kinh doanh',
-            duration: '8 tháng',
+            duration: '240 giờ',
             startDate: '2024-04-15',
             status: 'Hoàn thành',
         },
@@ -154,7 +154,7 @@ export default function ProgramsPage() {
             name: 'UI/UX Design',
             description: 'Thiết kế giao diện người dùng và trải nghiệm người dùng',
             category: 'Thiết kế',
-            duration: '7 tháng',
+            duration: '210 giờ',
             startDate: '2024-05-01',
             status: 'Đang hoạt động',
         },
@@ -339,6 +339,7 @@ export default function ProgramsPage() {
                 // Create new program
                 const newProgram: Program = {
                     id: String(Date.now()),
+                    startDate: new Date().toISOString().split('T')[0], // Set current date as default
                     ...formData,
                 };
                 setPrograms(prev => [newProgram, ...prev]);
@@ -395,7 +396,7 @@ export default function ProgramsPage() {
                 <button
                     onClick={() => setActiveTab('programs')}
                     className={`px-4 h-9 rounded-full text-sm inline-flex items-center gap-2 ${
-                        activeTab === 'programs' ? 'bg-blue-600 text-white' : 'bg-white border'
+                        activeTab === 'programs' ? 'bg-gray-900 text-white' : 'bg-white border'
                     }`}
                 >
                     Chương trình
@@ -403,7 +404,7 @@ export default function ProgramsPage() {
                 <button
                     onClick={() => setActiveTab('modules')}
                     className={`px-4 h-9 rounded-full text-sm inline-flex items-center gap-2 ${
-                        activeTab === 'modules' ? 'bg-blue-600 text-white' : 'bg-white border'
+                        activeTab === 'modules' ? 'bg-gray-900 text-white' : 'bg-white border'
                     }`}
                 >
                     Module

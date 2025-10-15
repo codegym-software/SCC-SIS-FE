@@ -136,7 +136,7 @@ const ChangeStatusModal: React.FC<ChangeStatusModalProps> = ({ student, onClose,
                 <button
                     onClick={handleSave}
                     disabled={selectedStatus === student.status}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                     Cập nhật trạng thái
                 </button>

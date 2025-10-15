@@ -1,11 +1,12 @@
-import React from 'react';
-import { User, Mail, Phone, User2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Mail, Phone, User2, Upload, Image as ImageIcon } from 'lucide-react';
 
 interface ProfileData {
     fullName: string;
     email: string;
     phone: string;
     bio: string;
+    avatar?: string;
 }
 
 interface ProfileProps {
@@ -16,6 +17,53 @@ interface ProfileProps {
 }
 
 const Profile: React.FC<ProfileProps> = ({ formData, onInputChange, onSave, isSaving = false }) => {
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(formData.avatar || null);
+    const [avatarError, setAvatarError] = useState<string>("");
+
+    // Load avatar from localStorage on mount
+    React.useEffect(() => {
+        if (formData.avatar) {
+            setPreviewUrl(formData.avatar);
+        }
+    }, [formData.avatar]);
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file size (max 20MB)
+        if (file.size > 20 * 1024 * 1024) {
+            setAvatarError("Kích thước file không được vượt quá 20MB");
+            return;
+        }
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            setAvatarError("Chỉ được chọn file ảnh");
+            return;
+        }
+
+        setAvatarError("");
+        setSelectedFile(file);
+        
+        // Convert file to base64 and save to localStorage
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64 = e.target?.result as string;
+            setPreviewUrl(base64);
+            onInputChange('avatar', base64);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const removeImage = () => {
+        setSelectedFile(null);
+        setPreviewUrl(null);
+        setAvatarError("");
+        onInputChange('avatar', '');
+    };
+
     return (
         <div className="space-y-4">
             {/* Personal Information */}
@@ -30,9 +78,17 @@ const Profile: React.FC<ProfileProps> = ({ formData, onInputChange, onSave, isSa
                 {/* User Info Card */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-blue-500 text-white grid place-items-center text-lg font-bold shadow-md">
-                            N
-                        </div>
+                        {formData.avatar ? (
+                            <img
+                                src={formData.avatar}
+                                alt={formData.fullName}
+                                className="h-12 w-12 rounded-full object-cover border-2 border-white shadow-md"
+                            />
+                        ) : (
+                            <div className="h-12 w-12 rounded-full bg-gray-900 text-white grid place-items-center text-lg font-bold shadow-md">
+                                N
+                            </div>
+                        )}
                         <div className="flex-1">
                             <h4 className="text-lg font-bold text-gray-900 mb-1">{formData.fullName}</h4>
                             <div className="flex items-center gap-2 mb-1">
@@ -44,6 +100,61 @@ const Profile: React.FC<ProfileProps> = ({ formData, onInputChange, onSave, isSa
                                 <Mail size={12} className="text-gray-400" />
                                 {formData.email}
                             </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Avatar Upload Section */}
+                <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-900 mb-3">
+                        Ảnh đại diện
+                    </label>
+                    <div className="flex items-center gap-4">
+                        {/* Avatar Preview */}
+                        <div className="relative">
+                            {previewUrl || formData.avatar ? (
+                                <div className="relative">
+                                    <img
+                                        src={previewUrl || formData.avatar}
+                                        alt="Avatar preview"
+                                        className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                                    />
+                                    <button
+                                        onClick={removeImage}
+                                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+                                    <ImageIcon size={24} className="text-gray-400" />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Upload Button */}
+                        <div className="flex-1">
+                            <input
+                                type="file"
+                                id="avatar-upload"
+                                accept="image/*"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                            />
+                            <label
+                                htmlFor="avatar-upload"
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 cursor-pointer transition-colors"
+                            >
+                                <Upload size={16} />
+                                Chọn ảnh từ máy
+                            </label>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Tối đa 20MB. Định dạng: JPG, PNG, GIF
+                            </p>
+                            {avatarError && (
+                                <p className="text-xs text-red-600 mt-1">{avatarError}</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -108,7 +219,7 @@ const Profile: React.FC<ProfileProps> = ({ formData, onInputChange, onSave, isSa
                 <button
                     onClick={onSave}
                     disabled={isSaving}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                     {isSaving ? (
                         <>

@@ -18,6 +18,7 @@ type Student = {
     program: string;
     registrationDate: string;
     status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
+    avatar?: string;
 };
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
@@ -114,9 +115,15 @@ export default function StudentProfilePage() {
                 class: randomClass,
                 program: randomProgram,
                 registrationDate,
-                status: randomStatus
+                status: randomStatus,
+                avatar: loadStudentAvatar(`student-${studentNumber}`)
             };
         });
+    };
+
+    // Function to load avatar from localStorage
+    const loadStudentAvatar = (studentId: string) => {
+        return localStorage.getItem(`student_avatar_${studentId}`) || '';
     };
 
     // Mock data for students
@@ -131,7 +138,8 @@ export default function StudentProfilePage() {
             class: 'Lập trình Java Cơ bản - K15',
             program: 'Công nghệ Thông tin',
             registrationDate: '2024-01-15',
-            status: 'Đang học'
+            status: 'Đang học',
+            avatar: loadStudentAvatar('1') || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'
         },
         {
             id: '2',
@@ -143,7 +151,8 @@ export default function StudentProfilePage() {
             class: 'Lập trình Java Cơ bản - K15',
             program: 'Công nghệ Thông tin',
             registrationDate: '2024-01-15',
-            status: 'Đang học'
+            status: 'Đang học',
+            avatar: loadStudentAvatar('2')
         },
         {
             id: '3',
@@ -155,7 +164,8 @@ export default function StudentProfilePage() {
             class: 'Lập trình Java Cơ bản - K15',
             program: 'Công nghệ Thông tin',
             registrationDate: '2024-01-15',
-            status: 'Bảo lưu'
+            status: 'Bảo lưu',
+            avatar: loadStudentAvatar('3')
         },
         {
             id: '4',
@@ -167,7 +177,8 @@ export default function StudentProfilePage() {
             class: 'Web Development - K08',
             program: 'Công nghệ Thông tin',
             registrationDate: '2024-02-01',
-            status: 'Đang học'
+            status: 'Đang học',
+            avatar: loadStudentAvatar('4')
         },
         {
             id: '5',
@@ -179,7 +190,8 @@ export default function StudentProfilePage() {
             class: 'Data Science - K01',
             program: 'Công nghệ Thông tin',
             registrationDate: '2023-09-01',
-            status: 'Tốt nghiệp'
+            status: 'Tốt nghiệp',
+            avatar: loadStudentAvatar('5')
         },
         ...generateAdditionalStudents()
     ]);
@@ -196,6 +208,14 @@ export default function StudentProfilePage() {
         setStudents(prev => 
             prev.map(s => s.id === updatedStudent.id ? updatedStudent : s)
         );
+        
+        // Update avatar in localStorage if it exists
+        const savedAvatar = localStorage.getItem(`student_avatar_${updatedStudent.id}`);
+        if (savedAvatar) {
+            setStudents(prev => 
+                prev.map(s => s.id === updatedStudent.id ? { ...s, avatar: savedAvatar } : s)
+            );
+        }
     };
 
     const handleCreate = () => {

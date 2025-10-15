@@ -139,11 +139,11 @@ const Appearance: React.FC<AppearanceProps> = ({
             <div className="space-y-4">
                 <div>
                     <h4 className="text-sm font-semibold text-gray-900 mb-3">Kích thước chữ</h4>
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {fontSizeOptions.map((option) => (
                             <label
                                 key={option.value}
-                                className={`relative cursor-pointer rounded-lg border-2 p-3 transition-all ${
+                                className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all ${
                                     settings.fontSize === option.value
                                         ? 'border-blue-500 bg-blue-50'
                                         : 'border-gray-200 hover:border-gray-300'
@@ -157,17 +157,19 @@ const Appearance: React.FC<AppearanceProps> = ({
                                     onChange={(e) => onSettingChange('fontSize', e.target.value)}
                                     className="sr-only"
                                 />
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
+                                <div className="flex flex-col items-center text-center space-y-3">
+                                    <div className="flex items-center gap-2">
                                         <Type size={18} className="text-gray-600" />
                                         <span className="text-sm font-medium text-gray-900">{option.label}</span>
                                     </div>
-                                    <span 
-                                        className="text-sm text-gray-500"
-                                        style={{ fontSize: option.size }}
-                                    >
-                                        Aa
-                                    </span>
+                                    <div className="flex items-center justify-center w-full">
+                                        <span 
+                                            className="text-gray-600 font-medium"
+                                            style={{ fontSize: option.size }}
+                                        >
+                                            Aa
+                                        </span>
+                                    </div>
                                 </div>
                             </label>
                         ))}
@@ -207,7 +209,7 @@ const Appearance: React.FC<AppearanceProps> = ({
                 <button
                     onClick={onSave}
                     disabled={isSaving}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                     {isSaving ? (
                         <>

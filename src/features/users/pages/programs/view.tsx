@@ -150,7 +150,7 @@ const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program
                 </button>
                 {onEdit && (
                     <button
-                        className="h-9 px-3 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                        className="h-9 px-3 rounded-md bg-gray-900 text-white hover:bg-black"
                         onClick={onEdit}
                     >
                         Chỉnh sửa

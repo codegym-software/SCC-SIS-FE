@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, X, ChevronDown, Check } from 'lucide-react';
 import ClassList from '@/features/users/pages/classes/list.tsx';
 import ManageStudentsModal from '@/features/users/pages/classes/components/ManageStudentsModal';
@@ -124,6 +124,8 @@ export default function ClassesPage() {
     const [openEdit, setOpenEdit] = useState<Class | null>(null);
     const [openManageStudents, setOpenManageStudents] = useState<Class | null>(null);
     const [openAssignInstructor, setOpenAssignInstructor] = useState<Class | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const classesPerPage = 6;
 
     const handleUpdateInstructors = (classId: string, updatedInstructors: Instructor[]) => {
         setClasses(prev => 
@@ -214,7 +216,206 @@ export default function ClassesPage() {
             ],
             status: 'Chuẩn bị',
         },
+        {
+            id: '6',
+            name: 'Lập trình Java Nâng Cao - K16',
+            description: 'Khóa học Java nâng cao cho lập trình viên có kinh nghiệm',
+            program: 'Công nghệ Thông tin',
+            startDate: '2025-10-14',
+            schedule: 'Thứ 2, Thứ 3, Thứ 4 - 19:00-21:30',
+            location: 'Phòng A107',
+            students: 12,
+            maxStudents: 25,
+            instructors: [
+                { id: '9', name: 'Phạm Văn E', initial: 'P' }
+            ],
+            status: 'Chuẩn bị',
+        },
+        {
+            id: '7',
+            name: 'Data Science - K09',
+            description: 'Khoa học dữ liệu và phân tích dữ liệu',
+            program: 'Công nghệ Thông tin',
+            startDate: '2024-11-10',
+            schedule: 'Thứ 2, Thứ 5 - 18:00-21:00',
+            location: 'Phòng F601',
+            students: 20,
+            maxStudents: 30,
+            instructors: [
+                { id: '10', name: 'Hoàng Thị F', initial: 'H' }
+            ],
+            status: 'Đang học',
+        },
+        {
+            id: '8',
+            name: 'UI/UX Design - K11',
+            description: 'Thiết kế giao diện và trải nghiệm người dùng',
+            program: 'Thiết kế Đồ họa',
+            startDate: '2024-12-15',
+            schedule: 'Thứ 3, Thứ 6 - 19:00-21:30',
+            location: 'Phòng G701',
+            students: 15,
+            maxStudents: 20,
+            instructors: [
+                { id: '11', name: 'Vũ Văn G', initial: 'V' }
+            ],
+            status: 'Đang học',
+        },
+        {
+            id: '9',
+            name: 'Mobile App Development - K13',
+            description: 'Phát triển ứng dụng di động đa nền tảng',
+            program: 'Công nghệ Thông tin',
+            startDate: '2025-02-01',
+            schedule: 'Thứ 4, Thứ 7 - 18:30-21:00',
+            location: 'Phòng H801',
+            students: 8,
+            maxStudents: 25,
+            instructors: [
+                { id: '12', name: 'Đặng Thị H', initial: 'Đ' }
+            ],
+            status: 'Chuẩn bị',
+        },
+        {
+            id: '10',
+            name: 'E-commerce Marketing - K07',
+            description: 'Marketing thương mại điện tử và bán hàng online',
+            program: 'Digital Marketing',
+            startDate: '2024-11-05',
+            schedule: 'Thứ 2, Thứ 4 - 19:30-21:30',
+            location: 'Phòng I901',
+            students: 25,
+            maxStudents: 30,
+            instructors: [
+                { id: '13', name: 'Bùi Văn I', initial: 'B' }
+            ],
+            status: 'Đang học',
+        },
+        {
+            id: '11',
+            name: 'Cybersecurity - K14',
+            description: 'An ninh mạng và bảo mật thông tin',
+            program: 'Công nghệ Thông tin',
+            startDate: '2025-03-10',
+            schedule: 'Thứ 3, Thứ 5 - 18:00-20:30',
+            location: 'Phòng J1001',
+            students: 0,
+            maxStudents: 20,
+            instructors: [
+                { id: '14', name: 'Lý Thị J', initial: 'L' }
+            ],
+            status: 'Chuẩn bị',
+        },
+        {
+            id: '12',
+            name: 'Business Analytics - K06',
+            description: 'Phân tích kinh doanh và ra quyết định dựa trên dữ liệu',
+            program: 'Kinh doanh',
+            startDate: '2024-10-20',
+            schedule: 'Thứ 6, CN - 14:00-17:00',
+            location: 'Phòng K1101',
+            students: 18,
+            maxStudents: 25,
+            instructors: [
+                { id: '15', name: 'Trịnh Văn K', initial: 'T' }
+            ],
+            status: 'Đang học',
+        },
+        {
+            id: '13',
+            name: 'Cloud Computing - K17',
+            description: 'Điện toán đám mây và triển khai ứng dụng',
+            program: 'Công nghệ Thông tin',
+            startDate: '2025-04-15',
+            schedule: 'Thứ 2, Thứ 4, Thứ 6 - 19:00-21:00',
+            location: 'Phòng L1201',
+            students: 0,
+            maxStudents: 20,
+            instructors: [
+                { id: '16', name: 'Phan Thị L', initial: 'P' }
+            ],
+            status: 'Chuẩn bị',
+        },
+        {
+            id: '14',
+            name: 'Social Media Marketing - K10',
+            description: 'Marketing trên mạng xã hội và quảng cáo trực tuyến',
+            program: 'Digital Marketing',
+            startDate: '2024-12-10',
+            schedule: 'Thứ 3, Thứ 5 - 19:00-21:30',
+            location: 'Phòng M1301',
+            students: 22,
+            maxStudents: 30,
+            instructors: [
+                { id: '17', name: 'Ngô Văn M', initial: 'N' }
+            ],
+            status: 'Đang học',
+        },
+        {
+            id: '15',
+            name: 'Game Development - K18',
+            description: 'Phát triển game và ứng dụng giải trí',
+            program: 'Công nghệ Thông tin',
+            startDate: '2025-05-20',
+            schedule: 'Thứ 7, CN - 09:00-12:00',
+            location: 'Phòng N1401',
+            students: 0,
+            maxStudents: 15,
+            instructors: [
+                { id: '18', name: 'Đinh Thị N', initial: 'Đ' }
+            ],
+            status: 'Chuẩn bị',
+        },
+        {
+            id: '16',
+            name: 'Content Marketing - K19',
+            description: 'Tạo nội dung marketing và chiến lược nội dung',
+            program: 'Digital Marketing',
+            startDate: '2025-01-25',
+            schedule: 'Thứ 2, Thứ 4 - 18:30-20:30',
+            location: 'Phòng O1501',
+            students: 0,
+            maxStudents: 25,
+            instructors: [
+                { id: '19', name: 'Võ Văn O', initial: 'V' }
+            ],
+            status: 'Chuẩn bị',
+        },
+        {
+            id: '17',
+            name: 'Machine Learning - K20',
+            description: 'Học máy và trí tuệ nhân tạo cơ bản',
+            program: 'Công nghệ Thông tin',
+            startDate: '2025-06-01',
+            schedule: 'Thứ 3, Thứ 5 - 19:00-21:30',
+            location: 'Phòng P1601',
+            students: 0,
+            maxStudents: 20,
+            instructors: [
+                { id: '20', name: 'Lê Thị P', initial: 'L' }
+            ],
+            status: 'Chuẩn bị',
+        }
     ]);
+
+    // Filter classes based on search and status
+    const filteredClasses = classes.filter(c => {
+        const matchesSearch = c.name.toLowerCase().includes(query.toLowerCase()) ||
+                            c.description.toLowerCase().includes(query.toLowerCase());
+        const matchesStatus = statusFilter === 'Tất cả trạng thái' || c.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
+
+    // Calculate pagination
+    const totalPages = Math.ceil(filteredClasses.length / classesPerPage);
+    const startIndex = (currentPage - 1) * classesPerPage;
+    const endIndex = startIndex + classesPerPage;
+    const currentClasses = filteredClasses.slice(startIndex, endIndex);
+
+    // Reset to first page when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [query, statusFilter]);
 
     // AssignInstructorModal function removed - using component instead
 
@@ -292,7 +493,7 @@ export default function ClassesPage() {
                         newErrors.schedule = 'Vui lòng chọn đầy đủ ngày và giờ học';
                     }
                     if (!payload.location || payload.location.trim().length < 2) {
-                        newErrors.location = 'Địa điểm tối thiểu 2 ký tự';
+                        newErrors.location = 'Phòng học tối thiểu 2 ký tự';
                     }
                     if (!payload.maxStudents || payload.maxStudents < 1) {
                         newErrors.maxStudents = 'Sĩ số tối đa phải lớn hơn 0';
@@ -413,7 +614,7 @@ export default function ClassesPage() {
                                 {errors.schedule && <div className="text-xs text-red-600 mt-1">{errors.schedule}</div>}
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-600 mb-1">Địa điểm *</label>
+                                <label className="block text-xs text-gray-600 mb-1">Phòng học *</label>
                                 <input
                                     name="location"
                                     defaultValue={editing?.location}
@@ -462,7 +663,7 @@ export default function ClassesPage() {
                     </button>
                     <button
                         type="submit"
-                        className="h-9 px-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300"
+                        className="h-9 px-3 rounded-md bg-gray-900 text-white hover:bg-black transition-all duration-300"
                     >
                         {editing ? 'Cập nhật' : 'Tạo lớp học'}
                     </button>
@@ -482,7 +683,7 @@ export default function ClassesPage() {
                 </div>
                 <button
                     onClick={() => setOpenCreate(true)}
-                    className="inline-flex items-center gap-2 rounded-md bg-blue-600 text-white text-sm px-3 py-2 hover:bg-blue-700 transition-all duration-300"
+                    className="inline-flex items-center gap-2 rounded-md bg-gray-900 text-white text-sm px-3 py-2 hover:bg-black transition-all duration-300"
                 >
                     + Tạo Lớp học mới
                 </button>
@@ -514,12 +715,16 @@ export default function ClassesPage() {
 
             {/* Classes List */}
             <ClassList
-                classes={classes}
+                classes={currentClasses}
                 query={query}
                 statusFilter={statusFilter}
                 setOpenAssignInstructor={setOpenAssignInstructor}
                 onEdit={setOpenEdit}
                 onManageStudents={setOpenManageStudents}
+                totalClasses={filteredClasses.length}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
             />
             {/* Create Modal */}
             <Modal open={openCreate} onClose={() => setOpenCreate(false)}>

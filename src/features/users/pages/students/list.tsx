@@ -13,6 +13,7 @@ type Student = {
     program: string;
     registrationDate: string;
     status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
+    avatar?: string;
 };
 
 interface StudentListProps {
@@ -100,9 +101,17 @@ const StudentList: React.FC<StudentListProps> = ({
                     >
                         {/* Student Info */}
                         <div className="col-span-3 flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-sm font-medium">
-                                {student.initial}
-                            </div>
+                            {student.avatar ? (
+                                <img
+                                    src={student.avatar}
+                                    alt={student.name}
+                                    className="h-8 w-8 rounded-full object-cover border border-gray-200"
+                                />
+                            ) : (
+                                <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-sm font-medium">
+                                    {student.initial}
+                                </div>
+                            )}
                             <div>
                                 <div className="text-sm font-medium">{student.name}</div>
                                 <div className="text-xs text-gray-500">({student.studentId})</div>

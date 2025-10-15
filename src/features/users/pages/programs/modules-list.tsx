@@ -73,7 +73,7 @@ const ModulesList: React.FC<ModulesListProps> = ({
                 <div className="ml-auto">
                     <button
                         onClick={onCreate}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 text-white text-xs px-2.5 py-1.5 hover:bg-blue-700"
+                        className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 text-white text-xs px-2.5 py-1.5 hover:bg-black"
                     >
                         <span>Tạo module mới</span>
                     </button>
@@ -204,7 +204,7 @@ const ModulesList: React.FC<ModulesListProps> = ({
                                 onClick={() => onPageChange(page)}
                                 className={`h-8 px-3 rounded-md text-sm ${
                                     currentPage === page 
-                                        ? 'bg-blue-600 text-white' 
+                                        ? 'bg-gray-900 text-white' 
                                         : 'border bg-white hover:bg-gray-50'
                                 }`}
                             >
