@@ -420,14 +420,14 @@ export default function CentersPage() {
                     </div>
                 </div>
                 {can('centers:create') && (
-                    <button className="inline-flex items-center gap-2 rounded-md bg-blue-600 text-white text-sm px-3 py-2 hover:bg-blue-700 focus:ring-2 focus:ring-blue-300" onClick={openCreate}>
+                    <button className="inline-flex items-center gap-2 rounded-md bg-gray-900 text-white text-sm px-3 py-2 hover:bg-black focus:ring-2 focus:ring-gray-300" onClick={openCreate}>
                         + Thêm Trung tâm mới
                     </button>
                 )}
             </div>
 
             {/* Stats */}
-            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="rounded-lg border bg-white p-4">
                     <div className="text-xs text-gray-500 flex items-center gap-2"><Building2 size={16} /> Tổng số Trung tâm</div>
                     <div className="mt-3 text-2xl font-semibold">{centers.length}</div>
@@ -437,11 +437,6 @@ export default function CentersPage() {
                     <div className="text-xs text-gray-500 flex items-center gap-2"><Eye size={16} /> Đang hoạt động</div>
                     <div className="mt-3 text-2xl font-semibold">{centers.filter(c => c.active).length}</div>
                     <div className="text-xs text-gray-500 mt-1">Trung tâm hoạt động</div>
-                </div>
-                <div className="rounded-lg border bg-white p-4">
-                    <div className="text-xs text-gray-500 flex items-center gap-2"><Users2 size={16} /> Tổng Học viên</div>
-                    <div className="mt-3 text-2xl font-semibold">{centers.length}</div>
-                    <div className="text-xs text-emerald-600 mt-1">+45 tuần này</div>
                 </div>
             </section>
 
@@ -677,7 +672,7 @@ export default function CentersPage() {
                             <div className="flex items-center gap-2">
                                 {can('centers:update') && (
                                     <button
-                                        className="h-8 px-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-sm"
+                                        className="h-8 px-3 rounded-md bg-gray-900 text-white hover:bg-black text-sm"
                                         onClick={() => {
                                             setViewingCenter(null)
                                             openEdit(viewingCenter)
@@ -986,7 +981,7 @@ export default function CentersPage() {
                         }}>Hủy</button>
                         <button
                             type="submit"
-                            className="h-9 px-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                            className="h-9 px-3 rounded-md bg-gray-900 text-white hover:bg-black disabled:opacity-50 flex items-center gap-2"
                             disabled={isSubmitting}
                         >
                             {isSubmitting && (

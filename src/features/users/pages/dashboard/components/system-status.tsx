@@ -15,7 +15,7 @@ interface SystemStatusProps {
 
 const SystemStatus: React.FC<SystemStatusProps> = ({ services, isLoaded }) => {
   return (
-    <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white to-gray-50/30 p-8 border border-gray-200/50 backdrop-blur-sm">
+    <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white to-gray-50/30 p-8 border border-gray-200/50 bg-white">
       <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-blue-500/5 to-purple-500/5"></div>
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-6">

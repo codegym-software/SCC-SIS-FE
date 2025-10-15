@@ -20,6 +20,7 @@ export default function SettingsPage() {
         email: 'admin@education.edu.vn',
         phone: '',
         bio: '',
+        avatar: '',
     });
 
     const [passwordData, setPasswordData] = useState({
@@ -81,6 +82,12 @@ export default function SettingsPage() {
             const parsed = JSON.parse(savedProfile);
             setFormData(parsed);
         }
+
+        // Load user avatar from localStorage
+        const savedAvatar = localStorage.getItem('userAvatar');
+        if (savedAvatar) {
+            setFormData(prev => ({ ...prev, avatar: savedAvatar }));
+        }
     }, []);
 
     const tabs = [
@@ -111,6 +118,14 @@ export default function SettingsPage() {
         try {
             setIsSaving(true);
             localStorage.setItem('profileData', JSON.stringify(formData));
+            // Also save avatar to user profile for sidebar display
+            localStorage.setItem('userAvatar', formData.avatar);
+            
+            // Dispatch custom event to notify AppLayout of avatar change
+            window.dispatchEvent(new CustomEvent('avatarUpdated', { 
+                detail: { avatar: formData.avatar } 
+            }));
+            
             toast.success('Thành công', 'Đã cập nhật thông tin hồ sơ!');
         } catch (error) {
             toast.error('Lỗi', 'Không thể cập nhật thông tin hồ sơ');

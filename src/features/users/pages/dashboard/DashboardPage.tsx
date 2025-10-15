@@ -121,23 +121,23 @@ export default function DashboardPage() {
             )}
             
             {/* Content */}
-            <div className="relative z-10">
+            <div className="relative z-20">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-                    <p className="text-gray-600">Tổng quan hệ thống quản lý giáo dục</p>
+                <div className="space-y-1 relative z-30">
+                    <h1 className="text-3xl font-bold text-gray-900 bg-white px-4 py-2 rounded-lg">Dashboard</h1>
+                    <p className="text-gray-600 bg-white px-4 py-1 rounded-lg">Tổng quan hệ thống quản lý giáo dục</p>
                 </div>
             </div>
 
             {/* Stats */}
-            <div className="mb-12">
+            <div className="mb-12 relative z-20">
                 <Stats stats={stats} isLoaded={isLoaded} />
             </div>
 
 
             {/* System Status */}
-            <div className="mb-8">
+            <div className="mb-8 relative z-20">
                 <SystemStatus services={systemServices} isLoaded={isLoaded} />
             </div>
             </div>

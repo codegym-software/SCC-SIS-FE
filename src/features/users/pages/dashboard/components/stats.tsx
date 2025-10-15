@@ -26,7 +26,7 @@ const Stats: React.FC<StatsProps> = ({ stats, isLoaded }) => {
         return (
           <div
             key={s.label}
-            className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${s.bgGradient} p-6 border border-white/20 backdrop-blur-sm transition-all duration-500 hover:scale-105 hover:shadow-2xl ${s.glowColor} hover:shadow-xl`}
+            className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${s.bgGradient} p-6 border border-white/20 transition-all duration-500 hover:scale-105 hover:shadow-2xl ${s.glowColor} hover:shadow-xl bg-white`}
             style={{
               animationDelay: `${index * 100}ms`,
               animation: isLoaded ? 'fadeInUp 0.6s ease-out forwards' : 'none',
