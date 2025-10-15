@@ -17,22 +17,30 @@ type Student = {
 
 interface StudentListProps {
     students: Student[];
+    totalStudents: number;
+    currentPage: number;
+    totalPages: number;
     onView?: (student: Student) => void;
     onEdit?: (student: Student) => void;
     onChangeStatus?: (student: Student) => void;
     onDelete?: (student: Student) => void;
     openMenuId?: string | null;
     onMenuToggle?: (id: string) => void;
+    onPageChange?: (page: number) => void;
 }
 
 const StudentList: React.FC<StudentListProps> = ({ 
     students, 
+    totalStudents,
+    currentPage,
+    totalPages,
     onView, 
     onEdit,
     onChangeStatus,
     onDelete,
     openMenuId, 
-    onMenuToggle 
+    onMenuToggle,
+    onPageChange
 }) => {
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -70,7 +78,7 @@ const StudentList: React.FC<StudentListProps> = ({
                 <div>
                     <div className="text-sm font-medium">Danh sách Học viên</div>
                     <div className="text-xs text-gray-500">
-                        Quản lý tất cả hồ sơ học viên ({students.length} kết quả)
+                        Quản lý tất cả hồ sơ học viên ({totalStudents} kết quả)
                     </div>
                 </div>
             </div>
@@ -149,13 +157,39 @@ const StudentList: React.FC<StudentListProps> = ({
             {/* Pagination */}
             <div className="px-3 py-3 border-t flex items-center justify-between text-sm text-gray-500">
                 <div>
-                    Hiển thị 1 - {students.length} trong số {students.length} kết quả
+                    Hiển thị {((currentPage - 1) * 8) + 1} - {Math.min(currentPage * 8, totalStudents)} trong số {totalStudents} kết quả
                 </div>
                 <div className="flex items-center gap-2">
-                    <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50">Previous</button>
-                    <button className="px-2 py-1 text-xs bg-gray-900 text-white rounded">1</button>
-                    <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50">2</button>
-                    <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50">Next</button>
+                    <button 
+                        onClick={() => onPageChange?.(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="px-2 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Previous
+                    </button>
+                    
+                    {/* Page numbers */}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                            key={page}
+                            onClick={() => onPageChange?.(page)}
+                            className={`px-2 py-1 text-xs rounded ${
+                                currentPage === page 
+                                    ? 'bg-gray-900 text-white' 
+                                    : 'border hover:bg-gray-50'
+                            }`}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    
+                    <button 
+                        onClick={() => onPageChange?.(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="px-2 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Next
+                    </button>
                 </div>
             </div>
         </section>

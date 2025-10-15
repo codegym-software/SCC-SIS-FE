@@ -58,6 +58,8 @@ export default function StudentProfilePage() {
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<Student | null>(null);
     const [openChangeStatus, setOpenChangeStatus] = useState<Student | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const studentsPerPage = 8;
 
     // Generate additional students
     const generateAdditionalStudents = (): Student[] => {
@@ -244,6 +246,21 @@ export default function StudentProfilePage() {
         return matchesQuery && matchesStatus && matchesProgram;
     });
 
+    // Pagination logic
+    const totalPages = Math.ceil(filteredStudents.length / studentsPerPage);
+    const startIndex = (currentPage - 1) * studentsPerPage;
+    const endIndex = startIndex + studentsPerPage;
+    const currentStudents = filteredStudents.slice(startIndex, endIndex);
+
+    // Reset to first page when filters change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [query, statusFilter, programFilter]);
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+    };
+
     return (
         <div className="space-y-6">
             {/* Page Header */}
@@ -270,13 +287,17 @@ export default function StudentProfilePage() {
 
             {/* Students List */}
             <StudentList
-                students={filteredStudents}
+                students={currentStudents}
+                totalStudents={filteredStudents.length}
+                currentPage={currentPage}
+                totalPages={totalPages}
                 onView={handleView}
                 onEdit={handleEdit}
                 onChangeStatus={handleChangeStatus}
                 onDelete={handleDeleteStudent}
                 openMenuId={openMenuId}
                 onMenuToggle={handleMenuToggle}
+                onPageChange={handlePageChange}
             />
 
             {/* View Modal */}
