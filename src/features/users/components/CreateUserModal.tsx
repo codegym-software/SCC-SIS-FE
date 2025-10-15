@@ -61,21 +61,21 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
     if (!open) {
       // Reset form and errors when modal closes
       setFormData({
-        fullName: "Nguyễn Văn A",
-        email: "email@education.vn",
-        phone: "090xxxxxxx",
+        fullName: "",
+        email: "",
+        phone: "",
         dateOfBirth: "",
         gender: "Nam",
-        idCard: "123456789012",
+        idCard: "",
         startDate: "",
-        specialization: "Giáo dục",
-        experience: "5 năm",
-        address: "123 Đường ABC, Phường XYZ, Quận QWE",
-        city: "TP.HCM",
-        district: "Quận 1",
-        ward: "Phường ABC",
-        educationLevel: "Đại học",
-        notes: "Thông tin bổ sung...",
+        specialization: "",
+        experience: "",
+        address: "",
+        city: "",
+        district: "",
+        ward: "",
+        educationLevel: "",
+        notes: "",
       });
       setRows([{ id: "1", roleId: "", centerId: "" }]);
       setAgeError("");

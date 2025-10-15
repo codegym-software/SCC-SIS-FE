@@ -7,15 +7,18 @@ import ModulesList from './modules-list';
 import ProgramForm from './form';
 import ProgramView from './view';
 
-type Program = {
-    id: string;
-    name: string;
-    description: string;
-    category: string;
-    duration: string;
-    startDate: string;
-    status: 'Đang hoạt động' | 'Tạm dừng' | 'Hoàn thành';
-};
+// Import API and types
+import { 
+    getPrograms, 
+    createProgram, 
+    updateProgram, 
+    deleteProgram,
+    type Program as ProgramDto,
+    type CreateProgramDto,
+    type UpdateProgramDto
+} from '../../../../shared/api/programs';
+
+type Program = ProgramDto;
 
 type Module = {
     id: string;
@@ -53,112 +56,36 @@ export default function ProgramsPage() {
     const [openEdit, setOpenEdit] = useState<Program | null>(null);
     const [openView, setOpenView] = useState<Program | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
+    
+    const [programs, setPrograms] = useState<Program[]>([]);
+
+    // Fetch programs from API
+    const fetchPrograms = async () => {
+        try {
+            setIsLoading(true);
+            const response = await getPrograms();
+            setPrograms(response.data);
+        } catch (error) {
+            console.error('Failed to fetch programs:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
         setIsLoaded(true);
+        fetchPrograms();
     }, []);
 
     // Reset pagination when switching tabs or changing filters
     useEffect(() => {
         setCurrentPage(1);
     }, [activeTab, query, categoryFilter, statusFilter]);
-
-    const [programs, setPrograms] = useState<Program[]>([
-        {
-            id: '1',
-            name: 'Công nghệ Thông tin',
-            description: 'Chương trình đào tạo toàn diện về CNTT từ cơ bản đến nâng cao',
-            category: 'Kỹ thuật',
-            duration: '480 giờ',
-            startDate: '2024-01-10',
-            status: 'Đang hoạt động',
-        },
-        {
-            id: '2',
-            name: 'Lập trình Java',
-            description: 'Chuyên sâu về lập trình Java và các ứng dụng thực tế',
-            category: 'Lập trình',
-            duration: '240 giờ',
-            startDate: '2024-01-25',
-            status: 'Đang hoạt động',
-        },
-        {
-            id: '3',
-            name: 'Thiết kế Đồ họa',
-            description: 'Đào tạo thiết kế đồ họa chuyên nghiệp với các công cụ hiện đại',
-            category: 'Thiết kế',
-            duration: '360 giờ',
-            startDate: '2024-02-01',
-            status: 'Đang hoạt động',
-        },
-        {
-            id: '4',
-            name: 'Digital Marketing',
-            description: 'Chiến lược marketing số toàn diện cho doanh nghiệp hiện đại',
-            category: 'Kinh doanh',
-            duration: '300 giờ',
-            startDate: '2024-02-15',
-            status: 'Đang hoạt động',
-        },
-        {
-            id: '5',
-            name: 'Data Science',
-            description: 'Phân tích dữ liệu và trí tuệ nhân tạo cho doanh nghiệp',
-            category: 'Kỹ thuật',
-            duration: '450 giờ',
-            startDate: '2024-03-01',
-            status: 'Đang hoạt động',
-        },
-        {
-            id: '6',
-            name: 'Web Development',
-            description: 'Phát triển ứng dụng web hiện đại với React và Node.js',
-            category: 'Lập trình',
-            duration: '270 giờ',
-            startDate: '2024-03-10',
-            status: 'Đang hoạt động',
-        },
-        {
-            id: '7',
-            name: 'Mobile Development',
-            description: 'Phát triển ứng dụng di động với React Native và Flutter',
-            category: 'Lập trình',
-            duration: '330 giờ',
-            startDate: '2024-03-20',
-            status: 'Tạm dừng',
-        },
-        {
-            id: '8',
-            name: 'Cybersecurity',
-            description: 'Bảo mật thông tin và an ninh mạng cho tổ chức',
-            category: 'Kỹ thuật',
-            duration: '420 giờ',
-            startDate: '2024-04-01',
-            status: 'Đang hoạt động',
-        },
-        {
-            id: '9',
-            name: 'Business Analytics',
-            description: 'Phân tích kinh doanh và ra quyết định dựa trên dữ liệu',
-            category: 'Kinh doanh',
-            duration: '240 giờ',
-            startDate: '2024-04-15',
-            status: 'Hoàn thành',
-        },
-        {
-            id: '10',
-            name: 'UI/UX Design',
-            description: 'Thiết kế giao diện người dùng và trải nghiệm người dùng',
-            category: 'Thiết kế',
-            duration: '210 giờ',
-            startDate: '2024-05-01',
-            status: 'Đang hoạt động',
-        },
-    ]);
 
     const [modules, setModules] = useState<Module[]>([
         {
@@ -334,17 +261,33 @@ export default function ProgramsPage() {
             
             if (openEdit) {
                 // Update existing program
-                setPrograms(prev => prev.map(p => p.id === openEdit.id ? { ...p, ...formData } : p));
+                const updateData: UpdateProgramDto = {
+                    name: formData.name,
+                    description: formData.description,
+                    durationHours: formData.durationHours,
+                    deliveryMode: formData.deliveryMode,
+                    categoryCode: formData.categoryCode,
+                    level: formData.level,
+                    isActive: formData.isActive ?? true
+                };
+                await updateProgram(openEdit.programId, updateData);
             } else {
                 // Create new program
-                const newProgram: Program = {
-                    id: String(Date.now()),
-                    startDate: new Date().toISOString().split('T')[0], // Set current date as default
-                    ...formData,
+                const createData: CreateProgramDto = {
+                    code: formData.code,
+                    name: formData.name,
+                    description: formData.description,
+                    durationHours: formData.durationHours,
+                    deliveryMode: formData.deliveryMode,
+                    categoryCode: formData.categoryCode,
+                    level: formData.level,
+                    isActive: formData.isActive ?? true
                 };
-                setPrograms(prev => [newProgram, ...prev]);
+                await createProgram(createData);
             }
 
+            // Refresh programs list
+            await fetchPrograms();
             setOpenCreate(false);
             setOpenEdit(null);
         } catch (error) {
@@ -354,9 +297,15 @@ export default function ProgramsPage() {
         }
     };
 
-    const handleDelete = (program: Program) => {
+    const handleDelete = async (program: Program) => {
         if (window.confirm(`Bạn có chắc chắn muốn xóa chương trình "${program.name}" không?`)) {
-            setPrograms(prev => prev.filter(p => p.id !== program.id));
+            try {
+                await deleteProgram(program.programId);
+                // Refresh programs list
+                await fetchPrograms();
+            } catch (error) {
+                console.error('Error deleting program:', error);
+            }
         }
     };
 

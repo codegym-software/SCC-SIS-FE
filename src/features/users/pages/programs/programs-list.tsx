@@ -1,16 +1,9 @@
 import { BookOpen, Calendar, Clock } from 'lucide-react';
 import { useMemo } from 'react';
 import ProgramActions from './components/actions';
+import type { Program as ProgramDto } from '../../../../shared/api/programs';
 
-type Program = {
-    id: string;
-    name: string;
-    description: string;
-    category: string;
-    duration: string;
-    startDate: string;
-    status: 'Đang hoạt động' | 'Tạm dừng' | 'Hoàn thành';
-};
+type Program = ProgramDto;
 
 interface ProgramsListProps {
     programs: Program[];
@@ -43,16 +36,20 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
         let result = programs.filter(
             (p) =>
                 p.name.toLowerCase().includes(query.toLowerCase()) ||
-                p.description.toLowerCase().includes(query.toLowerCase()) ||
-                p.category.toLowerCase().includes(query.toLowerCase()),
+                (p.description && p.description.toLowerCase().includes(query.toLowerCase())) ||
+                p.categoryCode.toLowerCase().includes(query.toLowerCase()),
         );
 
         if (categoryFilter !== 'Tất cả') {
-            result = result.filter((p) => p.category === categoryFilter);
+            result = result.filter((p) => p.categoryCode === categoryFilter);
         }
 
         if (statusFilter !== 'Tất cả') {
-            result = result.filter((p) => p.status === statusFilter);
+            if (statusFilter === 'Đang hoạt động') {
+                result = result.filter((p) => p.isActive === true);
+            } else {
+                result = result.filter((p) => p.isActive === false);
+            }
         }
 
         return result;
@@ -136,17 +133,20 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
             <div className="divide-y">
                 {paginatedPrograms.map((program) => (
                     <div
-                        key={program.id}
+                        key={program.programId}
                         className="px-3 py-3 pr-12 grid grid-cols-8 gap-3 items-center border-t first:border-t-0 relative"
                     >
                         <div className="col-span-12 md:col-span-4">
                             <div className="flex items-start gap-3">
                                 <div>
                                     <div className="text-sm font-medium">{program.name}</div>
-                                    <div className="text-xs text-gray-500">{program.description}</div>
+                                    <div className="text-xs text-gray-500">{program.description || 'Không có mô tả'}</div>
                                     <div className="flex items-center gap-2 mt-1">
                                         <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs">
-                                            {program.category}
+                                            {program.categoryCode}
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-xs">
+                                            {program.deliveryMode}
                                         </span>
                                     </div>
                                 </div>
@@ -155,20 +155,18 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
                         <div className="col-span-12 md:col-span-2">
                             <div className="flex items-center gap-1 text-sm">
                                 <Clock size={14} className="text-gray-500" />
-                                {program.duration}
+                                {program.durationHours} giờ
                             </div>
                         </div>
                         <div className="col-span-6 md:col-span-1">
                             <span
                                 className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                    program.status === 'Đang hoạt động'
+                                    program.isActive
                                         ? 'bg-green-50 text-green-700'
-                                        : program.status === 'Tạm dừng'
-                                          ? 'bg-yellow-50 text-yellow-700'
-                                          : 'bg-gray-50 text-gray-700'
+                                        : 'bg-gray-50 text-gray-700'
                                 }`}
                             >
-                                {program.status}
+                                {program.isActive ? 'Đang hoạt động' : 'Tạm dừng'}
                             </span>
                         </div>
                         <div className="col-span-6 md:col-span-1">

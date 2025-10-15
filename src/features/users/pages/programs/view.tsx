@@ -1,15 +1,6 @@
 import React from 'react';
 import { BookOpen, Clock, GraduationCap, Calendar, X, FolderOpen } from 'lucide-react';
-
-type Program = {
-    id: string;
-    name: string;
-    description: string;
-    category: string;
-    duration: string;
-    startDate: string;
-    status: 'Đang hoạt động' | 'Tạm dừng' | 'Hoàn thành';
-};
+import type { Program } from '../../../../shared/api/programs';
 
 type Module = {
     id: string;
@@ -31,9 +22,15 @@ interface ProgramViewProps {
     onEdit?: () => void;
 }
 
-const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program, modules, onEdit }) => {
+const ProgramView: React.FC<ProgramViewProps> = ({ 
+    open = true, 
+    onClose, 
+    program, 
+    modules, 
+    onEdit
+}) => {
     if (!open) return null;
-    const programModules = modules.filter((m) => m.field === program.category || m.field === 'Lập trình');
+    const programModules = modules.filter((m) => m.field === program.categoryCode || m.field === 'Lập trình');
 
     return (
         <div>
@@ -63,37 +60,49 @@ const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program
                     <h3 className="text-sm font-medium mb-3">Thông tin chương trình</h3>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
+                            <label className="block text-xs text-gray-500 mb-1">Mã chương trình</label>
+                            <div className="text-sm font-medium">{program.code}</div>
+                        </div>
+                        <div>
                             <label className="block text-xs text-gray-500 mb-1">Tên chương trình</label>
                             <div className="text-sm font-medium">{program.name}</div>
                         </div>
                         <div>
                             <label className="block text-xs text-gray-500 mb-1">Thời gian</label>
-                            <div className="text-sm">{program.duration}</div>
+                            <div className="text-sm">{program.durationHours} giờ</div>
+                        </div>
+                        <div>
+                            <label className="block text-xs text-gray-500 mb-1">Hình thức học</label>
+                            <span className="inline-flex items-center px-2 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium">
+                                {program.deliveryMode}
+                            </span>
                         </div>
                         <div>
                             <label className="block text-xs text-gray-500 mb-1">Danh mục</label>
                             <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
-                                {program.category}
+                                {program.categoryCode}
                             </span>
+                        </div>
+                        <div>
+                            <label className="block text-xs text-gray-500 mb-1">Trình độ</label>
+                            <div className="text-sm">{program.level}</div>
                         </div>
                         <div>
                             <label className="block text-xs text-gray-500 mb-1">Trạng thái</label>
                             <span
                                 className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                    program.status === 'Đang hoạt động'
+                                    program.isActive
                                         ? 'bg-green-50 text-green-700'
-                                        : program.status === 'Tạm dừng'
-                                          ? 'bg-yellow-50 text-yellow-700'
-                                          : 'bg-gray-50 text-gray-700'
+                                        : 'bg-gray-50 text-gray-700'
                                 }`}
                             >
-                                {program.status}
+                                {program.isActive ? 'Đang hoạt động' : 'Tạm dừng'}
                             </span>
                         </div>
                     </div>
                     <div className="mt-4">
                         <label className="block text-xs text-gray-500 mb-1">Mô tả</label>
-                        <div className="text-sm text-gray-700">{program.description}</div>
+                        <div className="text-sm text-gray-700">{program.description || 'Không có mô tả'}</div>
                     </div>
                 </div>
 
