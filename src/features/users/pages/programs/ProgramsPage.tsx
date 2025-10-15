@@ -53,10 +53,19 @@ export default function ProgramsPage() {
     const [openEdit, setOpenEdit] = useState<Program | null>(null);
     const [openView, setOpenView] = useState<Program | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Pagination states
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5;
 
     useEffect(() => {
         setIsLoaded(true);
     }, []);
+
+    // Reset pagination when switching tabs or changing filters
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab, query, categoryFilter, statusFilter]);
 
     const [programs, setPrograms] = useState<Program[]>([
         {
@@ -84,6 +93,69 @@ export default function ProgramsPage() {
             category: 'Thiết kế',
             duration: '12 tháng',
             startDate: '2024-02-01',
+            status: 'Đang hoạt động',
+        },
+        {
+            id: '4',
+            name: 'Digital Marketing',
+            description: 'Chiến lược marketing số toàn diện cho doanh nghiệp hiện đại',
+            category: 'Kinh doanh',
+            duration: '10 tháng',
+            startDate: '2024-02-15',
+            status: 'Đang hoạt động',
+        },
+        {
+            id: '5',
+            name: 'Data Science',
+            description: 'Phân tích dữ liệu và trí tuệ nhân tạo cho doanh nghiệp',
+            category: 'Kỹ thuật',
+            duration: '15 tháng',
+            startDate: '2024-03-01',
+            status: 'Đang hoạt động',
+        },
+        {
+            id: '6',
+            name: 'Web Development',
+            description: 'Phát triển ứng dụng web hiện đại với React và Node.js',
+            category: 'Lập trình',
+            duration: '9 tháng',
+            startDate: '2024-03-10',
+            status: 'Đang hoạt động',
+        },
+        {
+            id: '7',
+            name: 'Mobile Development',
+            description: 'Phát triển ứng dụng di động với React Native và Flutter',
+            category: 'Lập trình',
+            duration: '11 tháng',
+            startDate: '2024-03-20',
+            status: 'Tạm dừng',
+        },
+        {
+            id: '8',
+            name: 'Cybersecurity',
+            description: 'Bảo mật thông tin và an ninh mạng cho tổ chức',
+            category: 'Kỹ thuật',
+            duration: '14 tháng',
+            startDate: '2024-04-01',
+            status: 'Đang hoạt động',
+        },
+        {
+            id: '9',
+            name: 'Business Analytics',
+            description: 'Phân tích kinh doanh và ra quyết định dựa trên dữ liệu',
+            category: 'Kinh doanh',
+            duration: '8 tháng',
+            startDate: '2024-04-15',
+            status: 'Hoàn thành',
+        },
+        {
+            id: '10',
+            name: 'UI/UX Design',
+            description: 'Thiết kế giao diện người dùng và trải nghiệm người dùng',
+            category: 'Thiết kế',
+            duration: '7 tháng',
+            startDate: '2024-05-01',
             status: 'Đang hoạt động',
         },
     ]);
@@ -131,6 +203,127 @@ export default function ProgramsPage() {
             duration: '4 tháng',
             prerequisite: 'Không',
             syllabus: 'Chưa có',
+            status: 'Hoạt động',
+        },
+        {
+            id: '5',
+            name: 'React Development',
+            moduleId: 'WEB001',
+            field: 'Lập trình',
+            credits: 4,
+            duration: '5 tháng',
+            prerequisite: 'Lập trình Cơ bản',
+            syllabus: 'Có',
+            status: 'Hoạt động',
+        },
+        {
+            id: '6',
+            name: 'Node.js Backend',
+            moduleId: 'WEB002',
+            field: 'Lập trình',
+            credits: 4,
+            duration: '6 tháng',
+            prerequisite: 'JavaScript Cơ bản',
+            syllabus: 'Có',
+            status: 'Hoạt động',
+        },
+        {
+            id: '7',
+            name: 'Python Data Analysis',
+            moduleId: 'DATA001',
+            field: 'Kỹ thuật',
+            credits: 5,
+            duration: '7 tháng',
+            prerequisite: 'Python Cơ bản',
+            syllabus: 'Có',
+            status: 'Hoạt động',
+        },
+        {
+            id: '8',
+            name: 'Machine Learning',
+            moduleId: 'AI001',
+            field: 'Kỹ thuật',
+            credits: 6,
+            duration: '8 tháng',
+            prerequisite: 'Python Data Analysis',
+            syllabus: 'Có',
+            status: 'Hoạt động',
+        },
+        {
+            id: '9',
+            name: 'Digital Marketing Strategy',
+            moduleId: 'MKT001',
+            field: 'Kinh doanh',
+            credits: 3,
+            duration: '4 tháng',
+            prerequisite: 'Không',
+            syllabus: 'Có',
+            status: 'Hoạt động',
+        },
+        {
+            id: '10',
+            name: 'SEO & Content Marketing',
+            moduleId: 'MKT002',
+            field: 'Kinh doanh',
+            credits: 3,
+            duration: '3 tháng',
+            prerequisite: 'Digital Marketing Strategy',
+            syllabus: 'Có',
+            status: 'Hoạt động',
+        },
+        {
+            id: '11',
+            name: 'Adobe Photoshop',
+            moduleId: 'DES002',
+            field: 'Thiết kế',
+            credits: 2,
+            duration: '3 tháng',
+            prerequisite: 'Không',
+            syllabus: 'Có',
+            status: 'Hoạt động',
+        },
+        {
+            id: '12',
+            name: 'Adobe Illustrator',
+            moduleId: 'DES003',
+            field: 'Thiết kế',
+            credits: 2,
+            duration: '3 tháng',
+            prerequisite: 'Adobe Photoshop',
+            syllabus: 'Có',
+            status: 'Hoạt động',
+        },
+        {
+            id: '13',
+            name: 'Figma Design',
+            moduleId: 'DES004',
+            field: 'Thiết kế',
+            credits: 3,
+            duration: '4 tháng',
+            prerequisite: 'Thiết kế UI/UX',
+            syllabus: 'Có',
+            status: 'Hoạt động',
+        },
+        {
+            id: '14',
+            name: 'Cybersecurity Fundamentals',
+            moduleId: 'SEC001',
+            field: 'Kỹ thuật',
+            credits: 4,
+            duration: '5 tháng',
+            prerequisite: 'Lập trình Cơ bản',
+            syllabus: 'Có',
+            status: 'Hoạt động',
+        },
+        {
+            id: '15',
+            name: 'Business Intelligence',
+            moduleId: 'BI001',
+            field: 'Kinh doanh',
+            credits: 4,
+            duration: '6 tháng',
+            prerequisite: 'Python Data Analysis',
+            syllabus: 'Có',
             status: 'Hoạt động',
         },
     ]);
@@ -190,9 +383,6 @@ export default function ProgramsPage() {
         <div className="space-y-6">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 grid place-items-center text-white">
-                        <BookOpen size={18} />
-                    </div>
                     <div>
                         <h1 className="text-lg font-semibold">Quản lý Chương trình & Module</h1>
                         <p className="text-xs text-gray-500">Quản lý chương trình đào tạo và module học</p>
@@ -208,7 +398,7 @@ export default function ProgramsPage() {
                         activeTab === 'programs' ? 'bg-blue-600 text-white' : 'bg-white border'
                     }`}
                 >
-                    <BookOpen size={14} /> Chương trình
+                    Chương trình
                 </button>
                 <button
                     onClick={() => setActiveTab('modules')}
@@ -216,7 +406,7 @@ export default function ProgramsPage() {
                         activeTab === 'modules' ? 'bg-blue-600 text-white' : 'bg-white border'
                     }`}
                 >
-                    <FolderOpen size={14} /> Module
+                    Module
                 </button>
             </div>
 
@@ -265,6 +455,9 @@ export default function ProgramsPage() {
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onCreate={handleCreate}
+                    currentPage={currentPage}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
                 />
             )}
 
@@ -277,6 +470,9 @@ export default function ProgramsPage() {
                     onEdit={() => {}}
                     onDelete={() => {}}
                     onCreate={() => {}}
+                    currentPage={currentPage}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
                 />
             )}
 

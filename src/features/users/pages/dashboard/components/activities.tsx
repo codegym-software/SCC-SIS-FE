@@ -1,5 +1,5 @@
-import React from 'react';
-import { Sparkles, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sparkles, Zap, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Activity {
   title: string;
@@ -16,6 +16,8 @@ interface ActivitiesProps {
 }
 
 const Activities: React.FC<ActivitiesProps> = ({ activities, isLoaded }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   return (
     <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white to-gray-50/30 p-8 border border-gray-200/50 backdrop-blur-sm">
       <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-pink-500/5 to-orange-500/5"></div>
@@ -30,12 +32,34 @@ const Activities: React.FC<ActivitiesProps> = ({ activities, isLoaded }) => {
               Theo dõi các hoạt động mới nhất với hiệu ứng động đẹp mắt
             </p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-purple-600 bg-purple-50 px-4 py-2 rounded-xl">
-            <Zap className="h-4 w-4" />
-            <span className="font-semibold">Cập nhật real-time</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-purple-600 bg-purple-50 px-4 py-2 rounded-xl">
+              <Zap className="h-4 w-4" />
+              <span className="font-semibold">Cập nhật real-time</span>
+            </div>
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 hover:bg-gray-100 px-4 py-2 rounded-xl transition-colors"
+            >
+              {isCollapsed ? (
+                <>
+                  <ChevronDown className="h-4 w-4" />
+                  <span>Mở rộng</span>
+                </>
+              ) : (
+                <>
+                  <ChevronUp className="h-4 w-4" />
+                  <span>Thu gọn</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
-        <div className="space-y-4">
+        <div 
+          className={`space-y-4 transition-all duration-500 ease-in-out overflow-hidden ${
+            isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[1000px] opacity-100'
+          }`}
+        >
           {activities.map((activity, index) => {
             const IconComponent = activity.icon;
             return (

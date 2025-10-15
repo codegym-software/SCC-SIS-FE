@@ -1,10 +1,12 @@
 import React from 'react';
 import { Monitor, Sun, Moon, Type, Globe, Palette } from 'lucide-react';
+import BackgroundImageManager from './components/BackgroundImageManager';
 
 interface AppearanceSettings {
     theme: 'light' | 'dark' | 'auto';
     language: 'vi' | 'en';
     fontSize: 'small' | 'medium' | 'large';
+    backgroundImage: string | null;
 }
 
 interface AppearanceProps {
@@ -171,6 +173,14 @@ const Appearance: React.FC<AppearanceProps> = ({
                         ))}
                     </div>
                 </div>
+            </div>
+
+            {/* Background Image Management */}
+            <div className="space-y-4">
+                <BackgroundImageManager
+                    currentImage={settings.backgroundImage}
+                    onImageChange={(imageUrl) => onSettingChange('backgroundImage', imageUrl)}
+                />
             </div>
 
             {/* Preview */}

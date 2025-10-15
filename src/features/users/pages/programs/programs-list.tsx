@@ -21,6 +21,9 @@ interface ProgramsListProps {
     onEdit: (program: Program) => void;
     onDelete: (program: Program) => void;
     onCreate: () => void;
+    currentPage: number;
+    itemsPerPage: number;
+    onPageChange: (page: number) => void;
 }
 
 const ProgramsList: React.FC<ProgramsListProps> = ({ 
@@ -31,7 +34,10 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
     onView, 
     onEdit, 
     onDelete, 
-    onCreate 
+    onCreate,
+    currentPage,
+    itemsPerPage,
+    onPageChange
 }) => {
     const filtered = useMemo(() => {
         let result = programs.filter(
@@ -52,13 +58,16 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
         return result;
     }, [programs, query, categoryFilter, statusFilter]);
 
+    // Pagination logic
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedPrograms = filtered.slice(startIndex, endIndex);
+
     return (
         <section className="rounded-2xl border border-gray-200 bg-white">
             {/* Header card */}
             <div className="px-3 py-3 border-b flex items-start gap-2">
-                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 grid place-items-center text-white flex-shrink-0">
-                    <BookOpen size={16} />
-                </div>
                 <div>
                     <div className="text-sm font-medium">Danh sách Chương trình</div>
                     <div className="text-xs text-gray-500">
@@ -70,7 +79,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
                         onClick={onCreate}
                         className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 text-white text-xs px-2.5 py-1.5 hover:bg-blue-700"
                     >
-                        <BookOpen size={16} /> <span>Tạo chương trình mới</span>
+                        <span>Tạo chương trình mới</span>
                     </button>
                 </div>
             </div>
@@ -125,16 +134,13 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
             </div>
 
             <div className="divide-y">
-                {filtered.map((program) => (
+                {paginatedPrograms.map((program) => (
                     <div
                         key={program.id}
                         className="px-3 py-3 pr-12 grid grid-cols-8 gap-3 items-center border-t first:border-t-0 relative"
                     >
                         <div className="col-span-12 md:col-span-4">
                             <div className="flex items-start gap-3">
-                                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 grid place-items-center text-white flex-shrink-0">
-                                    <BookOpen size={16} />
-                                </div>
                                 <div>
                                     <div className="text-sm font-medium">{program.name}</div>
                                     <div className="text-xs text-gray-500">{program.description}</div>
@@ -183,19 +189,44 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
             </div>
 
             {/* Pagination */}
-            <div className="px-3 py-3 border-t flex items-center justify-between text-sm text-gray-500">
-                <div>
-                    Hiển thị 1 - {Math.min(5, filtered.length)} trong số {filtered.length} kết quả
+            {totalPages > 1 && (
+                <div className="px-3 py-3 border-t flex items-center justify-between text-sm text-gray-500">
+                    <div>
+                        Hiển thị {startIndex + 1} - {Math.min(endIndex, filtered.length)} trong số {filtered.length} kết quả
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => onPageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Previous
+                        </button>
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                            <button
+                                key={page}
+                                onClick={() => onPageChange(page)}
+                                className={`h-8 px-3 rounded-md text-sm ${
+                                    currentPage === page 
+                                        ? 'bg-blue-600 text-white' 
+                                        : 'border bg-white hover:bg-gray-50'
+                                }`}
+                            >
+                                {page}
+                            </button>
+                        ))}
+                        
+                        <button 
+                            onClick={() => onPageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm">
-                        Previous
-                    </button>
-                    <button className="h-8 px-3 rounded-md bg-blue-600 text-white text-sm">1</button>
-                    <button className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm">2</button>
-                    <button className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm">Next</button>
-                </div>
-            </div>
+            )}
         </section>
     );
 };

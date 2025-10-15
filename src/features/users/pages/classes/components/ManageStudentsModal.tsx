@@ -7,6 +7,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import StudentDetailsModal from './StudentDetailsModal';
+import AddStudentModal from './AddStudentModal';
 
 type Instructor = {
     id: string;
@@ -46,6 +47,7 @@ interface ManageStudentsModalProps {
 
 const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, onClose }) => {
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [openAddStudent, setOpenAddStudent] = useState(false);
     
     // Mock data for students
     const [students, setStudents] = useState<Student[]>([
@@ -105,6 +107,47 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
         }
     ]);
 
+    const handleAddStudents = (studentIds: string[]) => {
+        // Mock data for available students (from student profiles)
+        const availableStudents = [
+            {
+                id: '7',
+                name: 'Nguyễn Văn An',
+                email: 'an.nguyen@student.edu',
+                phone: '0977777777',
+                initial: 'N',
+                status: 'Đang học' as const,
+                registrationDate: '2024-02-01'
+            },
+            {
+                id: '8',
+                name: 'Trần Thị Bích',
+                email: 'bich.tran@student.edu',
+                phone: '0988888888',
+                initial: 'T',
+                status: 'Đang học' as const,
+                registrationDate: '2024-02-02'
+            },
+            {
+                id: '9',
+                name: 'Lê Văn Cường',
+                email: 'cuong.le2@student.edu',
+                phone: '0999999999',
+                initial: 'L',
+                status: 'Đang học' as const,
+                registrationDate: '2024-02-03'
+            }
+        ];
+
+        // Add selected students to the class
+        const newStudents = availableStudents.filter(student => 
+            studentIds.includes(student.id)
+        );
+        
+        setStudents(prev => [...prev, ...newStudents]);
+        setOpenAddStudent(false);
+    };
+
     const handleViewDetails = (student: Student) => {
         setSelectedStudent(student);
     };
@@ -116,8 +159,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
     };
 
     const handleAddStudent = () => {
-        console.log('Add new student');
-        // TODO: Implement add student to class
+        setOpenAddStudent(true);
     };
 
     return (
@@ -234,6 +276,13 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                     />
                 </div>
             )}
+
+            <AddStudentModal
+                open={openAddStudent}
+                onClose={() => setOpenAddStudent(false)}
+                classItem={classItem}
+                onAddStudents={handleAddStudents}
+            />
         </div>
     );
 };

@@ -414,16 +414,13 @@ export default function CentersPage() {
         <div className="space-y-6">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 grid place-items-center text-white">
-                        <Building2 size={18} />
-                    </div>
                     <div>
                         <h1 className="text-lg font-semibold">Quản lý Trung tâm</h1>
                         <p className="text-xs text-gray-500">Quản lý thông tin các trung tâm trong hệ thống</p>
                     </div>
                 </div>
                 {can('centers:create') && (
-                    <button className="inline-flex items-center gap-2 rounded-md bg-indigo-600 text-white text-sm px-3 py-2 hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-300" onClick={openCreate}>
+                    <button className="inline-flex items-center gap-2 rounded-md bg-blue-600 text-white text-sm px-3 py-2 hover:bg-blue-700 focus:ring-2 focus:ring-blue-300" onClick={openCreate}>
                         + Thêm Trung tâm mới
                     </button>
                 )}
@@ -489,9 +486,6 @@ export default function CentersPage() {
                                 <div key={c.id} className="grid grid-cols-12 gap-4 px-4 py-4 items-center">
                                     <div className="col-span-12 md:col-span-3">
                                         <div className="flex items-start gap-3">
-                                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 grid place-items-center text-white flex-shrink-0">
-                                                <Building2 size={18} />
-                                            </div>
                                             <div>
                                                 <div className="text-sm font-medium">{c.name}</div>
                                                 <div className="text-xs text-gray-500">Mã: {c.code}</div>
@@ -563,9 +557,6 @@ export default function CentersPage() {
                     <div>
                         <div className="px-4 py-3 border-b flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 grid place-items-center text-white">
-                                    <Building2 size={18} />
-                                </div>
                                 <div>
                                     <div className="font-semibold">{viewingCenter.name}</div>
                                     <div className="text-xs text-gray-500">Mã: {viewingCenter.code}</div>
@@ -648,7 +639,7 @@ export default function CentersPage() {
                             {/* Địa chỉ */}
                             <div className="space-y-4">
                                 <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                                    <div className="h-5 w-5 rounded-lg bg-purple-50 text-purple-600 grid place-items-center">
+                                    <div className="h-5 w-5 rounded-lg bg-blue-50 text-blue-600 grid place-items-center">
                                         <MapPin size={12} />
                                     </div>
                                     <h3 className="text-sm font-medium text-gray-900">Địa chỉ</h3>
@@ -740,9 +731,6 @@ export default function CentersPage() {
                         {/* Thông tin cơ bản */}
                         <div className="space-y-3">
                             <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                                <div className="h-5 w-5 rounded-lg bg-blue-50 text-blue-600 grid place-items-center">
-                                    <Building2 size={12} />
-                                </div>
                                 <h3 className="text-xs font-medium text-gray-900">Thông tin cơ bản</h3>
                             </div>
                             <div className="grid grid-cols-3 gap-3">
@@ -932,7 +920,7 @@ export default function CentersPage() {
                         {/* Thông tin liên hệ */}
                         <div className="space-y-3">
                             <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                                <div className="h-5 w-5 rounded-lg bg-purple-50 text-purple-600 grid place-items-center">
+                                <div className="h-5 w-5 rounded-lg bg-blue-50 text-blue-600 grid place-items-center">
                                     <Phone size={12} />
                                 </div>
                                 <h3 className="text-xs font-medium text-gray-900">Thông tin liên hệ</h3>

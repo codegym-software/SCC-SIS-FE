@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, GraduationCap, Check, Edit } from 'lucide-react';
 import {
     DropdownMenu,
@@ -6,6 +6,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
 
 type ClassInstructor = {
     id: string;
@@ -42,9 +43,10 @@ type Instructor = {
 interface AssignInstructorModalProps {
     classItem: Class;
     onClose?: () => void;
+    onUpdateInstructors?: (classId: string, updatedInstructors: Instructor[]) => void;
 }
 
-const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem, onClose }) => {
+const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem, onClose, onUpdateInstructors }) => {
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [selectedInstructors, setSelectedInstructors] = useState<string[]>([]);
     const [instructorDetails, setInstructorDetails] = useState<{[key: string]: {startDate: string, note: string}}>({});
@@ -54,6 +56,15 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+    const [removeConfirm, setRemoveConfirm] = useState<Instructor | null>(null);
+    
+    // State to track assigned instructors locally for immediate UI updates
+    const [localAssignedInstructors, setLocalAssignedInstructors] = useState<ClassInstructor[]>([]);
+    
+    // Update local state when classItem.instructors changes
+    useEffect(() => {
+        setLocalAssignedInstructors(classItem.instructors || []);
+    }, [classItem.instructors]);
     
     // Mock data for instructors - 36 instructors
     const [instructors, setInstructors] = useState<Instructor[]>([
@@ -95,13 +106,16 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
         { id: '36', name: 'Đinh Thị JJ', email: 'jj.dinh@education.vn', specialization: 'Cryptocurrency', initial: 'Đ', assigned: false }
     ]);
 
-    const assignedInstructors = instructors.filter(i => i.assigned);
-    const filteredInstructors = instructors.filter(i => 
-        !i.assigned && 
-        (i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         i.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         i.specialization.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    // Use local state for immediate UI updates
+    const assignedInstructors = localAssignedInstructors;
+    const filteredInstructors = instructors.filter(i => {
+        // Check if instructor is already assigned to this class
+        const isAssignedToClass = assignedInstructors.some(assigned => assigned.id === i.id);
+        return !isAssignedToClass && 
+            (i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             i.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             i.specialization.toLowerCase().includes(searchTerm.toLowerCase()));
+    });
     
     // Pagination logic
     const totalPages = Math.ceil(filteredInstructors.length / itemsPerPage);
@@ -132,30 +146,42 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
     };
 
     const handleConfirmAssign = () => {
-        // Update instructor assignment status with details
-        setInstructors(prev => 
-            prev.map(instructor => 
-                selectedInstructors.includes(instructor.id)
-                    ? { 
-                        ...instructor, 
-                        assigned: true,
-                        startDate: instructorDetails[instructor.id]?.startDate || '',
-                        note: instructorDetails[instructor.id]?.note || ''
-                    }
-                    : instructor
-            )
-        );
+        // Get selected instructors with their details
+        const newAssignedInstructors = selectedInstructors.map(instructorId => {
+            const instructor = instructors.find(inst => inst.id === instructorId);
+            const details = instructorDetails[instructorId] || { startDate: '', note: '' };
+            return {
+                id: instructorId,
+                name: instructor?.name || '',
+                initial: instructor?.initial || '',
+                email: instructor?.email || '',
+                specialization: instructor?.specialization || '',
+                startDate: details.startDate,
+                note: details.note
+            };
+        });
+        
+        // Combine existing assigned instructors with new ones
+        const updatedAssignedInstructors = [...assignedInstructors, ...newAssignedInstructors];
+        
+        // Update local state immediately for UI update
+        setLocalAssignedInstructors(updatedAssignedInstructors);
+        
+        // Update parent component with all assigned instructors
+        if (onUpdateInstructors) {
+            onUpdateInstructors(classItem.id, updatedAssignedInstructors);
+        }
         
         // Clear selection and details
         setSelectedInstructors([]);
         setInstructorDetails({});
         setShowAssignModal(false);
         
-        console.log('Instructors updated:', instructors);
+        console.log('Instructors assigned:', newAssignedInstructors);
     };
 
     const handleEditInstructor = (instructorId: string) => {
-        const instructor = instructors.find(inst => inst.id === instructorId);
+        const instructor = assignedInstructors.find(inst => inst.id === instructorId);
         if (instructor) {
             setEditingInstructor(instructor);
             setEditFormData({
@@ -168,13 +194,20 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
 
     const handleSaveEdit = () => {
         if (editingInstructor) {
-            setInstructors(prev => 
-                prev.map(instructor => 
-                    instructor.id === editingInstructor.id
-                        ? { ...instructor, startDate: editFormData.startDate, note: editFormData.note }
-                        : instructor
-                )
+            const updatedAssignedInstructors = assignedInstructors.map(instructor => 
+                instructor.id === editingInstructor.id
+                    ? { ...instructor, startDate: editFormData.startDate, note: editFormData.note }
+                    : instructor
             );
+            
+            // Update local state immediately for UI update
+            setLocalAssignedInstructors(updatedAssignedInstructors);
+            
+            // Update parent component with updated assigned instructors
+            if (onUpdateInstructors) {
+                onUpdateInstructors(classItem.id, updatedAssignedInstructors);
+            }
+            
             setShowEditModal(false);
             setEditingInstructor(null);
             setEditFormData({startDate: '', note: ''});
@@ -182,20 +215,35 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
     };
 
     const handleRemoveInstructor = (instructorId: string) => {
-        setInstructors(prev => 
-            prev.map(instructor => 
-                instructor.id === instructorId
-                    ? { ...instructor, assigned: false, startDate: '', note: '' }
-                    : instructor
-            )
-        );
-        
-        // Also clear from instructorDetails if exists
-        setInstructorDetails(prev => {
-            const newDetails = { ...prev };
-            delete newDetails[instructorId];
-            return newDetails;
-        });
+        const instructor = assignedInstructors.find(inst => inst.id === instructorId);
+        if (instructor) {
+            setRemoveConfirm(instructor);
+        }
+    };
+
+    const confirmRemoveInstructor = () => {
+        if (removeConfirm) {
+            const updatedAssignedInstructors = assignedInstructors.filter(
+                instructor => instructor.id !== removeConfirm.id
+            );
+            
+            // Update local state immediately for UI update
+            setLocalAssignedInstructors(updatedAssignedInstructors);
+            
+            // Update parent component with updated assigned instructors
+            if (onUpdateInstructors) {
+                onUpdateInstructors(classItem.id, updatedAssignedInstructors);
+            }
+            
+            // Also clear from instructorDetails if exists
+            setInstructorDetails(prev => {
+                const newDetails = { ...prev };
+                delete newDetails[removeConfirm.id];
+                return newDetails;
+            });
+            
+            setRemoveConfirm(null);
+        }
     };
 
     return (
@@ -650,6 +698,18 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                     </div>
                 </div>
             )}
+
+            {/* Remove Confirmation Dialog */}
+            <ConfirmDialog
+                open={!!removeConfirm}
+                onClose={() => setRemoveConfirm(null)}
+                onConfirm={confirmRemoveInstructor}
+                title="Xác nhận hủy phân công"
+                description={`Bạn có chắc chắn muốn hủy phân công giảng viên "${removeConfirm?.name}" khỏi lớp học? Hành động này sẽ xóa tất cả thông tin phân công của giảng viên này.`}
+                confirmText="Hủy phân công"
+                cancelText="Đóng"
+                variant="danger"
+            />
         </>
     );
 };
