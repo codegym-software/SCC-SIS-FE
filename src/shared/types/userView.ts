@@ -5,12 +5,14 @@ export type RoleScope = 'GLOBAL' | 'CENTER';
 export type RoleCode = string;
 
 export interface UserAssignment {
+    assignmentId: number;
     roleId: number;
     roleCode: RoleCode; // string
     roleName: string;
     scope: RoleScope;   // backend trả về
     centerId: number | null;
     centerName: string | null;
+    assignedAt?: string; // Optional: timestamp khi được gán vai trò
 }
 
 export interface UserViewDto {

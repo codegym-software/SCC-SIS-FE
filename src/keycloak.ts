@@ -14,12 +14,11 @@ export async function ensureValidToken(minSeconds = 30): Promise<string | null> 
     }
 
     try {
-        const refreshed = await keycloak.updateToken(minSeconds);
-        // Token refreshed or still valid
-        return keycloak.token;
+        await keycloak.updateToken(minSeconds);
+        return keycloak.token ?? null;
     } catch (error) {
-        console.error('Failed to refresh token:', error);
+        console.error('Token refresh failed:', error);
         await keycloak.login();
-        return keycloak.token;
+        return keycloak.token ?? null;
     }
 }

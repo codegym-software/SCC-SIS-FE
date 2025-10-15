@@ -1,15 +1,15 @@
 // src/features/users/pages/UsersPage.tsx
-import React, { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useToast } from '../../../shared/hooks/useToast'
 import { usePermission } from '../../../shared/components/PermissionProvider'
-import { Eye, Pencil, ShieldOff, ShieldCheck, MoreHorizontal, Plus, Search, ChevronDown } from 'lucide-react'
+import { MoreHorizontal, Plus, Search, ChevronDown, Eye, Pencil } from 'lucide-react'
 import CreateUserModal from '../components/CreateUserModal'
+import AssignRoleModal from '../components/AssignRoleModal'
 
 import { listUserViews, getRoleStats } from '../../../shared/api/userViews'
 import { getCentersLite } from '../../../shared/api/centers'
 import { getRoles } from '../../../shared/api/roles'
 import { createUser } from '../../../shared/api/users'
-import { getProfile } from '../../../shared/api/auth'
 
 import type { UserViewDto, RoleCode } from '../../../shared/types/userView'
 import type { CenterLiteDto } from '../../../shared/types/centers'
@@ -32,7 +32,7 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
 export default function UsersPage() {
     const [openCreate, setOpenCreate] = useState(false)
     const [openView, setOpenView] = useState<UserViewDto | null>(null)
-    const [openEdit, setOpenEdit] = useState<UserViewDto | null>(null)
+    const [openAssignRole, setOpenAssignRole] = useState<number | null>(null)
     const [query, setQuery] = useState('')
     const [openMenuId, setOpenMenuId] = useState<number | null>(null)
 
@@ -57,35 +57,42 @@ export default function UsersPage() {
     const toast = useToast()
     const { can } = usePermission()
 
-    // Debug profile (token ok?) - an toàn unmount
+    // Load dropdowns (roles, centers lite) 1 lần khi mount
     useEffect(() => {
-        let isMounted = true
-        getProfile()
-            .then(res => { if (isMounted) console.log('[PROFILE]', res.data) })
-            .catch(err => { if (isMounted) console.error('[PROFILE ERR]', err?.response?.status, err?.response?.data) })
-        return () => { isMounted = false }
+        (async () => {
+            try {
+                const [r, c] = await Promise.all([getRoles(true), getCentersLite()])
+                // Xử lý different data formats
+                let rolesData = [];
+                if (Array.isArray(r.data)) {
+                    rolesData = r.data;
+                } else if (r.data && typeof r.data === 'object') {
+                    // Có thể data nằm trong property khác
+                    const dataObj = r.data as any;
+                    if (Array.isArray(dataObj.roles)) {
+                        rolesData = dataObj.roles;
+                    } else if (Array.isArray(dataObj.data)) {
+                        rolesData = dataObj.data;
+                    } else if (Array.isArray(dataObj.items)) {
+                        rolesData = dataObj.items;
+                    } else {
+                        console.log('[DEBUG] Unknown data structure, keys:', Object.keys(dataObj));
+                        rolesData = [];
+                    }
+                }
+
+                const centersData = Array.isArray(c.data) ? c.data : []
+
+                setRoles(rolesData)
+                setCenters(centersData)
+            } catch (e: any) {
+                console.error('[DROPDOWN LOAD ERR]', e?.response?.status, e?.response?.data)
+                toast.error('Lỗi', 'Không tải được danh sách vai trò/trung tâm')
+            }
+        })()
     }, [])
 
-    // Load dropdowns (roles, centers lite) 1 lần khi mount
-    // ❗Loại bỏ `toast` khỏi dependency để tránh vòng lặp
-    useEffect(() => {
-        let isMounted = true
-            ; (async () => {
-                try {
-                    const [r, c] = await Promise.all([getRoles(true), getCentersLite()])
-                    if (!isMounted) return
-                    setRoles(Array.isArray(r.data) ? r.data : [])
-                    setCenters(Array.isArray(c.data) ? c.data : [])
-                } catch (e: any) {
-                    if (!isMounted) return
-                    console.error('[DROPDOWN LOAD ERR]', e?.response?.status, e?.response?.data)
-                    toast.error('Lỗi', 'Không tải được danh sách vai trò/trung tâm')
-                }
-            })()
-        return () => { isMounted = false }
-    }, []) // <-- không để [toast] nữa
-
-    // Fetch list (server-side filter) rồi áp thêm rule "phải có assignment ở center đã chọn"
+    // Fetch list (server-side filter) rồi áp thêm rule “phải có assignment ở center đã chọn”
     const fetchUsers = async () => {
         setLoading(true)
         setError(null)
@@ -131,26 +138,24 @@ export default function UsersPage() {
         }
     }
 
-    // gọi ngay khi mount & mỗi khi filter đổi (an toàn thứ tự + reset trang)
+    // gọi ngay khi mount & mỗi khi filter đổi
     useEffect(() => {
-        const loadData = async () => {
-            await fetchUsers()
-            await fetchRoleStats()
-            setPage(1)
-        }
-        loadData()
+        fetchUsers()
+        fetchRoleStats()
+        setPage(1)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedCenterId, selectedRoleCode])
 
-    // debounce search 300ms - chỉ fetch list, không cần thống kê
+    // debounce search 300ms
     useEffect(() => {
         const t = setTimeout(() => {
             fetchUsers()
+            fetchRoleStats()
             setPage(1)
         }, 300)
         return () => clearTimeout(t)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [query, selectedCenterId, selectedRoleCode])
+    }, [query])
 
     // client-side pagination tạm thời
     const totalPages = Math.max(1, Math.ceil(users.length / pageSize))
@@ -237,7 +242,7 @@ export default function UsersPage() {
                         onChange={(e) => setSelectedCenterId(e.target.value === '' ? '' : Number(e.target.value))}
                         className="appearance-none w-full bg-[#f3f3f5] rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500"
                     >
-                        <option value="">Tất cả trung tâm</option>
+                        <option value="">Tất cả trung tâm ({centers.length})</option>
                         {centers.map(c => (
                             <option key={c.centerId} value={c.centerId}>{c.name}</option>
                         ))}
@@ -252,7 +257,7 @@ export default function UsersPage() {
                         onChange={(e) => setSelectedRoleCode(e.target.value as RoleCode | '')}
                         className="appearance-none w-full bg-[#f3f3f5] rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500"
                     >
-                        <option value="">Tất cả vai trò</option>
+                        <option value="">Tất cả vai trò ({roles.length})</option>
                         {roles.map(r => (
                             <option key={r.roleId} value={r.code}>{r.name}</option>
                         ))}
@@ -356,25 +361,11 @@ export default function UsersPage() {
                                                         {can('users:update') && (
                                                             <button
                                                                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                                                                onClick={() => { setOpenMenuId(null); setOpenEdit(u) }}
+                                                                onClick={() => { setOpenMenuId(null); setOpenAssignRole(u.userId) }}
                                                             >
-                                                                <Pencil size={16} /> Chỉnh sửa
+                                                                <Pencil size={16} /> Gán vai trò
                                                             </button>
                                                         )}
-                                                        <button
-                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                                                            onClick={() => {
-                                                                setOpenMenuId(null)
-                                                                const action = u.active ? 'Vô hiệu hóa' : 'Kích hoạt'
-                                                                if (confirm(`${action} ${u.fullName}?`)) {
-                                                                    // TODO: gọi API toggle active khi có
-                                                                    setUsers(prev => prev.map(x => x.userId === u.userId ? { ...x, active: !u.active } : x))
-                                                                    toast.success(`${action} thành công`)
-                                                                }
-                                                            }}
-                                                        >
-                                                            {u.active ? (<><ShieldOff size={16} /> Vô hiệu hóa</>) : (<><ShieldCheck size={16} /> Kích hoạt</>)}
-                                                        </button>
                                                     </div>
                                                 </>
                                             )}
@@ -456,38 +447,16 @@ export default function UsersPage() {
                 )}
             </Modal>
 
-            {/* Edit modal (demo) */}
-            <Modal open={!!openEdit} onClose={() => setOpenEdit(null)}>
-                {openEdit && (
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault()
-                            // TODO: gọi API update khi có
-                            setOpenEdit(null)
-                            toast.success('Đã lưu thay đổi (demo)')
-                        }}
-                    >
-                        <div className="px-4 py-3 border-b flex items-center justify-between">
-                            <div className="font-medium">Chỉnh sửa người dùng</div>
-                            <button type="button" className="h-8 w-8 rounded hover:bg-gray-100" onClick={() => setOpenEdit(null)}>×</button>
-                        </div>
-                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs text-gray-600 mb-1">Họ và tên</label>
-                                <input defaultValue={openEdit.fullName} className="w-full h-9 rounded-md border px-3 text-sm" />
-                            </div>
-                            <div>
-                                <label className="block text-xs text-gray-600 mb-1">Chuyên môn</label>
-                                <input defaultValue={openEdit.specialty ?? ''} className="w-full h-9 rounded-md border px-3 text-sm" />
-                            </div>
-                        </div>
-                        <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
-                            <button type="button" className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={() => setOpenEdit(null)}>Hủy</button>
-                            <button type="submit" className="h-9 px-3 rounded-md bg-gray-900 text-white hover:bg-black">Lưu thay đổi</button>
-                        </div>
-                    </form>
-                )}
-            </Modal>
+            {/* Assign Role Modal */}
+            {openAssignRole && (
+                <AssignRoleModal
+                    userId={openAssignRole}
+                    onClose={() => {
+                        setOpenAssignRole(null)
+                        fetchUsers() // Refresh list after modal closes
+                    }}
+                />
+            )}
         </div>
     )
 }

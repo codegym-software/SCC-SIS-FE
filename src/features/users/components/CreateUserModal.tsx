@@ -33,21 +33,21 @@ const toArray = <T,>(raw: any): T[] => {
 
 export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserModalProps) {
   const [formData, setFormData] = useState({
-    fullName: "Nguyễn Văn A",
-    email: "email@education.vn",
-    phone: "090xxxxxxx",
+    fullName: "",
+    email: "",
+    phone: "",
     dateOfBirth: "",
     gender: "Nam",
-    idCard: "123456789012",
+    idCard: "",
     startDate: "",
-    specialization: "Giáo dục",
-    experience: "5 năm",
-    address: "123 Đường ABC, Phường XYZ, Quận QWE",
-    city: "TP.HCM",
-    district: "Quận 1",
-    ward: "Phường ABC",
-    educationLevel: "Đại học",
-    notes: "Thông tin bổ sung...",
+    specialization: "",
+    experience: "",
+    address: "",
+    city: "",
+    district: "",
+    ward: "",
+    educationLevel: "",
+    notes: "",
   });
 
   const [rows, setRows] = useState<Row[]>([{ id: "1", roleId: "", centerId: "" }]);
@@ -87,7 +87,22 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
     Promise.all([getRoles(true), getCentersLite()])
       .then(([rolesRes, centersRes]) => {
         if (!isMounted) return;
-        const rolesArr = toArray<RoleDto>(rolesRes?.data);
+
+        // Xử lý roles data structure tương tự UsersPage
+        let rolesData = [];
+        if (Array.isArray(rolesRes?.data)) {
+          rolesData = rolesRes.data;
+        } else if (rolesRes?.data && typeof rolesRes.data === 'object') {
+          const dataObj = rolesRes.data as any;
+          if (Array.isArray(dataObj.roles)) {
+            rolesData = dataObj.roles;
+          } else if (Array.isArray(dataObj.data)) {
+            rolesData = dataObj.data;
+          } else if (Array.isArray(dataObj.items)) {
+            rolesData = dataObj.items;
+          }
+        }
+        const rolesArr = toArray<RoleDto>(rolesData);
         const centersArr = toArray<CenterLiteDto>(centersRes?.data);
         setRolesData(rolesArr);
         setCentersData(centersArr);
@@ -108,8 +123,15 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
   const getRoleById = (roleId?: number | "") =>
     (Array.isArray(rolesData) ? rolesData : []).find((r) => r.roleId === roleId);
 
-  const isGlobalRole = (roleId?: number | "") => getRoleById(roleId)?.scope === "GLOBAL";
-  const isCenterScopedRole = (roleId?: number | "") => getRoleById(roleId)?.scope === "CENTER";
+  const isGlobalRole = (roleId?: number | "") => {
+    const role = getRoleById(roleId);
+    return role?.code === "SUPER_ADMIN" || role?.code === "TRAINING_MANAGER";
+  };
+
+  const isCenterScopedRole = (roleId?: number | "") => {
+    const role = getRoleById(roleId);
+    return role && !isGlobalRole(roleId);
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -197,35 +219,40 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
       return; // Stop submission if age validation fails
     }
 
+    // Kiểm tra đã chọn vai trò
     if (rows.some((r) => !r.roleId)) {
       alert("Vui lòng chọn vai trò hợp lệ");
       return;
     }
 
     const hasGlobal = rows.some((r) => isGlobalRole(r.roleId));
+
     if (hasGlobal) {
+      // GLOBAL roles (SUPER_ADMIN, TRAINING_MANAGER): không được có vai trò khác
       if (rows.length !== 1) {
-        alert("Vai trò độc quyền (GLOBAL) không được đi kèm vai trò khác.");
+        alert("Vai trò GLOBAL (SUPER_ADMIN, TRAINING_MANAGER) không được đi kèm vai trò khác.");
         return;
       }
+      // GLOBAL roles: centerId phải là null (không chọn trung tâm)
       if (rows[0].centerId !== null) {
-        alert("Vai trò GLOBAL phải để Trung tâm = (Không áp dụng)");
+        alert("Vai trò GLOBAL không cần chọn trung tâm cụ thể.");
         return;
       }
     } else {
-      if (
-        rows.some(
-          (r) =>
-            !isCenterScopedRole(r.roleId) ||
-            (r.centerId !== ALL_CENTERS_VALUE && typeof r.centerId !== "number")
-        )
-      ) {
-        alert("Vui lòng chọn Trung tâm cho vai trò center-scoped");
-        return;
+      // CENTER roles: phải chọn trung tâm, tối đa 3 vai trò
+      for (const row of rows) {
+        if (isCenterScopedRole(row.roleId)) {
+          if (row.centerId !== ALL_CENTERS_VALUE && typeof row.centerId !== "number") {
+            alert("Vai trò CENTER phải chọn trung tâm cụ thể.");
+            return;
+          }
+        }
       }
+
+      // Tối đa 3 vai trò CENTER
       const distinctRoleIds = new Set(rows.map((r) => r.roleId as number));
       if (distinctRoleIds.size > 3) {
-        alert("Tối đa 3 loại vai trò center-scoped khác nhau");
+        alert("Tối đa 3 vai trò CENTER khác nhau cho mỗi người dùng");
         return;
       }
     }
@@ -310,7 +337,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                       value={formData.fullName}
                       onChange={(e) => handleInputChange("fullName", e.target.value)}
                       className="w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      placeholder="Nguyễn Văn A"
+                      placeholder="Họ và tên"
                     />
                   </div>
                   <div>
@@ -323,7 +350,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                       value={formData.email}
                       onChange={(e) => handleInputChange("email", e.target.value)}
                       className="w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      placeholder="email@education.vn"
+                      placeholder="Email"
                     />
                   </div>
                   <div>
@@ -336,7 +363,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                       value={formData.phone}
                       onChange={(e) => handleInputChange("phone", e.target.value)}
                       className="w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      placeholder="090xxxxxxx"
+                      placeholder="Số điện thoại"
                     />
                   </div>
                   <div className="relative">
@@ -388,7 +415,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                       value={formData.idCard}
                       onChange={(e) => handleInputChange("idCard", e.target.value)}
                       className="w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      placeholder="123456789012"
+                      placeholder="Số CMND/CCCD"
                     />
                   </div>
                 </div>
@@ -445,20 +472,24 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                           Trung tâm {roleIsCenter ? "*" : ""}
                         </label>
                         <select
-                          disabled={loadingMeta || roleIsGlobal || !role}
-                          value={roleIsGlobal ? "" : row.centerId === null ? "" : (row.centerId as any) || ""}
+                          disabled={loadingMeta || roleIsGlobal}
+                          value={row.centerId === null ? "" : (row.centerId as any) || ""}
                           onChange={(e) => handleRowChange(index, "centerId", e.target.value)}
                           className="appearance-none w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         >
-                          {!roleIsCenter && <option value="">(Không áp dụng)</option>}
-                          {roleIsCenter && <option value="">Chọn trung tâm</option>}
-                          {roleIsCenter && <option value={ALL_CENTERS_VALUE}>Tất cả trung tâm</option>}
-                          {roleIsCenter &&
-                            (Array.isArray(centersData) ? centersData : []).map((c) => (
-                              <option key={c.centerId} value={c.centerId}>
-                                {c.name}
-                              </option>
-                            ))}
+                          {roleIsGlobal ? (
+                            <option value="">Tất cả trung tâm</option>
+                          ) : (
+                            <>
+                              <option value="">Chọn trung tâm</option>
+                              {roleIsCenter && <option value={ALL_CENTERS_VALUE}>Tất cả trung tâm</option>}
+                              {centersData.map((c) => (
+                                <option key={c.centerId} value={c.centerId}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </>
+                          )}
                         </select>
                         <ChevronDown className="w-4 h-4 absolute right-3 top-9 opacity-50 pointer-events-none" />
                       </div>
@@ -478,10 +509,10 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                       {role && (
                         <div className="md:col-span-2 text-xs text-gray-500">
                           {roleIsGlobal
-                            ? "Vai trò GLOBAL: không cần trung tâm, và không được đi kèm vai trò khác."
+                            ? "Vai trò GLOBAL (SUPER_ADMIN, TRAINING_MANAGER): hiển thị 'Tất cả trung tâm', không cần chọn trung tâm cụ thể, và không được đi kèm vai trò khác."
                             : roleIsCenter
-                              ? "Vai trò CENTER-scoped: bắt buộc chọn trung tâm. Có thể thêm nhiều trung tâm; tối đa 3 loại vai trò khác nhau."
-                              : ""}
+                              ? "Vai trò CENTER: bắt buộc chọn trung tâm cụ thể. Tối đa 3 vai trò CENTER khác nhau cho mỗi người dùng."
+                              : "Vui lòng chọn vai trò trước."}
                         </div>
                       )}
                     </div>
@@ -518,7 +549,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                       value={formData.specialization}
                       onChange={(e) => handleInputChange("specialization", e.target.value)}
                       className="w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      placeholder="Giáo dục"
+                      placeholder="Chuyên môn"
                     />
                   </div>
                   <div>
@@ -531,7 +562,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                       value={formData.experience}
                       onChange={(e) => handleInputChange("experience", e.target.value)}
                       className="w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      placeholder="5 năm"
+                      placeholder="Kinh nghiệm"
                     />
                   </div>
                 </div>
@@ -553,7 +584,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                       value={formData.address}
                       onChange={(e) => handleInputChange("address", e.target.value)}
                       className="w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      placeholder="123 Đường ABC, Phường XYZ, Quận QWE"
+                      placeholder="Địa chỉ"
                     />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
@@ -567,7 +598,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                         value={formData.city}
                         onChange={(e) => handleInputChange("city", e.target.value)}
                         className="w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="TP.HCM"
+                        placeholder="Tỉnh/Thành phố"
                       />
                     </div>
                     <div>
@@ -580,7 +611,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                         value={formData.district}
                         onChange={(e) => handleInputChange("district", e.target.value)}
                         className="w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="Quận 1"
+                        placeholder="Quận/Huyện"
                       />
                     </div>
                     <div>
@@ -593,7 +624,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                         value={formData.ward}
                         onChange={(e) => handleInputChange("ward", e.target.value)}
                         className="w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="Phường ABC"
+                        placeholder="Phường/Xã"
                       />
                     </div>
                   </div>
@@ -608,7 +639,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                         value={formData.educationLevel}
                         onChange={(e) => handleInputChange("educationLevel", e.target.value)}
                         className="w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="Đại học"
+                        placeholder="Trình độ học vấn"
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -621,7 +652,7 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
                         value={formData.notes}
                         onChange={(e) => handleInputChange("notes", e.target.value)}
                         className="w-full bg-[#f3f3f5] border-transparent rounded-lg p-2.5 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="Thông tin bổ sung..."
+                        placeholder="Ghi chú"
                       />
                     </div>
                   </div>
