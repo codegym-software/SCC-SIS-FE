@@ -19,6 +19,8 @@ export type Profile = {
     email: string;
     keycloak: KeycloakInfo;
     roles: ProfileRole[];
+    centerId?: number | null;
+    centerName?: string | null;
 };
 
 export const getProfile = () => api.get<Profile>('/api/users/profile');
