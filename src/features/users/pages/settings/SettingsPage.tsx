@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../../../../shared/hooks/useToast';
 import { User, Lock, Bell, Monitor, Shield } from 'lucide-react';
+import { useUserProfile } from '../../../../stores/userProfile';
 
 // Import components
 import Profile from './profile';
@@ -14,10 +15,12 @@ type TabType = 'profile' | 'security' | 'notifications' | 'appearance' | 'privac
 export default function SettingsPage() {
     const toast = useToast();
     const [activeTab, setActiveTab] = useState<TabType>('profile');
+    const { me, loading } = useUserProfile();
+    const mainRole = me?.roles?.[0];
 
     const [formData, setFormData] = useState({
-        fullName: 'Nguyễn Văn Admin',
-        email: 'admin@education.edu.vn',
+        fullName: me?.fullName ?? '',
+        email: me?.email ?? '',
         phone: '',
         bio: '',
         avatar: '',
@@ -37,11 +40,16 @@ export default function SettingsPage() {
         systemUpdates: false,
     });
 
-    const [appearanceSettings, setAppearanceSettings] = useState({
+    const [appearanceSettings, setAppearanceSettings] = useState<{
+        theme: 'light' | 'dark' | 'auto';
+        language: 'vi' | 'en';
+        fontSize: 'small' | 'medium' | 'large';
+        backgroundImage: string | null;
+    }>({
         theme: 'light',
         language: 'vi',
         fontSize: 'medium',
-        backgroundImage: null as string | null,
+        backgroundImage: null,
     });
 
     const [isSaving, setIsSaving] = useState(false);
@@ -90,6 +98,17 @@ export default function SettingsPage() {
         }
     }, []);
 
+    // Update form data when profile is loaded
+    useEffect(() => {
+        if (me) {
+            setFormData(prev => ({
+                ...prev,
+                fullName: me.fullName,
+                email: me.email,
+            }));
+        }
+    }, [me]);
+
     const tabs = [
         { id: 'profile' as TabType, label: 'Hồ sơ', icon: User },
         { id: 'security' as TabType, label: 'Bảo mật', icon: Lock },
@@ -120,12 +139,12 @@ export default function SettingsPage() {
             localStorage.setItem('profileData', JSON.stringify(formData));
             // Also save avatar to user profile for sidebar display
             localStorage.setItem('userAvatar', formData.avatar);
-            
+
             // Dispatch custom event to notify AppLayout of avatar change
-            window.dispatchEvent(new CustomEvent('avatarUpdated', { 
-                detail: { avatar: formData.avatar } 
+            window.dispatchEvent(new CustomEvent('avatarUpdated', {
+                detail: { avatar: formData.avatar }
             }));
-            
+
             toast.success('Thành công', 'Đã cập nhật thông tin hồ sơ!');
         } catch (error) {
             toast.error('Lỗi', 'Không thể cập nhật thông tin hồ sơ');
@@ -163,7 +182,7 @@ export default function SettingsPage() {
     const handleSaveAppearance = async () => {
         try {
             setIsSaving(true);
-            
+
             // Apply theme changes
             if (appearanceSettings.theme === 'dark') {
                 document.documentElement.classList.add('dark');
@@ -181,14 +200,14 @@ export default function SettingsPage() {
 
             // Save to localStorage
             localStorage.setItem('appearanceSettings', JSON.stringify(appearanceSettings));
-            
+
             // Apply background image if exists
-            if (appearanceSettings.backgroundImage) {
+            if (appearanceSettings.backgroundImage && appearanceSettings.backgroundImage.trim() !== '') {
                 document.documentElement.style.setProperty('--dashboard-bg-image', `url(${appearanceSettings.backgroundImage})`);
             } else {
                 document.documentElement.style.removeProperty('--dashboard-bg-image');
             }
-            
+
             toast.success('Thành công', 'Đã áp dụng cài đặt giao diện thành công!');
         } catch (error) {
             toast.error('Lỗi', 'Không thể áp dụng cài đặt giao diện');
@@ -214,11 +233,10 @@ export default function SettingsPage() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm transition-all duration-200 ${
-                                    activeTab === tab.id
-                                        ? 'border-blue-500 text-blue-600 bg-blue-50 rounded-t-lg'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 rounded-t-lg'
-                                }`}
+                                className={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm transition-all duration-200 ${activeTab === tab.id
+                                    ? 'border-blue-500 text-blue-600 bg-blue-50 rounded-t-lg'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 rounded-t-lg'
+                                    }`}
                             >
                                 <IconComponent size={14} />
                                 {tab.label}

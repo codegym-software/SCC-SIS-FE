@@ -3,13 +3,15 @@ import { Home, Building2, Users2, Shield, BookOpen, GraduationCap, User, Setting
 import type { LucideIcon } from 'lucide-react';
 import { keycloak } from '../../keycloak';
 import { NavLink } from 'react-router-dom';
+import { useUserProfile } from '../../stores/userProfile';
+import { roleDisplay } from '../../utils/roleLabel';
 
 function RootLayout({ children }: { children: React.ReactNode }) {
-return (
-<html>
-<body className="text-base antialiased font-sans">{children}</body>
-</html>
-);
+    return (
+        <html>
+            <body className="text-base antialiased font-sans">{children}</body>
+        </html>
+    );
 }
 
 type AppLayoutProps = {
@@ -65,13 +67,17 @@ function AppLayout({ children }: AppLayoutProps) {
 
         window.addEventListener('storage', handleStorageChange);
         window.addEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
-        
+
         return () => {
             window.removeEventListener('storage', handleStorageChange);
             window.removeEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
         };
     }, []);
-    
+
+    // Get user profile data
+    const { me, loading } = useUserProfile();
+    const mainRole = me?.roles?.[0];
+
     // Menu configuration - easily extensible
     const menuGroups: MenuGroup[] = [
         {
@@ -164,8 +170,12 @@ function AppLayout({ children }: AppLayoutProps) {
                                         </div>
                                     )}
                                     <div>
-                                        <div className="text-sm font-medium">Nguyễn Quang Hưng </div>
-                                        <div className="text-xs text-gray-500">Super Admin</div>
+                                        <div className="text-sm font-medium">
+                                            {loading ? 'Đang tải...' : (me?.fullName ?? me?.keycloak?.username ?? '—')}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            {loading ? '...' : (mainRole ? roleDisplay(mainRole) : '—')}
+                                        </div>
                                     </div>
                                 </div>
                             </>
@@ -184,7 +194,7 @@ function AppLayout({ children }: AppLayoutProps) {
                             )
                         )}
                     </div>
-                    
+
                     {/* Toggle button - positioned inside sidebar */}
                     <button
                         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}

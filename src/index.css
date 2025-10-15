@@ -32,6 +32,7 @@
     --input: var(--color-zinc-200);
     --ring: var(--color-zinc-400);
     --radius: 0.5rem;
+    --dashboard-bg-image: none;
 }
 
 .dark {
@@ -59,6 +60,7 @@
     --border: var(--color-zinc-800);
     --input: var(--color-zinc-800);
     --ring: var(--color-zinc-600);
+    --dashboard-bg-image: none;
 }
 
 /** Theme Setup **/

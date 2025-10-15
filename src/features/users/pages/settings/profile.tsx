@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { User, Mail, Phone, User2, Upload, Image as ImageIcon } from 'lucide-react';
+import { useUserProfile } from '../../../../stores/userProfile';
+import { roleDisplay } from '../../../../utils/roleLabel';
 
 interface ProfileData {
     fullName: string;
@@ -46,7 +48,7 @@ const Profile: React.FC<ProfileProps> = ({ formData, onInputChange, onSave, isSa
 
         setAvatarError("");
         setSelectedFile(file);
-        
+
         // Convert file to base64 and save to localStorage
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -63,6 +65,8 @@ const Profile: React.FC<ProfileProps> = ({ formData, onInputChange, onSave, isSa
         setAvatarError("");
         onInputChange('avatar', '');
     };
+    const { me, loading } = useUserProfile();
+    const mainRole = me?.roles?.[0];
 
     return (
         <div className="space-y-4">
@@ -93,7 +97,7 @@ const Profile: React.FC<ProfileProps> = ({ formData, onInputChange, onSave, isSa
                             <h4 className="text-lg font-bold text-gray-900 mb-1">{formData.fullName}</h4>
                             <div className="flex items-center gap-2 mb-1">
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                                    Super Admin
+                                    {loading ? 'Đang tải...' : (mainRole ? roleDisplay(mainRole) : '—')}
                                 </span>
                             </div>
                             <p className="text-xs text-gray-600 flex items-center gap-1">
