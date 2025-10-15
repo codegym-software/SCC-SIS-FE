@@ -32,7 +32,7 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
 export default function UsersPage() {
     const [openCreate, setOpenCreate] = useState(false)
     const [openView, setOpenView] = useState<UserViewDto | null>(null)
-    const [openAssignRole, setOpenAssignRole] = useState<UserViewDto | null>(null)
+    const [openAssignRole, setOpenAssignRole] = useState<number | null>(null)
     const [query, setQuery] = useState('')
     const [openMenuId, setOpenMenuId] = useState<number | null>(null)
 
@@ -361,9 +361,9 @@ export default function UsersPage() {
                                                         {can('users:update') && (
                                                             <button
                                                                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                                                                onClick={() => { setOpenMenuId(null); setOpenAssignRole(u) }}
+                                                                onClick={() => { setOpenMenuId(null); setOpenAssignRole(u.userId) }}
                                                             >
-                                                                <Pencil size={16} /> Cập nhật vai trò
+                                                                <Pencil size={16} /> Gán vai trò
                                                             </button>
                                                         )}
                                                     </div>
@@ -448,15 +448,15 @@ export default function UsersPage() {
             </Modal>
 
             {/* Assign Role Modal */}
-            <AssignRoleModal
-                open={!!openAssignRole}
-                onClose={() => setOpenAssignRole(null)}
-                onSuccess={() => {
-                    fetchUsers()
-                    toast.success('Cập nhật vai trò thành công')
-                }}
-                user={openAssignRole}
-            />
+            {openAssignRole && (
+                <AssignRoleModal
+                    userId={openAssignRole}
+                    onClose={() => {
+                        setOpenAssignRole(null)
+                        fetchUsers() // Refresh list after modal closes
+                    }}
+                />
+            )}
         </div>
     )
 }

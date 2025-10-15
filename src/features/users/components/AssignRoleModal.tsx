@@ -2,287 +2,264 @@ import { useState, useEffect } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { getRoles } from '../../../shared/api/roles'
 import { getCentersLite } from '../../../shared/api/centers'
-import type { UserViewDto } from '../../../shared/types/userView'
+import { getUserView, assignRolesBatch, revokeUserRolesBulk, revokeUserRole } from '../../../api/user'
+import { useToast } from '../../../shared/hooks/useToast'
+import type { UserViewDto, UserAssignment } from '../../../shared/types/userView'
 import type { RoleDto } from '../../../shared/types/role'
 import type { CenterLiteDto } from '../../../shared/types/centers'
 
 interface AssignRoleModalProps {
-  open: boolean
+  userId: number
   onClose: () => void
-  onSuccess: () => void
-  user: UserViewDto | null
 }
 
 interface ExistingAssignment {
+  assignmentId: number
   roleId: number
   roleName: string
+  scope: 'GLOBAL' | 'CENTER'
   centerId: number | null
   centerName: string | null
-  assignedAt?: string
-  markedForRemoval: boolean // true = sẽ hủy, false = giữ nguyên
+  // vẫn giữ uniqueKey để làm key render
+  uniqueKey: string
 }
 
-interface NewAssignment {
-  id: string
-  roleId: string
-  centerId: number | null
+interface DraftAssignment {
+  roleId?: number
+  centerId?: number | null
+  scope?: 'GLOBAL' | 'CENTER'
 }
 
-export default function AssignRoleModal({ open, onClose, onSuccess, user }: AssignRoleModalProps) {
+export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProps) {
+  const toast = useToast()
   const [roles, setRoles] = useState<RoleDto[]>([])
   const [centers, setCenters] = useState<CenterLiteDto[]>([])
   const [loading, setLoading] = useState(false)
-  
-  // Phần A: Vai trò hiện có
-  const [existingAssignments, setExistingAssignments] = useState<ExistingAssignment[]>([])
-  
-  // Phần B: Vai trò mới
-  const [newAssignments, setNewAssignments] = useState<NewAssignment[]>([])
-  
-  const [errors, setErrors] = useState<{ global?: string; newAssignments?: string[] }>({})
+  const [userView, setUserView] = useState<UserViewDto | null>(null)
+
+  // ✅ sửa: marked lưu ID thật để revoke
+  const [existing, setExisting] = useState<ExistingAssignment[]>([])
+  const [marked, setMarked] = useState<Set<number>>(new Set())
+  const [drafts, setDrafts] = useState<DraftAssignment[]>([])
+
+  const [errors, setErrors] = useState<{ global?: string; drafts?: string[] }>({})
 
   // Load data khi modal mở
   useEffect(() => {
-    if (!open || !user) return
-
     const loadData = async () => {
       setLoading(true)
       try {
-        const [rolesRes, centersRes] = await Promise.all([getRoles(true), getCentersLite()])
-        
-        // Xử lý roles data structure
-        let rolesData = []
+        const [userViewRes, rolesRes, centersRes] = await Promise.all([
+          getUserView(userId),
+          getRoles(true),
+          getCentersLite()
+        ])
+
+        // Chuẩn hóa roles data structure
+        let rolesData: RoleDto[] = []
         if (Array.isArray(rolesRes.data)) {
           rolesData = rolesRes.data
         } else if (rolesRes.data && typeof rolesRes.data === 'object') {
           const dataObj = rolesRes.data as any
-          if (Array.isArray(dataObj.roles)) {
-            rolesData = dataObj.roles
-          } else if (Array.isArray(dataObj.data)) {
-            rolesData = dataObj.data
-          } else if (Array.isArray(dataObj.items)) {
-            rolesData = dataObj.items
-          }
+          if (Array.isArray(dataObj.roles)) rolesData = dataObj.roles
+          else if (Array.isArray(dataObj.data)) rolesData = dataObj.data
+          else if (Array.isArray(dataObj.items)) rolesData = dataObj.items
         }
 
         setRoles(rolesData)
         setCenters(Array.isArray(centersRes.data) ? centersRes.data : [])
+        setUserView(userViewRes.data)
 
-        // Khởi tạo existing assignments từ user
-        if (user.assignments && user.assignments.length > 0) {
-          const existing = user.assignments.map(a => {
+        // ✅ sửa: map đúng assignmentId từ API
+        if (userViewRes.data.assignments && userViewRes.data.assignments.length > 0) {
+          const ex: ExistingAssignment[] = userViewRes.data.assignments.map((a: UserAssignment) => {
             const role = rolesData.find((r: RoleDto) => r.roleId === a.roleId)
-            const center = centersRes.data?.find((c: CenterLiteDto) => c.centerId === a.centerId)
-            
+            const center = (Array.isArray(centersRes.data) ? centersRes.data : []).find(
+              (c: CenterLiteDto) => c.centerId === a.centerId
+            )
+            const uniqueKey = `${a.roleId}-${a.centerId ?? 'null'}-${a.scope}`
+
             return {
+              assignmentId: (a as any).assignmentId ?? (a as any).userRoleId, // 👈 lấy ID thật
               roleId: a.roleId,
               roleName: role?.name || a.roleName || 'Unknown Role',
+              scope: a.scope,
               centerId: a.centerId,
-              centerName: center?.name || null,
-              assignedAt: a.assignedAt, // Lấy từ backend
-              markedForRemoval: false
+              centerName: center?.name ?? a.centerName ?? null,
+              uniqueKey,
             }
           })
-          setExistingAssignments(existing)
+          setExisting(ex)
         } else {
-          setExistingAssignments([])
+          setExisting([])
         }
 
-        // Reset new assignments
-        setNewAssignments([])
+        // Reset state
+        setMarked(new Set())
+        setDrafts([])
         setErrors({})
       } catch (error) {
         console.error('[AssignRoleModal] Load data failed:', error)
-        alert('Không thể tải danh sách vai trò/trung tâm')
+        toast.error('Lỗi', 'Không thể tải dữ liệu người dùng')
       } finally {
         setLoading(false)
       }
     }
 
-    loadData()
-  }, [open, user])
+    if (userId) loadData()
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Toggle trạng thái "Sẽ hủy" / "Hoàn tác"
-  const toggleRemoval = (roleId: number) => {
-    setExistingAssignments(prev => 
-      prev.map(a => 
-        a.roleId === roleId 
-          ? { ...a, markedForRemoval: !a.markedForRemoval }
-          : a
-      )
-    )
+  // ✅ sửa: toggle theo assignmentId
+  const toggleRemoval = (assignmentId: number) => {
+    setMarked(prev => {
+      const next = new Set(prev)
+      next.has(assignmentId) ? next.delete(assignmentId) : next.add(assignmentId)
+      return next
+    })
   }
 
   // Thêm hàng mới
   const addNewRow = () => {
-    // Kiểm tra số lượng vai trò mới (chưa tính existing)
-    if (newAssignments.length >= 3) {
-      setErrors({ global: 'Chỉ được thêm tối đa 3 vai trò mới' })
-      return
-    }
-    
-    setNewAssignments([...newAssignments, { 
-      id: String(Date.now()), 
-      roleId: '', 
-      centerId: null 
-    }])
+    setDrafts(prev => [...prev, {}])
     setErrors({})
   }
 
   // Xóa hàng mới
-  const removeNewRow = (id: string) => {
-    setNewAssignments(newAssignments.filter(a => a.id !== id))
+  const removeNewRow = (index: number) => {
+    setDrafts(prev => prev.filter((_, i) => i !== index))
     setErrors({})
   }
 
   // Cập nhật hàng mới
-  const updateNewAssignment = (id: string, field: 'roleId' | 'centerId', value: string | number | null) => {
-    setNewAssignments(newAssignments.map(a => {
-      if (a.id !== id) return a
-      
+  const updateDraft = (index: number, field: 'roleId' | 'centerId', value: number | null) => {
+    setDrafts(prev => prev.map((draft, i) => {
+      if (i !== index) return draft
+
       if (field === 'roleId') {
-        const selectedRole = roles.find(r => String(r.roleId) === value)
+        const selectedRole = roles.find(r => r.roleId === value)
+        // Nếu RoleDto có scope thì nên dùng r.scope === 'GLOBAL', tạm xác định theo code
         const isGlobal = selectedRole && (selectedRole.code === 'SA' || selectedRole.code === 'QLT')
-        
+
         return {
-          ...a,
-          roleId: value as string,
-          centerId: isGlobal ? null : a.centerId
+          ...draft,
+          roleId: value ?? undefined,
+          centerId: isGlobal ? null : draft.centerId,
+          scope: isGlobal ? 'GLOBAL' : 'CENTER'
         }
       }
-      
+
       if (field === 'centerId') {
-        return { ...a, centerId: value as number | null }
+        return { ...draft, centerId: value }
       }
-      
-      return a
+
+      return draft
     }))
     setErrors({})
   }
 
-  // Validation
+  // Validation đơn giản
   const validate = () => {
-    const newErrors: { global?: string; newAssignments?: string[] } = { newAssignments: [] }
-    
-    // Kiểm tra từng new assignment
-    newAssignments.forEach((a, idx) => {
-      if (!a.roleId) {
-        newErrors.newAssignments![idx] = 'Vui lòng chọn vai trò'
+    const newErrors: { global?: string; drafts?: string[] } = { drafts: [] }
+
+    drafts.forEach((draft, idx) => {
+      if (!draft.roleId) {
+        newErrors.drafts![idx] = 'Vui lòng chọn vai trò'
       } else {
-        const role = roles.find(r => String(r.roleId) === a.roleId)
+        const role = roles.find(r => r.roleId === draft.roleId)
         const isGlobal = role && (role.code === 'SA' || role.code === 'QLT')
-        
-        if (!isGlobal && !a.centerId) {
-          newErrors.newAssignments![idx] = 'Vui lòng chọn trung tâm'
+        if (!isGlobal && !draft.centerId) {
+          newErrors.drafts![idx] = 'Vui lòng chọn trung tâm'
         }
       }
-    })
-
-    // Kiểm tra GLOBAL chỉ được 1
-    const existingGlobalCount = existingAssignments.filter(a => {
-      if (a.markedForRemoval) return false
-      const role = roles.find(r => r.roleId === a.roleId)
-      return role && (role.code === 'SA' || role.code === 'QLT')
-    }).length
-
-    const newGlobalCount = newAssignments.filter(a => {
-      const role = roles.find(r => String(r.roleId) === a.roleId)
-      return role && (role.code === 'SA' || role.code === 'QLT')
-    }).length
-
-    const totalGlobal = existingGlobalCount + newGlobalCount
-    if (totalGlobal > 1) {
-      newErrors.global = 'SA/Quản lý đào tạo chỉ được gán 1 vai trò GLOBAL'
-    }
-
-    // Kiểm tra CENTER tối đa 3
-    const existingCenterCount = existingAssignments.filter(a => {
-      if (a.markedForRemoval) return false
-      const role = roles.find(r => r.roleId === a.roleId)
-      return role && role.code !== 'SA' && role.code !== 'QLT'
-    }).length
-
-    const newCenterCount = newAssignments.filter(a => {
-      const role = roles.find(r => String(r.roleId) === a.roleId)
-      return role && role.code !== 'SA' && role.code !== 'QLT'
-    }).length
-
-    const totalCenter = existingCenterCount + newCenterCount
-    if (totalCenter > 3) {
-      newErrors.global = 'Vai trò CENTER tối đa 3'
-    }
-
-    // Kiểm tra duplicate (roleId + centerId)
-    const allAssignments = [
-      ...existingAssignments
-        .filter(a => !a.markedForRemoval)
-        .map(a => ({ roleId: String(a.roleId), centerId: a.centerId })),
-      ...newAssignments.map(a => ({ roleId: a.roleId, centerId: a.centerId }))
-    ]
-
-    const seen = new Set<string>()
-    allAssignments.forEach((a, idx) => {
-      const key = `${a.roleId}-${a.centerId}`
-      if (seen.has(key)) {
-        if (idx >= existingAssignments.filter(e => !e.markedForRemoval).length) {
-          const newIdx = idx - existingAssignments.filter(e => !e.markedForRemoval).length
-          newErrors.newAssignments![newIdx] = 'Vai trò + Trung tâm đã tồn tại'
-        }
-      }
-      seen.add(key)
     })
 
     setErrors(newErrors)
-    return !newErrors.global && (!newErrors.newAssignments || newErrors.newAssignments.filter(Boolean).length === 0)
+    return !newErrors.global && (!newErrors.drafts || newErrors.drafts.filter(Boolean).length === 0)
   }
 
-  // Kiểm tra có thay đổi không
+  // Có thay đổi?
   const hasChanges = () => {
-    const hasRemovals = existingAssignments.some(a => a.markedForRemoval)
-    const hasNewAssignments = newAssignments.length > 0 && newAssignments.every(a => a.roleId)
-    return hasRemovals || hasNewAssignments
+    return marked.size > 0 || (drafts.length > 0 && drafts.every(d => d.roleId))
   }
 
   // Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!hasChanges()) {
-      alert('Không có thay đổi nào')
+      toast.error('Lỗi', 'Không có thay đổi nào')
       return
     }
 
     if (!validate()) return
 
     try {
-      // Chuẩn bị data để gửi lên BE
-      const removals = existingAssignments
-        .filter(a => a.markedForRemoval)
-        .map(a => ({ roleId: a.roleId, centerId: a.centerId }))
+      // ✅ Revoke theo ID thật
+      if (marked.size > 0) {
+        const ids = Array.from(marked)
+        try {
+          await revokeUserRolesBulk(ids) // SA bulk
+        } catch (e: any) {
+          if (e?.response?.status === 403) {
+            // Non-SA fallback: xóa từng cái
+            await Promise.all(ids.map(id => revokeUserRole(id)))
+          } else {
+            throw e
+          }
+        }
+      }
 
-      const additions = newAssignments
-        .filter(a => a.roleId)
-        .map(a => ({ roleId: Number(a.roleId), centerId: a.centerId }))
+      // Assign
+      const toCreate = drafts
+        .filter(d => d.roleId)
+        .map(({ roleId, centerId }) => ({ roleId: roleId!, centerId: centerId ?? null }))
 
-      console.log('[AssignRoleModal] Submit:', {
-        userId: user?.userId,
-        removals,
-        additions
+      if (toCreate.length > 0) {
+        const response = await assignRolesBatch(userId, toCreate)
+
+        // Hiển thị errors từ BE
+        if (response.data.errors?.length > 0) {
+          response.data.errors.forEach(error => toast.error('Lỗi', error))
+        }
+        if (response.data.skippedCount > 0) {
+          toast.info('Thông báo', `Đã bỏ qua ${response.data.skippedCount} phân quyền trùng`)
+        }
+      }
+
+      // Refetch & reset
+      const userViewRes = await getUserView(userId)
+      setUserView(userViewRes.data)
+
+      // ✅ map lại existing với assignmentId thật
+      const ex: ExistingAssignment[] = (userViewRes.data.assignments || []).map((a: UserAssignment) => {
+        const role = roles.find((r: RoleDto) => r.roleId === a.roleId)
+        const center = centers.find((c: CenterLiteDto) => c.centerId === a.centerId)
+        const uniqueKey = `${a.roleId}-${a.centerId ?? 'null'}-${a.scope}`
+
+        return {
+          assignmentId: (a as any).assignmentId ?? (a as any).userRoleId,
+          roleId: a.roleId,
+          roleName: role?.name || a.roleName || 'Unknown Role',
+          scope: a.scope,
+          centerId: a.centerId,
+          centerName: center?.name ?? a.centerName ?? null,
+          uniqueKey,
+        }
       })
+      setExisting(ex)
+      setMarked(new Set())
+      setDrafts([])
+      setErrors({})
 
-      // TODO: Gọi API cập nhật
-      // await updateUserRoleAssignments(user.userId, { removals, additions })
-      
-      alert('Cập nhật vai trò thành công!')
-      onSuccess()
+      toast.success('Thành công', 'Cập nhật vai trò thành công')
       onClose()
-    } catch (error) {
+    } catch (error: any) {
       console.error('[AssignRoleModal] Submit failed:', error)
-      setErrors({ global: 'Có lỗi xảy ra khi cập nhật vai trò' })
+      toast.error('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra khi cập nhật vai trò')
     }
   }
 
-  if (!open || !user) return null
+  if (!userView) return null
 
   return (
     <div className="fixed inset-0 z-50">
@@ -294,16 +271,15 @@ export default function AssignRoleModal({ open, onClose, onSuccess, user }: Assi
             <div className="px-6 py-4 border-b">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold">Cập nhật vai trò cho {user.fullName}</h2>
+                  <h2 className="text-lg font-semibold">Cập nhật vai trò cho {userView.fullName}</h2>
                   <div className="flex items-center gap-3 mt-1">
-                    <span className="text-sm text-gray-500">{user.email || 'Chưa có email'}</span>
-                    {user.active !== undefined && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        user.active 
-                          ? 'bg-green-100 text-green-700' 
-                          : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {user.active ? 'Đang hoạt động' : 'Đã vô hiệu'}
+                    <span className="text-sm text-gray-500">{userView.email || 'Chưa có email'}</span>
+                    {userView.active !== undefined && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${userView.active
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-700'
+                        }`}>
+                        {userView.active ? 'Đang hoạt động' : 'Đã vô hiệu'}
                       </span>
                     )}
                   </div>
@@ -330,7 +306,7 @@ export default function AssignRoleModal({ open, onClose, onSuccess, user }: Assi
                   )}
 
                   {/* (A) Danh sách vai trò hiện có */}
-                  {existingAssignments.length > 0 && (
+                  {existing.length > 0 && (
                     <div>
                       <h3 className="text-sm font-medium mb-3">Vai trò hiện có</h3>
                       <div className="border rounded-lg overflow-hidden">
@@ -339,53 +315,51 @@ export default function AssignRoleModal({ open, onClose, onSuccess, user }: Assi
                             <tr>
                               <th className="text-left px-4 py-2 font-medium text-gray-600">Vai trò</th>
                               <th className="text-left px-4 py-2 font-medium text-gray-600">Trung tâm</th>
-                              <th className="text-left px-4 py-2 font-medium text-gray-600">Được cấp lúc</th>
+                              <th className="text-left px-4 py-2 font-medium text-gray-600">Phạm vi</th>
                               <th className="text-right px-4 py-2 font-medium text-gray-600">Hành động</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y">
-                            {existingAssignments.map((assignment, idx) => {
-                              const role = roles.find(r => r.roleId === assignment.roleId)
-                              const isGlobal = role && (role.code === 'SA' || role.code === 'QLT')
-                              
+                            {existing.map((assignment) => {
+                              const isMarked = marked.has(assignment.assignmentId)
+                              const isGlobal = assignment.scope === 'GLOBAL'
+
                               return (
-                                <tr 
-                                  key={idx}
-                                  className={assignment.markedForRemoval ? 'bg-gray-50' : ''}
-                                >
-                                  <td className={`px-4 py-3 ${assignment.markedForRemoval ? 'line-through text-gray-400' : ''}`}>
+                                <tr key={assignment.uniqueKey} className={isMarked ? 'bg-gray-50' : ''}>
+                                  <td className={`px-4 py-3 ${isMarked ? 'line-through text-gray-400' : ''}`}>
                                     <div className="flex items-center gap-2">
                                       {assignment.roleName}
-                                      {assignment.markedForRemoval && (
+                                      {isMarked && (
                                         <span className="text-xs px-2 py-0.5 bg-red-100 text-red-600 rounded-full">
                                           Sẽ hủy
                                         </span>
                                       )}
                                     </div>
                                   </td>
-                                  <td className={`px-4 py-3 ${assignment.markedForRemoval ? 'line-through text-gray-400' : ''}`}>
+                                  <td className={`px-4 py-3 ${isMarked ? 'line-through text-gray-400' : ''}`}>
                                     {isGlobal || assignment.centerId === null
                                       ? <span className="text-blue-600">Tất cả trung tâm</span>
                                       : (assignment.centerName || `Center ID: ${assignment.centerId}`)
                                     }
                                   </td>
-                                  <td className={`px-4 py-3 text-gray-500 ${assignment.markedForRemoval ? 'line-through text-gray-400' : ''}`}>
-                                    {assignment.assignedAt 
-                                      ? new Date(assignment.assignedAt).toLocaleDateString('vi-VN')
-                                      : '—'
-                                    }
+                                  <td className={`px-4 py-3 ${isMarked ? 'line-through text-gray-400' : ''}`}>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${isGlobal
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : 'bg-green-100 text-green-700'
+                                      }`}>
+                                      {assignment.scope}
+                                    </span>
                                   </td>
                                   <td className="px-4 py-3 text-right">
                                     <button
                                       type="button"
-                                      onClick={() => toggleRemoval(assignment.roleId)}
-                                      className={`text-xs px-3 py-1 rounded ${
-                                        assignment.markedForRemoval
-                                          ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                                          : 'bg-red-50 text-red-600 hover:bg-red-100'
-                                      }`}
+                                      onClick={() => toggleRemoval(assignment.assignmentId)}
+                                      className={`text-xs px-3 py-1 rounded ${isMarked
+                                        ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                                        : 'bg-red-50 text-red-600 hover:bg-red-100'
+                                        }`}
                                     >
-                                      {assignment.markedForRemoval ? 'Hoàn tác' : 'Hủy gán'}
+                                      {isMarked ? 'Hoàn tác' : 'Hủy gán'}
                                     </button>
                                   </td>
                                 </tr>
@@ -404,35 +378,33 @@ export default function AssignRoleModal({ open, onClose, onSuccess, user }: Assi
                       <button
                         type="button"
                         onClick={addNewRow}
-                        disabled={newAssignments.length >= 3}
-                        className="text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+                        className="text-sm text-blue-600 hover:text-blue-700"
                       >
                         + Thêm vai trò
                       </button>
                     </div>
 
-                    {newAssignments.length === 0 ? (
+                    {drafts.length === 0 ? (
                       <div className="border-2 border-dashed rounded-lg p-6 text-center text-gray-400 text-sm">
                         Nhấn "+ Thêm vai trò" để gán vai trò mới
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {newAssignments.map((assignment, idx) => {
-                          const selectedRole = roles.find(r => String(r.roleId) === assignment.roleId)
+                        {drafts.map((draft, idx) => {
+                          const selectedRole = roles.find(r => r.roleId === draft.roleId)
                           const isGlobal = selectedRole && (selectedRole.code === 'SA' || selectedRole.code === 'QLT')
 
                           return (
-                            <div key={assignment.id} className="border rounded-lg p-4">
+                            <div key={idx} className="border rounded-lg p-4">
                               <div className="flex gap-3 items-start">
                                 {/* Role select */}
                                 <div className="flex-1">
                                   <label className="block text-xs text-gray-600 mb-1">Vai trò *</label>
                                   <select
-                                    value={assignment.roleId}
-                                    onChange={(e) => updateNewAssignment(assignment.id, 'roleId', e.target.value)}
-                                    className={`w-full h-10 rounded-lg border px-3 text-sm ${
-                                      errors.newAssignments?.[idx] ? 'border-red-500' : 'border-gray-300'
-                                    }`}
+                                    value={draft.roleId || ''}
+                                    onChange={(e) => updateDraft(idx, 'roleId', e.target.value ? Number(e.target.value) : null)}
+                                    className={`w-full h-10 rounded-lg border px-3 text-sm ${errors.drafts?.[idx] ? 'border-red-500' : 'border-gray-300'
+                                      }`}
                                   >
                                     <option value="">-- Chọn vai trò --</option>
                                     <optgroup label="GLOBAL">
@@ -456,12 +428,11 @@ export default function AssignRoleModal({ open, onClose, onSuccess, user }: Assi
                                 <div className="flex-1">
                                   <label className="block text-xs text-gray-600 mb-1">Trung tâm {!isGlobal && '*'}</label>
                                   <select
-                                    value={assignment.centerId === null ? '' : assignment.centerId}
-                                    onChange={(e) => updateNewAssignment(assignment.id, 'centerId', e.target.value ? Number(e.target.value) : null)}
+                                    value={draft.centerId === null ? '' : draft.centerId}
+                                    onChange={(e) => updateDraft(idx, 'centerId', e.target.value ? Number(e.target.value) : null)}
                                     disabled={isGlobal}
-                                    className={`w-full h-10 rounded-lg border px-3 text-sm ${
-                                      isGlobal ? 'bg-gray-100 cursor-not-allowed text-blue-600' : ''
-                                    } ${errors.newAssignments?.[idx] ? 'border-red-500' : 'border-gray-300'}`}
+                                    className={`w-full h-10 rounded-lg border px-3 text-sm ${isGlobal ? 'bg-gray-100 cursor-not-allowed text-blue-600' : ''
+                                      } ${errors.drafts?.[idx] ? 'border-red-500' : 'border-gray-300'}`}
                                   >
                                     <option value="">
                                       {isGlobal ? 'Tất cả trung tâm' : '-- Chọn trung tâm --'}
@@ -479,7 +450,7 @@ export default function AssignRoleModal({ open, onClose, onSuccess, user }: Assi
                                   <label className="block text-xs text-transparent mb-1">-</label>
                                   <button
                                     type="button"
-                                    onClick={() => removeNewRow(assignment.id)}
+                                    onClick={() => removeNewRow(idx)}
                                     className="h-10 w-10 rounded-lg border border-gray-300 hover:bg-red-50 hover:border-red-300 hover:text-red-600 flex items-center justify-center"
                                     title="Xóa"
                                   >
@@ -489,9 +460,9 @@ export default function AssignRoleModal({ open, onClose, onSuccess, user }: Assi
                               </div>
 
                               {/* Error message */}
-                              {errors.newAssignments?.[idx] && (
+                              {errors.drafts?.[idx] && (
                                 <div className="mt-2 text-xs text-red-600">
-                                  {errors.newAssignments[idx]}
+                                  {errors.drafts[idx]}
                                 </div>
                               )}
                             </div>
@@ -507,7 +478,7 @@ export default function AssignRoleModal({ open, onClose, onSuccess, user }: Assi
             {/* Footer */}
             <div className="px-6 py-4 border-t flex items-center justify-between">
               <div className="text-xs text-gray-500">
-                GLOBAL chỉ được 1. CENTER tối đa 3.
+                GLOBAL chỉ hiển thị "Tất cả trung tâm"
               </div>
               <div className="flex gap-3">
                 <button

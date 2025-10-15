@@ -5,6 +5,7 @@ export type RoleScope = 'GLOBAL' | 'CENTER';
 export type RoleCode = string;
 
 export interface UserAssignment {
+    assignmentId: number;
     roleId: number;
     roleCode: RoleCode; // string
     roleName: string;
