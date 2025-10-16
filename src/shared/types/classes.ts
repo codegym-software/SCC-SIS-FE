@@ -117,3 +117,9 @@ export type ClassStats = {
     label: string;
     value: string;
 };
+
+// Generic wrapper for paginated responses
+export type ListResponse<T> = {
+    total: number;
+    items: T[];
+};

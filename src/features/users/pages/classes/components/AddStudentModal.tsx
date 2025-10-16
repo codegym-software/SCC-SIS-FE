@@ -1,17 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, User, Mail, Phone, Check } from 'lucide-react';
+import { X, Search, User, Mail, Phone, Check, Loader2 } from 'lucide-react';
+import { getStudentsByCenter } from '@/api/user-views';
+import { getClassStudents, enrollStudent } from '@/api/class-students';
+import { useToast } from '@/shared/hooks/useToast';
+import type { UserView } from '@/api/user-views';
 
-type Student = {
-    id: string;
-    studentId: string;
-    name: string;
-    email: string;
-    phone: string;
+type StudentCandidate = UserView & {
     initial: string;
-    class: string;
-    program: string;
-    registrationDate: string;
-    status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
 };
 
 type Class = {
@@ -42,149 +37,102 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     onAddStudents
 }) => {
     const [query, setQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [candidates, setCandidates] = useState<StudentCandidate[]>([]);
+    const [activeStudentIds, setActiveStudentIds] = useState<number[]>([]);
+    const { success, error } = useToast();
 
-    // Mock data for students (in real app, this would come from API)
-    const [allStudents, setAllStudents] = useState<Student[]>([
-        {
-            id: '1',
-            studentId: 'SV001',
-            name: 'Pham Minh Đức',
-            email: 'duc.pham@student.edu',
-            phone: '0911111111',
-            initial: 'P',
-            class: '',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-01-15',
-            status: 'Đang học',
-        },
-        {
-            id: '2',
-            studentId: 'SV002',
-            name: 'Hoàng Thị Mai',
-            email: 'mai.hoang@student.edu',
-            phone: '0922222222',
-            initial: 'H',
-            class: '',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-01-15',
-            status: 'Đang học',
-        },
-        {
-            id: '3',
-            studentId: 'SV003',
-            name: 'Vũ Đình Nam',
-            email: 'nam.vu@student.edu',
-            phone: '0933333333',
-            initial: 'V',
-            class: '',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-01-15',
-            status: 'Bảo lưu',
-        },
-        {
-            id: '4',
-            studentId: 'SV004',
-            name: 'Nguyễn Thu Hằng',
-            email: 'hang.nguyen@student.edu',
-            phone: '0944444444',
-            initial: 'N',
-            class: '',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-02-01',
-            status: 'Đang học',
-        },
-        {
-            id: '5',
-            studentId: 'SV005',
-            name: 'Trần Văn Bình',
-            email: 'binh.tran@student.edu',
-            phone: '0955555555',
-            initial: 'T',
-            class: '',
-            program: 'Digital Marketing',
-            registrationDate: '2024-02-10',
-            status: 'Đang học',
-        },
-        {
-            id: '6',
-            studentId: 'SV006',
-            name: 'Lê Thị Cẩm',
-            email: 'cam.le@student.edu',
-            phone: '0966666666',
-            initial: 'L',
-            class: '',
-            program: 'Thiết kế Đồ họa',
-            registrationDate: '2024-02-15',
-            status: 'Đang học',
-        },
-        {
-            id: '7',
-            studentId: 'SV007',
-            name: 'Phạm Văn Dũng',
-            email: 'dung.pham@student.edu',
-            phone: '0977777777',
-            initial: 'P',
-            class: '',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-02-20',
-            status: 'Tạm dừng',
-        },
-        {
-            id: '8',
-            studentId: 'SV008',
-            name: 'Nguyễn Thị Em',
-            email: 'em.nguyen@student.edu',
-            phone: '0988888888',
-            initial: 'N',
-            class: '',
-            program: 'Data Science',
-            registrationDate: '2024-03-01',
-            status: 'Đang học',
-        },
-    ]);
+    // Load candidates and active students when modal opens
+    useEffect(() => {
+        if (open) {
+            loadData();
+        }
+    }, [open, classItem.id]);
 
-    // Filter students based on search and status
-    const filteredStudents = allStudents.filter(student => {
-        const matchesQuery = 
-            student.name.toLowerCase().includes(query.toLowerCase()) ||
-            student.email.toLowerCase().includes(query.toLowerCase()) ||
-            student.studentId.toLowerCase().includes(query.toLowerCase());
-        
-        const matchesStatus = statusFilter === 'Tất cả trạng thái' || student.status === statusFilter;
-        
-        return matchesQuery && matchesStatus;
+    const loadData = async () => {
+        try {
+            setLoading(true);
+
+            // 1) active trong lớp để loại trừ
+            const active = await getClassStudents(Number(classItem.id), { status: 'ACTIVE', page: 0, size: 200 });
+            const activeIds = new Set((active.items ?? []).map(x => x.studentId));
+
+            // 2) candidates theo center
+            const candidates = await getStudentsByCenter(Number(classItem.id), query); // LIST
+            const filtered = (candidates ?? []).filter(u => !activeIds.has(u.userId));
+
+            const candidatesWithInitials = filtered.map(candidate => ({
+                ...candidate,
+                initial: candidate.fullName.charAt(0).toUpperCase()
+            }));
+            setCandidates(candidatesWithInitials);
+
+        } catch (error) {
+            console.error('Error loading data:', error);
+            error('Không thể tải danh sách học viên');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Filter candidates to exclude active students in current class
+    const availableCandidates = candidates.filter(candidate =>
+        !activeStudentIds.includes(candidate.userId)
+    );
+
+    // Filter based on search query
+    const filteredStudents = availableCandidates.filter(candidate => {
+        const matchesQuery = query === '' ||
+            candidate.fullName.toLowerCase().includes(query.toLowerCase()) ||
+            candidate.email.toLowerCase().includes(query.toLowerCase());
+
+        return matchesQuery;
     });
 
     const handleStudentSelect = (studentId: string) => {
-        setSelectedStudents(prev => 
-            prev.includes(studentId) 
+        setSelectedStudents(prev =>
+            prev.includes(studentId)
                 ? prev.filter(id => id !== studentId)
                 : [...prev, studentId]
         );
     };
 
     const handleSelectAll = () => {
-        if (selectedStudents.length === filteredStudents.length) {
+        if (selectedStudents.length === (candidates ?? []).length) {
             setSelectedStudents([]);
         } else {
-            setSelectedStudents(filteredStudents.map(s => s.id));
+            setSelectedStudents((candidates ?? []).map(s => s.userId.toString()));
         }
     };
 
     const handleSubmit = async () => {
         if (selectedStudents.length === 0) return;
-        
+
         setIsSubmitting(true);
+
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            const today = new Date().toISOString().slice(0, 10);
+            const tasks = selectedStudents.map(id => enrollStudent(Number(classItem.id), {
+                studentId: Number(id),
+                enrolledAt: today,
+                note: null
+            }).catch(err => err));                 // nuốt lỗi để tiếp tục
+
+            const results = await Promise.all(tasks);
+            const created = results.filter(r => !(r instanceof Error)).length;
+            const skipped = results.length - created;
+
+            success(`Đã thêm ${created} học viên${skipped ? `, bỏ qua ${skipped}` : ''}`);
+
+            // Close modal and reload parent
             onAddStudents(selectedStudents);
             onClose();
+
         } catch (error) {
-            console.error('Error adding students:', error);
+            console.error('Error enrolling students:', error);
+            error('Có lỗi xảy ra khi thêm học viên');
         } finally {
             setIsSubmitting(false);
         }
@@ -193,7 +141,6 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     const handleClose = () => {
         setSelectedStudents([]);
         setQuery('');
-        setStatusFilter('Tất cả trạng thái');
         onClose();
     };
 
@@ -218,7 +165,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                         </button>
                     </div>
 
-                    {/* Search and Filter */}
+                    {/* Search */}
                     <div className="px-6 py-4 border-b space-y-4">
                         <div className="flex gap-4">
                             <div className="flex-1 relative">
@@ -227,57 +174,50 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
                                     className="w-full h-9 pl-10 pr-3 rounded-md border text-sm outline-none focus:ring-2 focus:ring-blue-200"
-                                    placeholder="Tìm kiếm theo tên, email, mã SV..."
+                                    placeholder="Tìm kiếm theo tên, email, mã học viên..."
                                 />
                             </div>
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="h-9 rounded-md border px-3 text-sm"
-                            >
-                                <option>Tất cả trạng thái</option>
-                                <option>Đang học</option>
-                                <option>Bảo lưu</option>
-                                <option>Tốt nghiệp</option>
-                                <option>Tạm dừng</option>
-                            </select>
                         </div>
-                        
+
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={handleSelectAll}
                                     className="text-sm text-blue-600 hover:text-blue-700"
                                 >
-                                    {selectedStudents.length === filteredStudents.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                                    {selectedStudents.length === (candidates ?? []).length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
                                 </button>
                                 <span className="text-sm text-gray-500">
                                     ({selectedStudents.length} học viên đã chọn)
                                 </span>
                             </div>
+                            {loading && (
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                    <Loader2 size={14} className="animate-spin" />
+                                    Đang tải...
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Student List */}
                     <div className="px-6 py-4 max-h-96 overflow-y-auto">
                         <div className="space-y-2">
-                            {filteredStudents.map((student) => (
+                            {(candidates ?? []).map((student) => (
                                 <div
-                                    key={student.id}
-                                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                                        selectedStudents.includes(student.id)
-                                            ? 'border-blue-500 bg-blue-50'
-                                            : 'border-gray-200 hover:border-gray-300'
-                                    }`}
-                                    onClick={() => handleStudentSelect(student.id)}
+                                    key={student.userId}
+                                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedStudents.includes(student.userId.toString())
+                                        ? 'border-blue-500 bg-blue-50'
+                                        : 'border-gray-200 hover:border-gray-300'
+                                        }`}
+                                    onClick={() => handleStudentSelect(student.userId.toString())}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                                            selectedStudents.includes(student.id)
-                                                ? 'bg-gray-900 text-white'
-                                                : 'bg-gray-100 text-gray-700'
-                                        }`}>
-                                            {selectedStudents.includes(student.id) ? (
+                                        <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${selectedStudents.includes(student.userId.toString())
+                                            ? 'bg-gray-900 text-white'
+                                            : 'bg-gray-100 text-gray-700'
+                                            }`}>
+                                            {selectedStudents.includes(student.userId.toString()) ? (
                                                 <Check size={16} />
                                             ) : (
                                                 student.initial
@@ -285,38 +225,29 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2">
-                                                <h3 className="font-medium">{student.name}</h3>
-                                                <span className="text-xs text-gray-500">({student.studentId})</span>
+                                                <h3 className="font-medium">{student.fullName}</h3>
+                                                <span className="text-xs text-gray-500">(ID: {student.userId})</span>
                                             </div>
                                             <div className="flex items-center gap-4 text-sm text-gray-500">
                                                 <div className="flex items-center gap-1">
                                                     <Mail size={12} />
                                                     {student.email}
                                                 </div>
-                                                <div className="flex items-center gap-1">
-                                                    <Phone size={12} />
-                                                    {student.phone}
-                                                </div>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <span className={`px-2 py-1 rounded-full text-xs ${
-                                                student.status === 'Đang học' ? 'bg-green-100 text-green-700' :
-                                                student.status === 'Bảo lưu' ? 'bg-orange-100 text-orange-700' :
-                                                student.status === 'Tốt nghiệp' ? 'bg-blue-100 text-blue-700' :
-                                                'bg-gray-100 text-gray-700'
-                                            }`}>
-                                                {student.status}
+                                            <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
+                                                Chưa trong lớp
                                             </span>
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        
-                        {filteredStudents.length === 0 && (
+
+                        {(candidates ?? []).length === 0 && !loading && (
                             <div className="text-center py-8 text-gray-500">
-                                Không tìm thấy học viên nào
+                                {query ? 'Không tìm thấy học viên nào' : 'Không có học viên nào khả dụng'}
                             </div>
                         )}
                     </div>
