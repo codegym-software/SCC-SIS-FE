@@ -32,6 +32,7 @@
     --input: var(--color-zinc-200);
     --ring: var(--color-zinc-400);
     --radius: 0.5rem;
+    --dashboard-bg-image: none;
 }
 
 .dark {
@@ -59,6 +60,7 @@
     --border: var(--color-zinc-800);
     --input: var(--color-zinc-800);
     --ring: var(--color-zinc-600);
+    --dashboard-bg-image: none;
 }
 
 /** Theme Setup **/
@@ -212,6 +214,53 @@
 /** Smooth scroll **/
 html {
     scroll-behavior: smooth;
+}
+
+/** Remove default margins and padding **/
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow-x: hidden;
+}
+
+/** Ensure no bottom border **/
+* {
+    box-sizing: border-box;
+}
+
+#root {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+/** Remove any bottom margin/padding from main content **/
+main {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    min-height: 100vh;
+}
+
+/** Ensure dashboard extends to bottom **/
+.dashboard-container {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    min-height: 100vh;
+}
+
+/** Ensure body and html take full height **/
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/** Make sure the app container takes full height **/
+#root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 /*---break---*/
 @layer base {

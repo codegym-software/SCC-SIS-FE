@@ -4,6 +4,8 @@ import StudentSearch from './search';
 import StudentList from './list';
 import StudentView from './view';
 import StudentEdit from './edit';
+import ChangeStatusModal from './components/ChangeStatusModal';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
 
 type Student = {
     id: string;
@@ -16,6 +18,7 @@ type Student = {
     program: string;
     registrationDate: string;
     status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
+    avatar?: string;
 };
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
@@ -32,6 +35,20 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
     );
 }
 
+function StatusModal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+    if (!open) return null;
+    return (
+        <div className="fixed inset-0 z-[60]">
+            <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 flex items-center justify-center p-4">
+                <div className="w-96 max-w-sm">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function StudentProfilePage() {
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
@@ -40,6 +57,74 @@ export default function StudentProfilePage() {
     const [openEdit, setOpenEdit] = useState<Student | null>(null);
     const [openCreate, setOpenCreate] = useState(false);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<Student | null>(null);
+    const [openChangeStatus, setOpenChangeStatus] = useState<Student | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const studentsPerPage = 8;
+
+    // Generate additional students
+    const generateAdditionalStudents = (): Student[] => {
+        const firstNames = [
+            'Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Phan', 'Vũ', 'Võ', 'Đặng', 'Bùi',
+            'Đỗ', 'Hồ', 'Ngô', 'Dương', 'Lý', 'Đinh', 'Đào', 'Mai', 'Lâm', 'Thái',
+            'Cao', 'Đinh', 'Lương', 'Tôn', 'Vương', 'Đinh', 'Lê', 'Phan', 'Võ', 'Bùi'
+        ];
+        
+        const lastNames = [
+            'Minh', 'Văn', 'Thị', 'Quốc', 'Đức', 'Hùng', 'Mai', 'Lan', 'Hương', 'Thu',
+            'Anh', 'Tuấn', 'Nam', 'Hải', 'Long', 'Phong', 'Khang', 'Bảo', 'Đức', 'Thành',
+            'Huy', 'Duy', 'Khoa', 'Linh', 'Nga', 'Hoa', 'Ly', 'My', 'Vy', 'Uyên'
+        ];
+        
+        const classes = [
+            'Lập trình Java Cơ bản - K15', 'Web Development - K08', 'Data Science - K01',
+            'Python Programming - K12', 'Digital Marketing - K05', 'UI/UX Design - K03',
+            'Mobile App Development - K07', 'Cloud Computing - K09', 'AI/ML - K11', 'Cybersecurity - K13'
+        ];
+        
+        const programs = ['Công nghệ Thông tin', 'Digital Marketing', 'Thiết kế', 'Kinh doanh'];
+        const statuses: Student['status'][] = ['Đang học', 'Bảo lưu', 'Tốt nghiệp', 'Tạm dừng'];
+        
+        return Array.from({ length: 50 }, (_, index) => {
+            const studentNumber = index + 6; // Start from SV006
+            const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+            const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+            const fullName = `${firstName} ${lastName}`;
+            const initial = fullName.split(' ').map(n => n[0]).join('');
+            
+            const randomClass = classes[Math.floor(Math.random() * classes.length)];
+            const randomProgram = programs[Math.floor(Math.random() * programs.length)];
+            const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+            
+            // Generate random date between 2023-2025
+            const year = 2023 + Math.floor(Math.random() * 3);
+            const month = Math.floor(Math.random() * 12) + 1;
+            const day = Math.floor(Math.random() * 28) + 1;
+            const registrationDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            
+            // Generate random phone number
+            const phoneNumber = `09${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`;
+            
+            return {
+                id: `student-${studentNumber}`,
+                studentId: `SV${String(studentNumber).padStart(3, '0')}`,
+                name: fullName,
+                email: `${fullName.toLowerCase().replace(/\s+/g, '.')}@student.edu`,
+                phone: phoneNumber,
+                initial,
+                class: randomClass,
+                program: randomProgram,
+                registrationDate,
+                status: randomStatus,
+                avatar: loadStudentAvatar(`student-${studentNumber}`)
+            };
+        });
+    };
+
+    // Function to load avatar from localStorage
+    const loadStudentAvatar = (studentId: string) => {
+        return localStorage.getItem(`student_avatar_${studentId}`) || '';
+    };
 
     // Mock data for students
     const [students, setStudents] = useState<Student[]>([
@@ -53,7 +138,8 @@ export default function StudentProfilePage() {
             class: 'Lập trình Java Cơ bản - K15',
             program: 'Công nghệ Thông tin',
             registrationDate: '2024-01-15',
-            status: 'Đang học'
+            status: 'Đang học',
+            avatar: loadStudentAvatar('1') || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'
         },
         {
             id: '2',
@@ -65,7 +151,8 @@ export default function StudentProfilePage() {
             class: 'Lập trình Java Cơ bản - K15',
             program: 'Công nghệ Thông tin',
             registrationDate: '2024-01-15',
-            status: 'Đang học'
+            status: 'Đang học',
+            avatar: loadStudentAvatar('2')
         },
         {
             id: '3',
@@ -77,7 +164,8 @@ export default function StudentProfilePage() {
             class: 'Lập trình Java Cơ bản - K15',
             program: 'Công nghệ Thông tin',
             registrationDate: '2024-01-15',
-            status: 'Bảo lưu'
+            status: 'Bảo lưu',
+            avatar: loadStudentAvatar('3')
         },
         {
             id: '4',
@@ -89,7 +177,8 @@ export default function StudentProfilePage() {
             class: 'Web Development - K08',
             program: 'Công nghệ Thông tin',
             registrationDate: '2024-02-01',
-            status: 'Đang học'
+            status: 'Đang học',
+            avatar: loadStudentAvatar('4')
         },
         {
             id: '5',
@@ -101,8 +190,10 @@ export default function StudentProfilePage() {
             class: 'Data Science - K01',
             program: 'Công nghệ Thông tin',
             registrationDate: '2023-09-01',
-            status: 'Tốt nghiệp'
-        }
+            status: 'Tốt nghiệp',
+            avatar: loadStudentAvatar('5')
+        },
+        ...generateAdditionalStudents()
     ]);
 
     const handleView = (student: Student) => {
@@ -117,6 +208,14 @@ export default function StudentProfilePage() {
         setStudents(prev => 
             prev.map(s => s.id === updatedStudent.id ? updatedStudent : s)
         );
+        
+        // Update avatar in localStorage if it exists
+        const savedAvatar = localStorage.getItem(`student_avatar_${updatedStudent.id}`);
+        if (savedAvatar) {
+            setStudents(prev => 
+                prev.map(s => s.id === updatedStudent.id ? { ...s, avatar: savedAvatar } : s)
+            );
+        }
     };
 
     const handleCreate = () => {
@@ -132,6 +231,28 @@ export default function StudentProfilePage() {
         setOpenMenuId(openMenuId === id ? null : id);
     };
 
+    const handleDeleteStudent = (student: Student) => {
+        setDeleteConfirm(student);
+    };
+
+    const confirmDeleteStudent = () => {
+        if (deleteConfirm) {
+            setStudents(prev => prev.filter(s => s.id !== deleteConfirm.id));
+            setDeleteConfirm(null);
+        }
+    };
+
+    const handleChangeStatus = (student: Student) => {
+        setOpenChangeStatus(student);
+    };
+
+    const handleSaveStatusChange = (studentId: string, newStatus: Student['status']) => {
+        setStudents(prev => 
+            prev.map(s => s.id === studentId ? { ...s, status: newStatus } : s)
+        );
+        setOpenChangeStatus(null);
+    };
+
     // Filter students based on query and filters
     const filteredStudents = students.filter(student => {
         const matchesQuery = !query || 
@@ -145,14 +266,26 @@ export default function StudentProfilePage() {
         return matchesQuery && matchesStatus && matchesProgram;
     });
 
+    // Pagination logic
+    const totalPages = Math.ceil(filteredStudents.length / studentsPerPage);
+    const startIndex = (currentPage - 1) * studentsPerPage;
+    const endIndex = startIndex + studentsPerPage;
+    const currentStudents = filteredStudents.slice(startIndex, endIndex);
+
+    // Reset to first page when filters change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [query, statusFilter, programFilter]);
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+    };
+
     return (
         <div className="space-y-6">
             {/* Page Header */}
             <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 grid place-items-center text-white">
-                        <User size={18} />
-                    </div>
                     <div>
                         <h1 className="text-lg font-semibold">Hồ sơ Học viên</h1>
                         <p className="text-xs text-gray-500">Quản lý thông tin và hồ sơ học viên</p>
@@ -174,11 +307,17 @@ export default function StudentProfilePage() {
 
             {/* Students List */}
             <StudentList
-                students={filteredStudents}
+                students={currentStudents}
+                totalStudents={filteredStudents.length}
+                currentPage={currentPage}
+                totalPages={totalPages}
                 onView={handleView}
                 onEdit={handleEdit}
+                onChangeStatus={handleChangeStatus}
+                onDelete={handleDeleteStudent}
                 openMenuId={openMenuId}
                 onMenuToggle={handleMenuToggle}
+                onPageChange={handlePageChange}
             />
 
             {/* View Modal */}
@@ -217,6 +356,29 @@ export default function StudentProfilePage() {
                     </div>
                 </div>
             </Modal>
+
+            {/* Change Status Modal */}
+            <StatusModal open={!!openChangeStatus} onClose={() => setOpenChangeStatus(null)}>
+                {openChangeStatus && (
+                    <ChangeStatusModal
+                        student={openChangeStatus}
+                        onClose={() => setOpenChangeStatus(null)}
+                        onSave={handleSaveStatusChange}
+                    />
+                )}
+            </StatusModal>
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                open={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                onConfirm={confirmDeleteStudent}
+                title="Xác nhận xóa học viên"
+                description={`Bạn có chắc chắn muốn xóa học viên "${deleteConfirm?.name}" khỏi hệ thống? Hành động này không thể hoàn tác.`}
+                confirmText="Xóa"
+                cancelText="Hủy"
+                variant="danger"
+            />
         </div>
     );
 }

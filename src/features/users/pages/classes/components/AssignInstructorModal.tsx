@@ -1,22 +1,49 @@
-import React, { useState } from 'react';
-import { X, Plus, GraduationCap, Check, Edit } from 'lucide-react';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, GraduationCap, Check } from 'lucide-react';
+import http from '@/shared/api/http';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
+import { useToast } from '@/shared/hooks/useToast';
 
 type ClassInstructor = {
     id: string;
     name: string;
+    email: string;
+    specialization: string;
     initial: string;
+    assigned: boolean;
     avatar?: string;
     startDate?: string;
     note?: string;
 };
 
-type Class = {
+interface APIClassInstructor {
+    assignmentId: number;
+    classId: number;
+    lecturer: {
+        id: number;
+        fullName: string;
+        email: string;
+        avatarUrl?: string | null;
+    };
+    startDate: string;
+    endDate?: string | null;
+    active: boolean;
+    note?: string | null;
+    createdAt: string;
+    assignedBy: string;
+    revokedBy?: string | null;
+    canEdit: boolean;
+    canRemove: boolean;
+}
+
+interface APIAvailableLecturer {
+    id: number;
+    fullName: string;
+    email: string;
+    avatarUrl?: string | null;
+}
+
+type ClassItem = {
     id: string;
     name: string;
     description: string;
@@ -40,69 +67,106 @@ type Instructor = {
 };
 
 interface AssignInstructorModalProps {
-    classItem: Class;
+    classItem: ClassItem;
     onClose?: () => void;
+    onUpdateInstructors?: (classId: string, updatedInstructors: Instructor[]) => void;
 }
 
-const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem, onClose }) => {
+const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem, onClose, onUpdateInstructors }) => {
+    const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [selectedInstructors, setSelectedInstructors] = useState<string[]>([]);
-    const [instructorDetails, setInstructorDetails] = useState<{[key: string]: {startDate: string, note: string}}>({});
-    const [showEditModal, setShowEditModal] = useState(false);
-    const [editingInstructor, setEditingInstructor] = useState<ClassInstructor | null>(null);
-    const [editFormData, setEditFormData] = useState({startDate: '', note: ''});
+    const [instructorDetails, setInstructorDetails] = useState<{ [key: string]: { startDate: string, note: string } }>({});
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
-    
-    // Mock data for instructors - 36 instructors
-    const [instructors, setInstructors] = useState<Instructor[]>([
-        { id: '1', name: 'Nguyễn Văn A', email: 'a.nguyen@education.vn', specialization: 'Java Programming', initial: 'N', assigned: false },
-        { id: '2', name: 'Trần Thị B', email: 'b.tran@education.vn', specialization: 'Web Development', initial: 'T', assigned: true },
-        { id: '3', name: 'Lê Văn C', email: 'c.le@education.vn', specialization: 'Database Management', initial: 'L', assigned: false },
-        { id: '4', name: 'Võ Thị D', email: 'd.vo@education.vn', specialization: 'Mobile Development', initial: 'V', assigned: false },
-        { id: '5', name: 'Phạm Văn E', email: 'e.pham@education.vn', specialization: 'Python Programming', initial: 'P', assigned: false },
-        { id: '6', name: 'Hoàng Thị F', email: 'f.hoang@education.vn', specialization: 'React Development', initial: 'H', assigned: false },
-        { id: '7', name: 'Đỗ Văn G', email: 'g.do@education.vn', specialization: 'Node.js Development', initial: 'Đ', assigned: false },
-        { id: '8', name: 'Bùi Thị H', email: 'h.bui@education.vn', specialization: 'Vue.js Development', initial: 'B', assigned: false },
-        { id: '9', name: 'Ngô Văn I', email: 'i.ngo@education.vn', specialization: 'Angular Development', initial: 'N', assigned: false },
-        { id: '10', name: 'Dương Thị J', email: 'j.duong@education.vn', specialization: 'PHP Development', initial: 'D', assigned: false },
-        { id: '11', name: 'Vũ Văn K', email: 'k.vu@education.vn', specialization: 'Laravel Development', initial: 'V', assigned: false },
-        { id: '12', name: 'Lý Thị L', email: 'l.ly@education.vn', specialization: 'Django Development', initial: 'L', assigned: false },
-        { id: '13', name: 'Trịnh Văn M', email: 'm.trinh@education.vn', specialization: 'Spring Boot', initial: 'T', assigned: false },
-        { id: '14', name: 'Đinh Thị N', email: 'n.dinh@education.vn', specialization: 'ASP.NET Core', initial: 'Đ', assigned: false },
-        { id: '15', name: 'Phan Văn O', email: 'o.phan@education.vn', specialization: 'Ruby on Rails', initial: 'P', assigned: false },
-        { id: '16', name: 'Tôn Thị P', email: 'p.ton@education.vn', specialization: 'Flutter Development', initial: 'T', assigned: false },
-        { id: '17', name: 'Lưu Văn Q', email: 'q.luu@education.vn', specialization: 'React Native', initial: 'L', assigned: false },
-        { id: '18', name: 'Cao Thị R', email: 'r.cao@education.vn', specialization: 'Xamarin Development', initial: 'C', assigned: false },
-        { id: '19', name: 'Đặng Văn S', email: 's.dang@education.vn', specialization: 'Unity Development', initial: 'Đ', assigned: false },
-        { id: '20', name: 'Bạch Thị T', email: 't.bach@education.vn', specialization: 'Game Development', initial: 'B', assigned: false },
-        { id: '21', name: 'Lâm Văn U', email: 'u.lam@education.vn', specialization: 'Machine Learning', initial: 'L', assigned: false },
-        { id: '22', name: 'Hồ Thị V', email: 'v.ho@education.vn', specialization: 'Deep Learning', initial: 'H', assigned: false },
-        { id: '23', name: 'Mai Văn W', email: 'w.mai@education.vn', specialization: 'Data Science', initial: 'M', assigned: false },
-        { id: '24', name: 'Lê Thị X', email: 'x.le@education.vn', specialization: 'Big Data', initial: 'L', assigned: false },
-        { id: '25', name: 'Nguyễn Văn Y', email: 'y.nguyen@education.vn', specialization: 'Cloud Computing', initial: 'N', assigned: false },
-        { id: '26', name: 'Trần Thị Z', email: 'z.tran@education.vn', specialization: 'DevOps', initial: 'T', assigned: false },
-        { id: '27', name: 'Phạm Văn AA', email: 'aa.pham@education.vn', specialization: 'Docker', initial: 'P', assigned: false },
-        { id: '28', name: 'Hoàng Thị BB', email: 'bb.hoang@education.vn', specialization: 'Kubernetes', initial: 'H', assigned: false },
-        { id: '29', name: 'Đỗ Văn CC', email: 'cc.do@education.vn', specialization: 'AWS', initial: 'Đ', assigned: false },
-        { id: '30', name: 'Bùi Thị DD', email: 'dd.bui@education.vn', specialization: 'Azure', initial: 'B', assigned: false },
-        { id: '31', name: 'Ngô Văn EE', email: 'ee.ngo@education.vn', specialization: 'Google Cloud', initial: 'N', assigned: false },
-        { id: '32', name: 'Dương Thị FF', email: 'ff.duong@education.vn', specialization: 'Cybersecurity', initial: 'D', assigned: false },
-        { id: '33', name: 'Vũ Văn GG', email: 'gg.vu@education.vn', specialization: 'Network Security', initial: 'V', assigned: false },
-        { id: '34', name: 'Lý Thị HH', email: 'hh.ly@education.vn', specialization: 'Ethical Hacking', initial: 'L', assigned: false },
-        { id: '35', name: 'Trịnh Văn II', email: 'ii.trinh@education.vn', specialization: 'Blockchain', initial: 'T', assigned: false },
-        { id: '36', name: 'Đinh Thị JJ', email: 'jj.dinh@education.vn', specialization: 'Cryptocurrency', initial: 'Đ', assigned: false }
-    ]);
+    const [removeConfirm, setRemoveConfirm] = useState<Instructor | null>(null);
+    const [isAssigning, setIsAssigning] = useState(false);
+    const [isRemoving, setIsRemoving] = useState(false);
 
-    const assignedInstructors = instructors.filter(i => i.assigned);
-    const filteredInstructors = instructors.filter(i => 
-        !i.assigned && 
-        (i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         i.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         i.specialization.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-    
+    // State to track assigned instructors locally for immediate UI updates
+    const [localAssignedInstructors, setLocalAssignedInstructors] = useState<ClassInstructor[]>([]);
+
+    // Fetch assigned instructors from API
+    useEffect(() => {
+        const fetchAssignedInstructors = async () => {
+            try {
+                const response = await http.get(`/api/classes/${classItem.id}/lecturers`);
+                const apiData: APIClassInstructor[] = response.data.items;
+
+                // Map API data to component format
+                const mappedInstructors: ClassInstructor[] = apiData.map(item => ({
+                    id: item.assignmentId.toString(),
+                    name: item.lecturer.fullName,
+                    email: item.lecturer.email,
+                    specialization: '',
+                    initial: item.lecturer.fullName.charAt(0).toUpperCase(),
+                    assigned: item.active,
+                    avatar: item.lecturer.avatarUrl || undefined,
+                    startDate: item.startDate,
+                    note: item.note || undefined
+                }));
+
+                setAssignedInstructorsFromAPI(mappedInstructors);
+                setLocalAssignedInstructors(mappedInstructors);
+            } catch (error) {
+                console.error('Error fetching assigned instructors:', error);
+                setAssignedInstructorsFromAPI([]);
+                setLocalAssignedInstructors([]);
+            }
+        };
+
+        if (classItem.id) {
+            fetchAssignedInstructors();
+        }
+    }, [classItem.id]);
+
+    // State for available instructors (for assignment selection)
+    const [instructors, setInstructors] = useState<Instructor[]>([]);
+
+    // State for assigned instructors (from API)
+    const [assignedInstructorsFromAPI, setAssignedInstructorsFromAPI] = useState<ClassInstructor[]>([]);
+
+    // Fetch available instructors for assignment from API
+    useEffect(() => {
+        const fetchAvailableInstructors = async () => {
+            try {
+                const response = await http.get(`/api/classes/${classItem.id}/lecturers/available`);
+                const apiData: APIAvailableLecturer[] = response.data.items;
+
+                // Map API data to component format
+                const mappedInstructors: Instructor[] = apiData.map(item => ({
+                    id: item.id.toString(),
+                    name: item.fullName,
+                    email: item.email,
+                    specialization: '',
+                    initial: item.fullName.charAt(0).toUpperCase(),
+                    assigned: false
+                }));
+
+                setInstructors(mappedInstructors);
+            } catch (error) {
+                console.error('Error fetching available instructors:', error);
+                setInstructors([]);
+            }
+        };
+
+        if (classItem.id) {
+            fetchAvailableInstructors();
+        }
+    }, [classItem.id]);
+
+    // Use local state for immediate UI updates
+    const assignedInstructors = localAssignedInstructors;
+    const filteredInstructors = instructors.filter(i => {
+        // Check if instructor is already assigned to this class
+        const isAssignedToClass = assignedInstructorsFromAPI.some(assigned => assigned.id === i.id);
+        return !isAssignedToClass &&
+            (searchTerm === '' ||
+                i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                i.email.toLowerCase().includes(searchTerm.toLowerCase()));
+    });
+
     // Pagination logic
     const totalPages = Math.ceil(filteredInstructors.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -111,91 +175,203 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
 
     const handleAssignInstructor = () => {
         setShowAssignModal(true);
-        setCurrentPage(1); // Reset to first page when opening modal
+        if (currentPage !== 1) {
+            setCurrentPage(1); // Reset to first page when opening modal
+        }
     };
 
     const handlePageChange = (page: number) => {
-        setCurrentPage(page);
+        if (page !== currentPage) {
+            setCurrentPage(page);
+        }
     };
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);
-        setCurrentPage(1); // Reset to first page when searching
+        if (value !== searchTerm) {
+            setCurrentPage(1); // Reset to first page when searching
+        }
     };
 
     const handleSelectInstructor = (instructorId: string) => {
-        setSelectedInstructors(prev => 
-            prev.includes(instructorId) 
+        setSelectedInstructors(prev => {
+            const isSelected = prev.includes(instructorId);
+            return isSelected
                 ? prev.filter(id => id !== instructorId)
-                : [...prev, instructorId]
-        );
+                : [...prev, instructorId];
+        });
     };
 
-    const handleConfirmAssign = () => {
-        // Update instructor assignment status with details
-        setInstructors(prev => 
-            prev.map(instructor => 
-                selectedInstructors.includes(instructor.id)
-                    ? { 
-                        ...instructor, 
-                        assigned: true,
-                        startDate: instructorDetails[instructor.id]?.startDate || '',
-                        note: instructorDetails[instructor.id]?.note || ''
-                    }
-                    : instructor
-            )
-        );
-        
-        // Clear selection and details
-        setSelectedInstructors([]);
-        setInstructorDetails({});
-        setShowAssignModal(false);
-        
-        console.log('Instructors updated:', instructors);
-    };
+    const handleConfirmAssign = async () => {
+        if (isAssigning) return;
 
-    const handleEditInstructor = (instructorId: string) => {
-        const instructor = instructors.find(inst => inst.id === instructorId);
-        if (instructor) {
-            setEditingInstructor(instructor);
-            setEditFormData({
-                startDate: instructor.startDate || '',
-                note: instructor.note || ''
+        setIsAssigning(true);
+
+        try {
+            // Prepare batch assignment data
+            const batchItems = selectedInstructors.map(instructorId => {
+                const instructor = instructors.find(inst => inst.id === instructorId);
+                const details = instructorDetails[instructorId] || { startDate: '', note: '' };
+                return {
+                    lecturerId: parseInt(instructorId),
+                    startDate: details.startDate || new Date().toISOString().split('T')[0],
+                    note: details.note || null
+                };
             });
-            setShowEditModal(true);
+
+            // Call batch assignment API
+            const response = await http.post(`/api/classes/${classItem.id}/lecturers/batch`, {
+                items: batchItems
+            });
+
+            if (response.status === 201) {
+                const { created, skipped } = response.data;
+
+                if (created > 0) {
+                    showSuccessToast(
+                        'Phân công thành công',
+                        `Đã phân công ${created} giảng viên cho lớp học.`
+                    );
+                }
+
+                if (skipped && skipped.length > 0) {
+                    showErrorToast(
+                        'Một số giảng viên đã được phân công',
+                        `Giảng viên có ID ${skipped.join(', ')} đã được phân công trước đó.`
+                    );
+                }
+
+                // Refresh data by calling the GET API again
+                const refreshResponse = await http.get(`/api/classes/${classItem.id}/lecturers`);
+                const apiData: APIClassInstructor[] = refreshResponse.data.items;
+
+                // Map API data to component format
+                const mappedInstructors: ClassInstructor[] = apiData.map(item => ({
+                    id: item.assignmentId.toString(),
+                    name: item.lecturer.fullName,
+                    email: item.lecturer.email,
+                    specialization: '',
+                    initial: item.lecturer.fullName.charAt(0).toUpperCase(),
+                    assigned: item.active,
+                    avatar: item.lecturer.avatarUrl || undefined,
+                    startDate: item.startDate,
+                    note: item.note || undefined
+                }));
+
+                setAssignedInstructorsFromAPI(mappedInstructors);
+                setLocalAssignedInstructors(mappedInstructors);
+
+                // Update parent component
+                if (onUpdateInstructors) {
+                    onUpdateInstructors(classItem.id, mappedInstructors as Instructor[]);
+                }
+
+                // Close modal and reset form
+                setShowAssignModal(false);
+                setSelectedInstructors([]);
+                setInstructorDetails({});
+                setSearchTerm('');
+            }
+        } catch (error: any) {
+            console.error('Error assigning instructors:', error);
+
+            if (error.response?.status === 409) {
+                const errorCode = error.response.data?.code;
+                if (errorCode === 'CLASS_MAX_ACTIVE_LECTURERS_EXCEEDED') {
+                    showErrorToast(
+                        'Không thể phân công thêm',
+                        'Lớp học đã đạt số lượng giảng viên tối đa cho phép.'
+                    );
+                } else if (errorCode === 'LECTURER_ALREADY_ASSIGNED') {
+                    showErrorToast(
+                        'Giảng viên đã được phân công',
+                        'Một hoặc nhiều giảng viên đã được phân công cho lớp học này.'
+                    );
+                } else {
+                    showErrorToast(
+                        'Lỗi phân công giảng viên',
+                        'Có lỗi xảy ra khi phân công giảng viên. Vui lòng thử lại.'
+                    );
+                }
+            } else {
+                showErrorToast(
+                    'Lỗi phân công giảng viên',
+                    'Có lỗi xảy ra khi phân công giảng viên. Vui lòng thử lại.'
+                );
+            }
+        } finally {
+            setIsAssigning(false);
         }
     };
 
-    const handleSaveEdit = () => {
-        if (editingInstructor) {
-            setInstructors(prev => 
-                prev.map(instructor => 
-                    instructor.id === editingInstructor.id
-                        ? { ...instructor, startDate: editFormData.startDate, note: editFormData.note }
-                        : instructor
-                )
-            );
-            setShowEditModal(false);
-            setEditingInstructor(null);
-            setEditFormData({startDate: '', note: ''});
-        }
-    };
 
     const handleRemoveInstructor = (instructorId: string) => {
-        setInstructors(prev => 
-            prev.map(instructor => 
-                instructor.id === instructorId
-                    ? { ...instructor, assigned: false, startDate: '', note: '' }
-                    : instructor
-            )
-        );
-        
-        // Also clear from instructorDetails if exists
-        setInstructorDetails(prev => {
-            const newDetails = { ...prev };
-            delete newDetails[instructorId];
-            return newDetails;
-        });
+        const instructor = assignedInstructorsFromAPI.find(inst => inst.id === instructorId);
+        if (instructor) {
+            setRemoveConfirm(instructor);
+        }
+    };
+
+    const confirmRemoveInstructor = async () => {
+        if (!removeConfirm || isRemoving) return;
+
+        setIsRemoving(true);
+
+        try {
+            // Call DELETE API to revoke assignment
+            await http.delete(`/api/classes/${classItem.id}/lecturers/${removeConfirm.id}`);
+
+            showSuccessToast(
+                'Hủy phân công thành công',
+                `Đã hủy phân công giảng viên "${removeConfirm.name}" khỏi lớp học.`
+            );
+
+            // Remove from local state immediately for UI update
+            const updatedAssignedInstructors = assignedInstructorsFromAPI.filter(
+                instructor => instructor.id !== removeConfirm.id
+            );
+
+            setLocalAssignedInstructors(updatedAssignedInstructors);
+            setAssignedInstructorsFromAPI(updatedAssignedInstructors);
+
+            // Update parent component
+            if (onUpdateInstructors) {
+                onUpdateInstructors(classItem.id, updatedAssignedInstructors as Instructor[]);
+            }
+
+            // Clear from instructorDetails if exists
+            setInstructorDetails(prev => {
+                const newDetails = { ...prev };
+                delete newDetails[removeConfirm.id];
+                return newDetails;
+            });
+
+            setRemoveConfirm(null);
+
+        } catch (error: any) {
+            console.error('Error removing instructor:', error);
+
+            if (error.response?.status === 404) {
+                showErrorToast(
+                    'Không tìm thấy phân công',
+                    'Phân công giảng viên không tồn tại hoặc đã được hủy trước đó.'
+                );
+            } else if (error.response?.status === 409) {
+                showErrorToast(
+                    'Không thể hủy phân công',
+                    'Phân công đã được hủy trước đó hoặc không thể hủy do ràng buộc hệ thống.'
+                );
+            } else {
+                showErrorToast(
+                    'Lỗi hủy phân công',
+                    'Có lỗi xảy ra khi hủy phân công giảng viên. Vui lòng thử lại.'
+                );
+            }
+
+            setRemoveConfirm(null);
+        } finally {
+            setIsRemoving(false);
+        }
     };
 
     return (
@@ -216,7 +392,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                             </p>
                         </div>
                     </div>
-                    <button 
+                    <button
                         className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
                         onClick={() => {
                             console.log('Close button clicked');
@@ -245,10 +421,9 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                 <div className="max-h-96 overflow-y-auto">
                     <div className="px-6 py-3 border-b bg-gray-50 text-sm font-medium text-gray-700 grid grid-cols-12 gap-6">
                         <div className="col-span-4">Giảng viên</div>
-                        <div className="col-span-2">Chuyên môn</div>
-                        <div className="col-span-2">Ngày bắt đầu</div>
+                        <div className="col-span-3">Ngày bắt đầu</div>
                         <div className="col-span-3">Ghi chú</div>
-                        <div className="col-span-1">Thao tác</div>
+                        <div className="col-span-2">Thao tác</div>
                     </div>
 
                     <div className="divide-y">
@@ -265,15 +440,8 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                     </div>
                                 </div>
 
-                                {/* Specialization */}
-                                <div className="col-span-2">
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-purple-50 text-purple-700 font-medium">
-                                        {instructor.specialization}
-                                    </span>
-                                </div>
-
                                 {/* Start Date */}
-                                <div className="col-span-2">
+                                <div className="col-span-3">
                                     <div className="px-3 py-2 text-sm text-gray-900 bg-gray-50 rounded-md min-h-[40px] flex items-center">
                                         {instructor.startDate ? (
                                             <span className="text-gray-900">
@@ -297,28 +465,13 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                 </div>
 
                                 {/* Actions */}
-                                <div className="col-span-1">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger className="h-8 w-8 rounded hover:bg-gray-100 flex items-center justify-center">
-                                            <span className="text-gray-400">⋯</span>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent className="w-48">
-                                            <DropdownMenuItem 
-                                                onClick={() => handleEditInstructor(instructor.id)}
-                                                className="text-blue-600"
-                                            >
-                                                <Edit size={14} className="mr-2" />
-                                                Chỉnh sửa thông tin
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem 
-                                                onClick={() => handleRemoveInstructor(instructor.id)}
-                                                className="text-red-600"
-                                            >
-                                                <X size={14} className="mr-2" />
-                                                Hủy phân công
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                <div className="col-span-2 flex justify-center">
+                                    <button
+                                        onClick={() => handleRemoveInstructor(instructor.id)}
+                                        className="px-4 py-1.5 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors whitespace-nowrap"
+                                    >
+                                        Hủy gán
+                                    </button>
                                 </div>
                             </div>
                         ))}
@@ -351,7 +504,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                     Chọn giảng viên để phân công cho lớp {classItem.name}
                                 </p>
                             </div>
-                            <button 
+                            <button
                                 className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
                                 onClick={() => setShowAssignModal(false)}
                             >
@@ -366,12 +519,12 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                     Có {availableInstructors.length} giảng viên có thể phân công cho lớp
                                 </div>
                             </div>
-                            
+
                             {/* Search Box */}
                             <div className="relative">
                                 <input
                                     type="text"
-                                    placeholder="Tìm kiếm giảng viên theo tên, email hoặc chuyên môn..."
+                                    placeholder="Tìm kiếm giảng viên theo tên hoặc email..."
                                     value={searchTerm}
                                     onChange={(e) => handleSearchChange(e.target.value)}
                                     className="w-full px-4 py-2 pl-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -415,87 +568,79 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                             ) : (
                                 <div className="divide-y">
                                     {availableInstructors.map((instructor) => (
-                                    <div key={instructor.id}>
-                                        <div className="px-6 py-4 flex items-center gap-6">
-                                            {/* Checkbox */}
-                                            <div className="flex items-center">
-                                                <button
-                                                    onClick={() => handleSelectInstructor(instructor.id)}
-                                                    className={`h-6 w-6 rounded border-2 flex items-center justify-center ${
-                                                        selectedInstructors.includes(instructor.id)
+                                        <div key={instructor.id}>
+                                            <div className="px-6 py-4 flex items-center gap-6">
+                                                {/* Checkbox */}
+                                                <div className="flex items-center">
+                                                    <button
+                                                        onClick={() => handleSelectInstructor(instructor.id)}
+                                                        className={`h-6 w-6 rounded border-2 flex items-center justify-center ${selectedInstructors.includes(instructor.id)
                                                             ? 'bg-red-500 border-red-500 text-white'
                                                             : 'border-gray-300 hover:border-red-400'
-                                                    }`}
-                                                >
-                                                    {selectedInstructors.includes(instructor.id) && (
-                                                        <Check size={14} />
-                                                    )}
-                                                </button>
+                                                            }`}
+                                                    >
+                                                        {selectedInstructors.includes(instructor.id) && (
+                                                            <Check size={14} />
+                                                        )}
+                                                    </button>
+                                                </div>
+
+                                                {/* Instructor Info */}
+                                                <div className="flex items-center gap-4 flex-1">
+                                                    <div className="h-10 w-10 rounded-full bg-purple-100 text-purple-700 grid place-items-center text-sm font-medium">
+                                                        {instructor.initial}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="text-sm font-medium text-gray-900">{instructor.name}</div>
+                                                        <div className="text-xs text-gray-500">{instructor.email}</div>
+                                                    </div>
+                                                </div>
                                             </div>
 
-                                            {/* Instructor Info */}
-                                            <div className="flex items-center gap-4 flex-1">
-                                                <div className="h-10 w-10 rounded-full bg-purple-100 text-purple-700 grid place-items-center text-sm font-medium">
-                                                    {instructor.initial}
+                                            {/* Form for selected instructor */}
+                                            {selectedInstructors.includes(instructor.id) && (
+                                                <div className="px-6 py-4 bg-gray-50 border-l-4 border-red-500">
+                                                    <div className="grid grid-cols-3 gap-6">
+                                                        <div>
+                                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                Ngày bắt đầu
+                                                            </label>
+                                                            <input
+                                                                type="date"
+                                                                value={instructorDetails[instructor.id]?.startDate || ''}
+                                                                onChange={(e) => setInstructorDetails(prev => ({
+                                                                    ...prev,
+                                                                    [instructor.id]: {
+                                                                        ...prev[instructor.id],
+                                                                        startDate: e.target.value
+                                                                    }
+                                                                }))}
+                                                                className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-2">
+                                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                Ghi chú
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={instructorDetails[instructor.id]?.note || ''}
+                                                                onChange={(e) => setInstructorDetails(prev => ({
+                                                                    ...prev,
+                                                                    [instructor.id]: {
+                                                                        ...prev[instructor.id],
+                                                                        note: e.target.value
+                                                                    }
+                                                                }))}
+                                                                className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                                                placeholder="Nhập ghi chú cho giảng viên..."
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex-1">
-                                                    <div className="text-sm font-medium text-gray-900">{instructor.name}</div>
-                                                    <div className="text-xs text-gray-500">{instructor.email}</div>
-                                                </div>
-                                            </div>
-
-                                            {/* Specialization */}
-                                            <div>
-                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-purple-50 text-purple-700 font-medium">
-                                                    {instructor.specialization}
-                                                </span>
-                                            </div>
+                                            )}
                                         </div>
-
-                                        {/* Form for selected instructor */}
-                                        {selectedInstructors.includes(instructor.id) && (
-                                            <div className="px-6 py-4 bg-gray-50 border-l-4 border-red-500">
-                                                <div className="grid grid-cols-3 gap-6">
-                                                    <div>
-                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                            Ngày bắt đầu
-                                                        </label>
-                                                        <input
-                                                            type="date"
-                                                            value={instructorDetails[instructor.id]?.startDate || ''}
-                                                            onChange={(e) => setInstructorDetails(prev => ({
-                                                                ...prev,
-                                                                [instructor.id]: {
-                                                                    ...prev[instructor.id],
-                                                                    startDate: e.target.value
-                                                                }
-                                                            }))}
-                                                            className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-2">
-                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                            Ghi chú
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            value={instructorDetails[instructor.id]?.note || ''}
-                                                            onChange={(e) => setInstructorDetails(prev => ({
-                                                                ...prev,
-                                                                [instructor.id]: {
-                                                                    ...prev[instructor.id],
-                                                                    note: e.target.value
-                                                                }
-                                                            }))}
-                                                            className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                                                            placeholder="Nhập ghi chú cho giảng viên..."
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -515,21 +660,20 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                         >
                                             Previous
                                         </button>
-                                        
+
                                         {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                                             <button
                                                 key={page}
                                                 onClick={() => handlePageChange(page)}
-                                                className={`px-3 py-1 text-sm border rounded ${
-                                                    currentPage === page
-                                                        ? 'bg-purple-600 text-white border-purple-600'
-                                                        : 'border-gray-300 hover:bg-gray-100'
-                                                }`}
+                                                className={`px-3 py-1 text-sm border rounded ${currentPage === page
+                                                    ? 'bg-purple-600 text-white border-purple-600'
+                                                    : 'border-gray-300 hover:bg-gray-100'
+                                                    }`}
                                             >
                                                 {page}
                                             </button>
                                         ))}
-                                        
+
                                         <button
                                             onClick={() => handlePageChange(currentPage + 1)}
                                             disabled={currentPage === totalPages}
@@ -552,9 +696,15 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                             </button>
                             <button
                                 onClick={handleConfirmAssign}
-                                disabled={selectedInstructors.length === 0}
-                                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                disabled={selectedInstructors.length === 0 || isAssigning}
+                                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
                             >
+                                {isAssigning && (
+                                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                )}
                                 Phân công {selectedInstructors.length} giảng viên
                             </button>
                         </div>
@@ -562,94 +712,18 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                 </div>
             )}
 
-            {/* Edit Instructor Modal */}
-            {showEditModal && editingInstructor && (
-                <div className="fixed inset-0 z-50">
-                    <div className="fixed inset-0 bg-black/30" onClick={() => setShowEditModal(false)} />
-                    <div className="fixed inset-0 flex items-center justify-center p-4">
-                        <div className="w-full max-w-2xl rounded-lg bg-white shadow-lg border">
-                            {/* Header */}
-                            <div className="px-6 py-4 border-b flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-8 w-8 rounded-lg bg-purple-100 text-purple-700 grid place-items-center">
-                                        <Edit size={16} />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-semibold text-gray-900">Chỉnh sửa thông tin giảng viên</h3>
-                                        <p className="text-sm text-gray-500">Cập nhật ngày bắt đầu và ghi chú</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setShowEditModal(false)}
-                                    className="h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center"
-                                >
-                                    <X size={16} />
-                                </button>
-                            </div>
 
-                            {/* Content */}
-                            <div className="px-6 py-6">
-                                {/* Instructor Info */}
-                                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-12 w-12 rounded-full bg-purple-100 text-purple-700 grid place-items-center text-lg font-medium">
-                                            {editingInstructor.initial}
-                                        </div>
-                                        <div>
-                                            <div className="text-lg font-medium text-gray-900">{editingInstructor.name}</div>
-                                            <div className="text-sm text-gray-500">Giảng viên đã được phân công</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Edit Form */}
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Ngày bắt đầu
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={editFormData.startDate}
-                                            onChange={(e) => setEditFormData(prev => ({...prev, startDate: e.target.value}))}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Ghi chú
-                                        </label>
-                                        <textarea
-                                            value={editFormData.note}
-                                            onChange={(e) => setEditFormData(prev => ({...prev, note: e.target.value}))}
-                                            placeholder="Nhập ghi chú cho giảng viên..."
-                                            rows={4}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Footer */}
-                            <div className="px-6 py-4 border-t bg-gray-50 flex items-center justify-end gap-3">
-                                <button
-                                    onClick={() => setShowEditModal(false)}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-                                >
-                                    Hủy
-                                </button>
-                                <button
-                                    onClick={handleSaveEdit}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700"
-                                >
-                                    Lưu thay đổi
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Remove Confirmation Dialog */}
+            <ConfirmDialog
+                open={!!removeConfirm}
+                onClose={() => setRemoveConfirm(null)}
+                onConfirm={confirmRemoveInstructor}
+                title="Xác nhận hủy phân công"
+                description={`Bạn có chắc chắn hủy phân công giảng viên này? Thao tác không thể hoàn tác. Hủy vào ngày hiện tại.`}
+                confirmText="Hủy phân công"
+                cancelText="Đóng"
+                variant="danger"
+            />
         </>
     );
 };

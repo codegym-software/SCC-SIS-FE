@@ -1,13 +1,16 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardPage from '../../features/users/pages/dashboard/DashboardPage';
-import UsersPage from '../../features/users/pages/users/UsersPage';
-import RolesPage from '../../features/users/pages/roles/RolesPage';
-import CentersPage from '../../features/users/pages/centers/CentersPage';
+import UsersPage from '../../features/users/pages/UsersPage'
+import RolesPage from '../../features/roles/pages/RolesPage'
+import CentersPage from '../../features/centers/pages/CentersPage'
 import ProgramsPage from '../../features/users/pages/programs/ProgramsPage';
 import ClassesPage from '../../features/users/pages/classes/ClassesPage.tsx';
 import StudentProfilePage from '../../features/users/pages/students/StudentProfilePage';
 import SettingsPage from '../../features/users/pages/settings/SettingsPage';
+
+
+
 
 export default function AppRoutes() {
     return (

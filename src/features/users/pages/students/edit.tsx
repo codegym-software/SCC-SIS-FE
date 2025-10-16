@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit, Mail, Phone, MapPin, Calendar } from 'lucide-react';
+import { X, Edit, Mail, Phone, MapPin, Calendar, Upload, Image as ImageIcon } from 'lucide-react';
 
 type Student = {
     id: string;
@@ -14,6 +14,7 @@ type Student = {
     status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
     address?: string;
     dateOfBirth?: string;
+    avatar?: string;
 };
 
 interface StudentEditProps {
@@ -28,8 +29,20 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
         email: student.email,
         phone: student.phone,
         address: student.address || '123 Nguyễn Văn Cừ, Q.5, TP.HCM',
-        dateOfBirth: student.dateOfBirth || '15/05/2000'
+        dateOfBirth: student.dateOfBirth || '15/05/2000',
+        avatar: student.avatar || ''
     });
+
+    // Load avatar from localStorage on mount
+    useEffect(() => {
+        const savedAvatar = localStorage.getItem(`student_avatar_${student.id}`);
+        if (savedAvatar) {
+            setPreviewUrl(savedAvatar);
+        }
+    }, [student.id]);
+
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(student.avatar || null);
 
     const [errors, setErrors] = useState<{
         name?: string;
@@ -37,6 +50,7 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
         phone?: string;
         address?: string;
         dateOfBirth?: string;
+        avatar?: string;
     }>({});
 
     const handleInputChange = (field: string, value: string) => {
@@ -52,6 +66,59 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                 [field]: undefined
             }));
         }
+    };
+
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            // Validate file size (20MB = 20 * 1024 * 1024 bytes)
+            const maxSize = 20 * 1024 * 1024;
+            if (file.size > maxSize) {
+                setErrors(prev => ({
+                    ...prev,
+                    avatar: 'Kích thước file không được vượt quá 20MB'
+                }));
+                return;
+            }
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                setErrors(prev => ({
+                    ...prev,
+                    avatar: 'Chỉ được chọn file ảnh'
+                }));
+                return;
+            }
+
+            setSelectedFile(file);
+            
+            // Convert file to base64 and save to localStorage
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const base64 = e.target?.result as string;
+                setPreviewUrl(base64);
+                // Save to localStorage with student ID
+                localStorage.setItem(`student_avatar_${student.id}`, base64);
+            };
+            reader.readAsDataURL(file);
+            
+            // Clear error
+            setErrors(prev => ({
+                ...prev,
+                avatar: undefined
+            }));
+        }
+    };
+
+    const removeImage = () => {
+        setSelectedFile(null);
+        setPreviewUrl(null);
+        // Remove from localStorage
+        localStorage.removeItem(`student_avatar_${student.id}`);
+        setFormData(prev => ({
+            ...prev,
+            avatar: ''
+        }));
     };
 
     const validateForm = () => {
@@ -89,7 +156,8 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                 email: formData.email,
                 phone: formData.phone,
                 address: formData.address,
-                dateOfBirth: formData.dateOfBirth
+                dateOfBirth: formData.dateOfBirth,
+                avatar: previewUrl || student.avatar
             };
             
             onSave?.(updatedStudent);
@@ -120,6 +188,61 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
 
             {/* Form Content */}
             <div className="px-4 py-4">
+                {/* Avatar Upload Section */}
+                <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-900 mb-3">
+                        Ảnh đại diện
+                    </label>
+                    <div className="flex items-center gap-4">
+                        {/* Avatar Preview */}
+                        <div className="relative">
+                            {previewUrl ? (
+                                <div className="relative">
+                                    <img
+                                        src={previewUrl}
+                                        alt="Avatar preview"
+                                        className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                                    />
+                                    <button
+                                        onClick={removeImage}
+                                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+                                    <ImageIcon size={24} className="text-gray-400" />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Upload Button */}
+                        <div className="flex-1">
+                            <input
+                                type="file"
+                                id="avatar-upload"
+                                accept="image/*"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                            />
+                            <label
+                                htmlFor="avatar-upload"
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 cursor-pointer transition-colors"
+                            >
+                                <Upload size={16} />
+                                Chọn ảnh từ máy
+                            </label>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Tối đa 20MB. Định dạng: JPG, PNG, GIF
+                            </p>
+                            {errors.avatar && (
+                                <p className="text-xs text-red-600 mt-1">{errors.avatar}</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Left Column */}
                     <div className="space-y-4">
@@ -246,7 +369,7 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                 </button>
                 <button
                     onClick={handleSave}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                    className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black"
                 >
                     Cập nhật
                 </button>

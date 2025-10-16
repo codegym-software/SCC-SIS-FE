@@ -1,15 +1,6 @@
 import React, { useState } from 'react';
 import { BookOpen, Clock, Calendar, X } from 'lucide-react';
-
-type Program = {
-    id: string;
-    name: string;
-    description: string;
-    category: string;
-    duration: string;
-    startDate: string;
-    status: 'Đang hoạt động' | 'Tạm dừng' | 'Hoàn thành';
-};
+import type { Program } from '../../../../shared/api/programs';
 
 interface ProgramFormProps {
     open?: boolean;
@@ -29,10 +20,12 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
     isSubmitting = false 
 }) => {
     if (!open) return null;
+    
     const [errors, setErrors] = useState<{
         name?: string;
-        category?: string;
-        duration?: string;
+        code?: string;
+        categoryCode?: string;
+        durationHours?: string;
     }>({});
 
     return (
@@ -41,12 +34,14 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                 e.preventDefault();
                 const form = new FormData(e.currentTarget as HTMLFormElement);
                 const formData = {
-                    name: form.get('name'),
-                    description: form.get('description'),
-                    category: form.get('category'),
-                    duration: form.get('duration'),
-                    startDate: form.get('startDate'),
-                    status: form.get('status'),
+                    code: form.get('code') as string,
+                    name: form.get('name') as string,
+                    description: form.get('description') as string,
+                    categoryCode: form.get('categoryCode') as string,
+                    durationHours: parseInt(form.get('durationHours') as string),
+                    deliveryMode: form.get('deliveryMode') as 'ONLINE' | 'OFFLINE' | 'HYBRID',
+                    level: form.get('level') as string,
+                    isActive: form.get('isActive') === 'true',
                 };
                 onSubmit(formData);
             }}
@@ -66,12 +61,24 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                 {/* Thông tin cơ bản */}
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                        <div className="h-5 w-5 rounded-lg bg-purple-50 text-purple-600 grid place-items-center">
+                        <div className="h-5 w-5 rounded-lg bg-blue-50 text-blue-600 grid place-items-center">
                             <BookOpen size={12} />
                         </div>
                         <h3 className="text-xs font-medium text-gray-900">Thông tin cơ bản</h3>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs text-gray-600 mb-1">Mã chương trình *</label>
+                            <input
+                                name="code"
+                                defaultValue={editing?.code}
+                                required
+                                disabled={!!editing}
+                                className={`w-full h-8 rounded-md border px-2 text-xs ${errors.code ? 'border-red-500 bg-red-50' : 'border-gray-300'} ${editing ? 'bg-gray-100' : ''}`}
+                                placeholder="CNTT-2024"
+                            />
+                            {errors.code && <div className="text-xs text-red-600 mt-1">{errors.code}</div>}
+                        </div>
                         <div>
                             <label className="block text-xs text-gray-600 mb-1">Tên chương trình *</label>
                             <input
@@ -86,45 +93,66 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                         <div>
                             <label className="block text-xs text-gray-600 mb-1">Danh mục *</label>
                             <select
-                                name="category"
-                                defaultValue={editing?.category}
+                                name="categoryCode"
+                                defaultValue={editing?.categoryCode}
                                 required
-                                className={`w-full h-8 rounded-md border px-2 text-xs ${errors.category ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                className={`w-full h-8 rounded-md border px-2 text-xs ${errors.categoryCode ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                             >
                                 <option value="">Chọn danh mục</option>
-                                <option>Kỹ thuật</option>
-                                <option>Lập trình</option>
-                                <option>Thiết kế</option>
-                                <option>Kinh doanh</option>
+                                <option value="IT">IT</option>
+                                <option value="PROGRAMMING">PROGRAMMING</option>
+                                <option value="DESIGN">DESIGN</option>
+                                <option value="BUSINESS">BUSINESS</option>
                             </select>
-                            {errors.category && <div className="text-xs text-red-600 mt-1">{errors.category}</div>}
+                            {errors.categoryCode && <div className="text-xs text-red-600 mt-1">{errors.categoryCode}</div>}
                         </div>
                         <div>
-                            <label className="block text-xs text-gray-600 mb-1">Thời gian *</label>
+                            <label className="block text-xs text-gray-600 mb-1">Thời gian (giờ) *</label>
                             <input
-                                name="duration"
-                                defaultValue={editing?.duration}
+                                name="durationHours"
+                                defaultValue={editing?.durationHours}
                                 required
-                                className={`w-full h-8 rounded-md border px-2 text-xs ${errors.duration ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                                placeholder="18 tháng"
+                                type="number"
+                                min="1"
+                                className={`w-full h-8 rounded-md border px-2 text-xs ${errors.durationHours ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                placeholder="480"
                             />
-                            {errors.duration && <div className="text-xs text-red-600 mt-1">{errors.duration}</div>}
+                            <div className="text-xs text-gray-500 mt-1">Nhập số giờ (VD: 480)</div>
+                            {errors.durationHours && <div className="text-xs text-red-600 mt-1">{errors.durationHours}</div>}
                         </div>
                         <div>
-                            <label className="block text-xs text-gray-600 mb-1">Ngày bắt đầu</label>
-                            <input
-                                name="startDate"
-                                type="date"
-                                defaultValue={editing?.startDate}
+                            <label className="block text-xs text-gray-600 mb-1">Hình thức học *</label>
+                            <select
+                                name="deliveryMode"
+                                defaultValue={editing?.deliveryMode ?? 'OFFLINE'}
+                                required
                                 className="w-full h-8 rounded-md border px-2 text-xs"
-                            />
+                            >
+                                <option value="">Chọn hình thức học</option>
+                                <option value="ONLINE">ONLINE</option>
+                                <option value="OFFLINE">OFFLINE</option>
+                                <option value="HYBRID">HYBRID</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs text-gray-600 mb-1">Trình độ *</label>
+                            <select
+                                name="level"
+                                defaultValue={editing?.level ?? 'Beginner'}
+                                required
+                                className="w-full h-8 rounded-md border px-2 text-xs"
+                            >
+                                <option value="Beginner">Cơ bản</option>
+                                <option value="Intermediate">Trung cấp</option>
+                                <option value="Advanced">Nâng cao</option>
+                            </select>
                         </div>
                     </div>
                     <div>
                         <label className="block text-xs text-gray-600 mb-1">Mô tả</label>
                         <textarea
                             name="description"
-                            defaultValue={editing?.description}
+                            defaultValue={editing?.description || ''}
                             className="w-full h-16 rounded-md border px-2 py-1 text-xs resize-none"
                             placeholder="Mô tả chi tiết về chương trình đào tạo..."
                         />
@@ -144,13 +172,12 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                         <div>
                             <label className="block text-xs text-gray-600 mb-1">Trạng thái chương trình</label>
                             <select
-                                name="status"
-                                defaultValue={editing?.status ?? 'Đang hoạt động'}
+                                name="isActive"
+                                defaultValue={editing?.isActive ? 'true' : 'false'}
                                 className="w-full h-8 rounded-md border px-2 text-xs"
                             >
-                                <option>Đang hoạt động</option>
-                                <option>Tạm dừng</option>
-                                <option>Hoàn thành</option>
+                                <option value="true">Đang hoạt động</option>
+                                <option value="false">Tạm dừng</option>
                             </select>
                         </div>
                     </div>
@@ -167,7 +194,7 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                 </button>
                 <button
                     type="submit"
-                    className="h-9 px-3 rounded-md bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+                    className="h-9 px-3 rounded-md bg-gray-900 text-white hover:bg-black disabled:opacity-50 flex items-center gap-2"
                     disabled={isSubmitting}
                 >
                     {isSubmitting && (

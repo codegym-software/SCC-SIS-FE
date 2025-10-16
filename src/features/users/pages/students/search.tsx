@@ -85,7 +85,7 @@ const StudentSearch: React.FC<StudentSearchProps> = ({
 
                 <button
                     onClick={onCreate}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black"
                 >
                     <Plus size={16} />
                     Thêm Học viên mới

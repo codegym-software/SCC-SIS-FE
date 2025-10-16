@@ -13,22 +13,35 @@ type Student = {
     program: string;
     registrationDate: string;
     status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
+    avatar?: string;
 };
 
 interface StudentListProps {
     students: Student[];
+    totalStudents: number;
+    currentPage: number;
+    totalPages: number;
     onView?: (student: Student) => void;
     onEdit?: (student: Student) => void;
+    onChangeStatus?: (student: Student) => void;
+    onDelete?: (student: Student) => void;
     openMenuId?: string | null;
     onMenuToggle?: (id: string) => void;
+    onPageChange?: (page: number) => void;
 }
 
 const StudentList: React.FC<StudentListProps> = ({ 
     students, 
+    totalStudents,
+    currentPage,
+    totalPages,
     onView, 
     onEdit,
+    onChangeStatus,
+    onDelete,
     openMenuId, 
-    onMenuToggle 
+    onMenuToggle,
+    onPageChange
 }) => {
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -63,13 +76,10 @@ const StudentList: React.FC<StudentListProps> = ({
     return (
         <section className="rounded-2xl border border-gray-200 bg-white">
             <div className="px-3 py-3 border-b flex items-start gap-2">
-                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 grid place-items-center text-white flex-shrink-0">
-                    <User size={16} />
-                </div>
                 <div>
                     <div className="text-sm font-medium">Danh sách Học viên</div>
                     <div className="text-xs text-gray-500">
-                        Quản lý tất cả hồ sơ học viên ({students.length} kết quả)
+                        Quản lý tất cả hồ sơ học viên ({totalStudents} kết quả)
                     </div>
                 </div>
             </div>
@@ -91,9 +101,17 @@ const StudentList: React.FC<StudentListProps> = ({
                     >
                         {/* Student Info */}
                         <div className="col-span-3 flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-sm font-medium">
-                                {student.initial}
-                            </div>
+                            {student.avatar ? (
+                                <img
+                                    src={student.avatar}
+                                    alt={student.name}
+                                    className="h-8 w-8 rounded-full object-cover border border-gray-200"
+                                />
+                            ) : (
+                                <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-sm font-medium">
+                                    {student.initial}
+                                </div>
+                            )}
                             <div>
                                 <div className="text-sm font-medium">{student.name}</div>
                                 <div className="text-xs text-gray-500">({student.studentId})</div>
@@ -137,8 +155,8 @@ const StudentList: React.FC<StudentListProps> = ({
                             <StudentActions 
                                 onView={() => onView?.(student)}
                                 onEdit={() => onEdit?.(student)}
-                                onChangeStatus={() => console.log('Change status:', student.name)}
-                                onRemove={() => console.log('Remove student:', student.name)}
+                                onChangeStatus={() => onChangeStatus?.(student)}
+                                onRemove={() => onDelete?.(student)}
                             />
                         </div>
                     </div>
@@ -148,13 +166,39 @@ const StudentList: React.FC<StudentListProps> = ({
             {/* Pagination */}
             <div className="px-3 py-3 border-t flex items-center justify-between text-sm text-gray-500">
                 <div>
-                    Hiển thị 1 - {students.length} trong số {students.length} kết quả
+                    Hiển thị {((currentPage - 1) * 8) + 1} - {Math.min(currentPage * 8, totalStudents)} trong số {totalStudents} kết quả
                 </div>
                 <div className="flex items-center gap-2">
-                    <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50">Previous</button>
-                    <button className="px-2 py-1 text-xs bg-gray-900 text-white rounded">1</button>
-                    <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50">2</button>
-                    <button className="px-2 py-1 text-xs border rounded hover:bg-gray-50">Next</button>
+                    <button 
+                        onClick={() => onPageChange?.(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="px-2 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Previous
+                    </button>
+                    
+                    {/* Page numbers */}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                            key={page}
+                            onClick={() => onPageChange?.(page)}
+                            className={`px-2 py-1 text-xs rounded ${
+                                currentPage === page 
+                                    ? 'bg-gray-900 text-white' 
+                                    : 'border hover:bg-gray-50'
+                            }`}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    
+                    <button 
+                        onClick={() => onPageChange?.(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="px-2 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Next
+                    </button>
                 </div>
             </div>
         </section>

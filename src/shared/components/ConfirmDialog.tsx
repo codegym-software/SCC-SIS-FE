@@ -49,7 +49,7 @@ export default function ConfirmDialog({
                 return {
                     icon: 'text-blue-600',
                     iconBg: 'bg-blue-50',
-                    button: 'bg-blue-600 hover:bg-blue-700 text-white',
+                    button: 'bg-gray-900 hover:bg-black text-white',
                     border: 'border-blue-200',
                 };
         }

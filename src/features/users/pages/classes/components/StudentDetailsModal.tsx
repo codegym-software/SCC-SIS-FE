@@ -1,18 +1,13 @@
 import React from 'react';
-import { X, Mail, Phone, Calendar, User } from 'lucide-react';
+import { X, Mail, Phone, Calendar, User, FileText } from 'lucide-react';
+import type { EnrollmentResponse } from '@/shared/types/classes';
 
-type Student = {
-    id: string;
-    name: string;
-    email: string;
-    phone: string;
+type StudentEnrollment = EnrollmentResponse & {
     initial: string;
-    status: 'Đang học' | 'Tạm dừng' | 'Hoàn thành';
-    registrationDate: string;
 };
 
 interface StudentDetailsModalProps {
-    student: Student;
+    student: StudentEnrollment;
     onClose?: () => void;
 }
 
@@ -30,7 +25,7 @@ const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ student, onCl
                         <p className="text-sm text-gray-500">Thông tin chi tiết của học viên</p>
                     </div>
                 </div>
-                <button 
+                <button
                     className="text-gray-400 hover:text-gray-600"
                     onClick={onClose}
                 >
@@ -45,20 +40,19 @@ const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ student, onCl
                         {student.initial}
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{student.name}</h3>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            student.status === 'Đang học' 
-                                ? 'bg-green-50 text-green-700' 
-                                : student.status === 'Tạm dừng'
+                        <h3 className="text-lg font-semibold text-gray-900">{student.studentName}</h3>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${student.status === 'Đang học'
+                            ? 'bg-green-50 text-green-700'
+                            : student.status === 'Tạm dừng'
                                 ? 'bg-yellow-50 text-yellow-700'
                                 : 'bg-gray-50 text-gray-700'
-                        }`}>
+                            }`}>
                             {student.status}
                         </span>
                     </div>
                 </div>
 
-                {/* Contact Information */}
+                {/* Enrollment Information */}
                 <div className="space-y-3">
                     {/* Email */}
                     <div className="flex items-center gap-3">
@@ -67,31 +61,46 @@ const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ student, onCl
                         </div>
                         <div>
                             <div className="text-xs text-gray-500">Email</div>
-                            <div className="text-sm font-medium text-gray-900">{student.email}</div>
+                            <div className="text-sm font-medium text-gray-900">{student.studentEmail}</div>
                         </div>
                     </div>
 
-                    {/* Phone */}
-                    <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-gray-50 text-gray-600 grid place-items-center">
-                            <Phone size={14} />
-                        </div>
-                        <div>
-                            <div className="text-xs text-gray-500">Điện thoại</div>
-                            <div className="text-sm font-medium text-gray-900">{student.phone}</div>
-                        </div>
-                    </div>
-
-                    {/* Registration Date */}
+                    {/* Enrolled Date */}
                     <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-lg bg-gray-50 text-gray-600 grid place-items-center">
                             <Calendar size={14} />
                         </div>
                         <div>
-                            <div className="text-xs text-gray-500">Ngày đăng ký</div>
-                            <div className="text-sm font-medium text-gray-900">{student.registrationDate}</div>
+                            <div className="text-xs text-gray-500">Ngày ghi danh</div>
+                            <div className="text-sm font-medium text-gray-900">{student.enrolledAt}</div>
                         </div>
                     </div>
+
+                    {/* Left Date (if applicable) */}
+                    {student.leftAt && (
+                        <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-gray-50 text-gray-600 grid place-items-center">
+                                <Calendar size={14} />
+                            </div>
+                            <div>
+                                <div className="text-xs text-gray-500">Ngày rời khỏi</div>
+                                <div className="text-sm font-medium text-gray-900">{student.leftAt}</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Note */}
+                    {student.note && (
+                        <div className="flex items-start gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-gray-50 text-gray-600 grid place-items-center mt-0.5">
+                                <FileText size={14} />
+                            </div>
+                            <div>
+                                <div className="text-xs text-gray-500">Ghi chú</div>
+                                <div className="text-sm font-medium text-gray-900">{student.note}</div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

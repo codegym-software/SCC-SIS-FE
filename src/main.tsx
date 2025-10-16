@@ -13,11 +13,29 @@ async function bootstrap() {
         const authenticated = await keycloak.init({
             onLoad: 'login-required',
             pkceMethod: 'S256',
-            checkLoginIframe: false, // giảm lỗi dev
-            redirectUri: currentUrl, // Sử dụng URL đã lưu
+            checkLoginIframe: false,
+            redirectUri: currentUrl,
         });
 
-        // Authentication successful - token available
+        if (!authenticated || !keycloak.token) {
+            await keycloak.login();
+            return;
+        }
+
+        // 🔑 Token for Postman testing
+        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🔑 TOKEN FOR POSTMAN:');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log(keycloak.token);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+        // Expose token to window
+        (window as any).token = keycloak.token;
+
+        // Fetch user profile after Keycloak is ready
+        import('./stores/userProfile').then(({ useUserProfile }) => {
+            useUserProfile.getState().fetchMe();
+        });
 
         ReactDOM.createRoot(document.getElementById('root')!).render(
             <React.StrictMode>
