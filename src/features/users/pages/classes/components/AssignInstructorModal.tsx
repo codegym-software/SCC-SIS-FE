@@ -43,7 +43,7 @@ interface APIAvailableLecturer {
     avatarUrl?: string | null;
 }
 
-type Class = {
+type ClassItem = {
     id: string;
     name: string;
     description: string;
@@ -67,7 +67,7 @@ type Instructor = {
 };
 
 interface AssignInstructorModalProps {
-    classItem: Class;
+    classItem: ClassItem;
     onClose?: () => void;
     onUpdateInstructors?: (classId: string, updatedInstructors: Instructor[]) => void;
 }

@@ -595,8 +595,24 @@ export default function ClassesPage() {
                                 {errors.program && <div className="text-xs text-red-600 mt-1">{errors.program}</div>}
                             </div>
                             
-                            {/* Center Field: Dropdown for GLOBAL scope, Read-only for CENTER scope */}
-                            {hasGlobalScope ? (
+                            {/* Center Field: 
+                                - When CREATING: GLOBAL users see dropdown, CENTER users see read-only
+                                - When EDITING: Always read-only (cannot change center after creation)
+                            */}
+                            {editing ? (
+                                // EDIT MODE: Always show read-only center
+                                <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Trung tâm</label>
+                                    <input
+                                        type="text"
+                                        value={editing.centerName || ''}
+                                        readOnly
+                                        className="w-full h-9 rounded-md border px-3 text-sm bg-gray-50 text-gray-600 cursor-not-allowed"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Không thể thay đổi trung tâm sau khi tạo lớp</p>
+                                </div>
+                            ) : hasGlobalScope ? (
+                                // CREATE MODE - GLOBAL: Show dropdown
                                 <div>
                                     <label className="block text-xs text-gray-600 mb-1">Trung tâm *</label>
                                     <select
@@ -613,6 +629,7 @@ export default function ClassesPage() {
                                     </select>
                                 </div>
                             ) : (
+                                // CREATE MODE - CENTER: Show read-only with user's center
                                 <div>
                                     <label className="block text-xs text-gray-600 mb-1">Trung tâm</label>
                                     <input
@@ -828,7 +845,7 @@ export default function ClassesPage() {
             <Modal open={!!openAssignInstructor} onClose={() => setOpenAssignInstructor(null)}>
                 {openAssignInstructor && (
                     <AssignInstructorModal 
-                        classItem={openAssignInstructor} 
+                        classItem={openAssignInstructor as any}
                         onClose={() => setOpenAssignInstructor(null)}
                         onUpdateInstructors={handleUpdateInstructors}
                     />
