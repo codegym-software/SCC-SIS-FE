@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, GraduationCap, Check } from 'lucide-react';
 import http from '@/shared/api/http';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
+import { useToast } from '@/shared/hooks/useToast';
 
 type ClassInstructor = {
     id: string;
@@ -72,6 +73,7 @@ interface AssignInstructorModalProps {
 }
 
 const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem, onClose, onUpdateInstructors }) => {
+    const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [selectedInstructors, setSelectedInstructors] = useState<string[]>([]);
     const [instructorDetails, setInstructorDetails] = useState<{ [key: string]: { startDate: string, note: string } }>({});
@@ -79,6 +81,8 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     const [removeConfirm, setRemoveConfirm] = useState<Instructor | null>(null);
+    const [isAssigning, setIsAssigning] = useState(false);
+    const [isRemoving, setIsRemoving] = useState(false);
 
     // State to track assigned instructors locally for immediate UI updates
     const [localAssignedInstructors, setLocalAssignedInstructors] = useState<ClassInstructor[]>([]);
@@ -198,41 +202,106 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
         });
     };
 
-    const handleConfirmAssign = () => {
-        // Get selected instructors with their details
-        const newAssignedInstructors = selectedInstructors.map(instructorId => {
-            const instructor = instructors.find(inst => inst.id === instructorId);
-            const details = instructorDetails[instructorId] || { startDate: '', note: '' };
-            return {
-                id: instructorId,
-                name: instructor?.name || '',
-                initial: instructor?.initial || '',
-                email: instructor?.email || '',
-                specialization: '',
-                assigned: true,
-                startDate: details.startDate,
-                note: details.note
-            };
-        });
+    const handleConfirmAssign = async () => {
+        if (isAssigning) return;
 
-        // Combine existing assigned instructors with new ones
-        const updatedAssignedInstructors = [...assignedInstructorsFromAPI, ...newAssignedInstructors];
+        setIsAssigning(true);
 
-        // Update local state immediately for UI update
-        setLocalAssignedInstructors(updatedAssignedInstructors);
+        try {
+            // Prepare batch assignment data
+            const batchItems = selectedInstructors.map(instructorId => {
+                const instructor = instructors.find(inst => inst.id === instructorId);
+                const details = instructorDetails[instructorId] || { startDate: '', note: '' };
+                return {
+                    lecturerId: parseInt(instructorId),
+                    startDate: details.startDate || new Date().toISOString().split('T')[0],
+                    note: details.note || null
+                };
+            });
 
-        // Update parent component with all assigned instructors
-        if (onUpdateInstructors) {
-            onUpdateInstructors(classItem.id, updatedAssignedInstructors as Instructor[]);
+            // Call batch assignment API
+            const response = await http.post(`/api/classes/${classItem.id}/lecturers/batch`, {
+                items: batchItems
+            });
+
+            if (response.status === 201) {
+                const { created, skipped } = response.data;
+
+                if (created > 0) {
+                    showSuccessToast(
+                        'Phân công thành công',
+                        `Đã phân công ${created} giảng viên cho lớp học.`
+                    );
+                }
+
+                if (skipped && skipped.length > 0) {
+                    showErrorToast(
+                        'Một số giảng viên đã được phân công',
+                        `Giảng viên có ID ${skipped.join(', ')} đã được phân công trước đó.`
+                    );
+                }
+
+                // Refresh data by calling the GET API again
+                const refreshResponse = await http.get(`/api/classes/${classItem.id}/lecturers`);
+                const apiData: APIClassInstructor[] = refreshResponse.data.items;
+
+                // Map API data to component format
+                const mappedInstructors: ClassInstructor[] = apiData.map(item => ({
+                    id: item.assignmentId.toString(),
+                    name: item.lecturer.fullName,
+                    email: item.lecturer.email,
+                    specialization: '',
+                    initial: item.lecturer.fullName.charAt(0).toUpperCase(),
+                    assigned: item.active,
+                    avatar: item.lecturer.avatarUrl || undefined,
+                    startDate: item.startDate,
+                    note: item.note || undefined
+                }));
+
+                setAssignedInstructorsFromAPI(mappedInstructors);
+                setLocalAssignedInstructors(mappedInstructors);
+
+                // Update parent component
+                if (onUpdateInstructors) {
+                    onUpdateInstructors(classItem.id, mappedInstructors as Instructor[]);
+                }
+
+                // Close modal and reset form
+                setShowAssignModal(false);
+                setSelectedInstructors([]);
+                setInstructorDetails({});
+                setSearchTerm('');
+            }
+        } catch (error: any) {
+            console.error('Error assigning instructors:', error);
+
+            if (error.response?.status === 409) {
+                const errorCode = error.response.data?.code;
+                if (errorCode === 'CLASS_MAX_ACTIVE_LECTURERS_EXCEEDED') {
+                    showErrorToast(
+                        'Không thể phân công thêm',
+                        'Lớp học đã đạt số lượng giảng viên tối đa cho phép.'
+                    );
+                } else if (errorCode === 'LECTURER_ALREADY_ASSIGNED') {
+                    showErrorToast(
+                        'Giảng viên đã được phân công',
+                        'Một hoặc nhiều giảng viên đã được phân công cho lớp học này.'
+                    );
+                } else {
+                    showErrorToast(
+                        'Lỗi phân công giảng viên',
+                        'Có lỗi xảy ra khi phân công giảng viên. Vui lòng thử lại.'
+                    );
+                }
+            } else {
+                showErrorToast(
+                    'Lỗi phân công giảng viên',
+                    'Có lỗi xảy ra khi phân công giảng viên. Vui lòng thử lại.'
+                );
+            }
+        } finally {
+            setIsAssigning(false);
         }
-
-        // Clear selection and details
-        setSelectedInstructors([]);
-        setInstructorDetails({});
-        setShowAssignModal(false);
-        setSearchTerm('');
-
-        console.log('Instructors assigned:', newAssignedInstructors);
     };
 
 
@@ -243,21 +312,34 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
         }
     };
 
-    const confirmRemoveInstructor = () => {
-        if (removeConfirm) {
+    const confirmRemoveInstructor = async () => {
+        if (!removeConfirm || isRemoving) return;
+
+        setIsRemoving(true);
+
+        try {
+            // Call DELETE API to revoke assignment
+            await http.delete(`/api/classes/${classItem.id}/lecturers/${removeConfirm.id}`);
+
+            showSuccessToast(
+                'Hủy phân công thành công',
+                `Đã hủy phân công giảng viên "${removeConfirm.name}" khỏi lớp học.`
+            );
+
+            // Remove from local state immediately for UI update
             const updatedAssignedInstructors = assignedInstructorsFromAPI.filter(
                 instructor => instructor.id !== removeConfirm.id
             );
 
-            // Update local state immediately for UI update
             setLocalAssignedInstructors(updatedAssignedInstructors);
+            setAssignedInstructorsFromAPI(updatedAssignedInstructors);
 
-            // Update parent component with updated assigned instructors
+            // Update parent component
             if (onUpdateInstructors) {
                 onUpdateInstructors(classItem.id, updatedAssignedInstructors as Instructor[]);
             }
 
-            // Also clear from instructorDetails if exists
+            // Clear from instructorDetails if exists
             setInstructorDetails(prev => {
                 const newDetails = { ...prev };
                 delete newDetails[removeConfirm.id];
@@ -265,6 +347,30 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
             });
 
             setRemoveConfirm(null);
+
+        } catch (error: any) {
+            console.error('Error removing instructor:', error);
+
+            if (error.response?.status === 404) {
+                showErrorToast(
+                    'Không tìm thấy phân công',
+                    'Phân công giảng viên không tồn tại hoặc đã được hủy trước đó.'
+                );
+            } else if (error.response?.status === 409) {
+                showErrorToast(
+                    'Không thể hủy phân công',
+                    'Phân công đã được hủy trước đó hoặc không thể hủy do ràng buộc hệ thống.'
+                );
+            } else {
+                showErrorToast(
+                    'Lỗi hủy phân công',
+                    'Có lỗi xảy ra khi hủy phân công giảng viên. Vui lòng thử lại.'
+                );
+            }
+
+            setRemoveConfirm(null);
+        } finally {
+            setIsRemoving(false);
         }
     };
 
@@ -590,9 +696,15 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                             </button>
                             <button
                                 onClick={handleConfirmAssign}
-                                disabled={selectedInstructors.length === 0}
-                                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                disabled={selectedInstructors.length === 0 || isAssigning}
+                                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
                             >
+                                {isAssigning && (
+                                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                )}
                                 Phân công {selectedInstructors.length} giảng viên
                             </button>
                         </div>
@@ -607,7 +719,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                 onClose={() => setRemoveConfirm(null)}
                 onConfirm={confirmRemoveInstructor}
                 title="Xác nhận hủy phân công"
-                description={`Bạn có chắc chắn muốn hủy phân công giảng viên "${removeConfirm?.name}" khỏi lớp học? Hành động này sẽ xóa tất cả thông tin phân công của giảng viên này.`}
+                description={`Bạn có chắc chắn hủy phân công giảng viên này? Thao tác không thể hoàn tác. Hủy vào ngày hiện tại.`}
                 confirmText="Hủy phân công"
                 cancelText="Đóng"
                 variant="danger"
