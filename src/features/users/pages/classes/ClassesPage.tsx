@@ -4,6 +4,7 @@ import ClassList from '@/features/users/pages/classes/list.tsx';
 import ManageStudentsModal from '@/features/users/pages/classes/components/ManageStudentsModal';
 import AssignInstructorModal from '@/features/users/pages/classes/components/AssignInstructorModal';
 import { useToast } from '@/shared/hooks/useToast';
+import { useUserProfile } from '@/stores/userProfile';
 import { 
     listClasses, 
     createClass, 
@@ -15,6 +16,8 @@ import {
     type StudyTime,
     type ClassStatus
 } from '@/shared/api/classes';
+import { getCentersLite } from '@/shared/api/centers';
+import type { CenterLiteDto } from '@/shared/types/centers';
 
 type Instructor = {
     id: string;
@@ -80,9 +83,9 @@ const formatSchedule = (studyDays?: StudyDay[] | null, studyTime?: StudyTime | n
     };
     
     const timeMap: Record<StudyTime, string> = {
-        'MORNING': '08:00-12:00',
+        'MORNING': '08:00-11:00',
         'AFTERNOON': '14:00-17:00',
-        'EVENING': '18:00-21:30'
+        'EVENING': '18:00-21:00'
     };
     
     const days = studyDays.map(d => dayMap[d]).join(', ');
@@ -134,7 +137,8 @@ function MultiSelect({
     onChange, 
     placeholder, 
     name,
-    error 
+    error,
+    maxSelection
 }: { 
     options: string[]; 
     selectedValues: string[]; 
@@ -142,6 +146,7 @@ function MultiSelect({
     placeholder: string;
     name: string;
     error?: string;
+    maxSelection?: number;
 }) {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -149,6 +154,10 @@ function MultiSelect({
         if (selectedValues.includes(value)) {
             onChange(selectedValues.filter(v => v !== value));
         } else {
+            // Check max selection limit
+            if (maxSelection && selectedValues.length >= maxSelection) {
+                return; // Don't add more if limit reached
+            }
             onChange([...selectedValues, value]);
         }
     };
@@ -177,23 +186,31 @@ function MultiSelect({
             
             {isOpen && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-auto">
-                    {options.map((option) => (
-                        <label
-                            key={option}
-                            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer"
-                        >
-                            <input
-                                type="checkbox"
-                                checked={selectedValues.includes(option)}
-                                onChange={() => handleToggle(option)}
-                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-900">{option}</span>
-                            {selectedValues.includes(option) && (
-                                <Check size={16} className="text-blue-600 ml-auto" />
-                            )}
-                        </label>
-                    ))}
+                    {options.map((option) => {
+                        const isSelected = selectedValues.includes(option);
+                        const isDisabled = !isSelected && maxSelection && selectedValues.length >= maxSelection;
+                        
+                        return (
+                            <label
+                                key={option}
+                                className={`flex items-center gap-2 px-3 py-2 ${
+                                    isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'
+                                }`}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => handleToggle(option)}
+                                    disabled={isDisabled}
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:cursor-not-allowed"
+                                />
+                                <span className="text-sm text-gray-900">{option}</span>
+                                {isSelected && (
+                                    <Check size={16} className="text-blue-600 ml-auto" />
+                                )}
+                            </label>
+                        );
+                    })}
                 </div>
             )}
             
@@ -207,6 +224,7 @@ function MultiSelect({
 
 export default function ClassesPage() {
     const toast = useToast();
+    const { me: userProfile } = useUserProfile();
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [openCreate, setOpenCreate] = useState(false);
@@ -229,13 +247,19 @@ export default function ClassesPage() {
     // State for classes and programs
     const [classes, setClasses] = useState<Class[]>([]);
     const [programs, setPrograms] = useState<ProgramLiteDto[]>([]);
+    const [centers, setCenters] = useState<CenterLiteDto[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Check if user has GLOBAL scope (can select center)
+    const hasGlobalScope = !userProfile?.centerId;
 
     // Fetch classes and programs from API
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setIsLoading(true);
+                
+                // Always fetch classes and programs
                 const [classesRes, programsRes] = await Promise.all([
                     listClasses(),
                     getProgramsLite()
@@ -244,6 +268,12 @@ export default function ClassesPage() {
                 const mappedClasses = classesRes.data.map(mapClassDtoToUI);
                 setClasses(mappedClasses);
                 setPrograms(programsRes.data);
+                
+                // Only fetch centers if user has GLOBAL scope
+                if (hasGlobalScope) {
+                    const centersRes = await getCentersLite();
+                    setCenters(centersRes.data);
+                }
             } catch (error) {
                 console.error('Failed to fetch data:', error);
                 toast.error('Lỗi tải dữ liệu', 'Không thể tải danh sách lớp học');
@@ -253,7 +283,7 @@ export default function ClassesPage() {
         };
         
         fetchData();
-    }, []);
+    }, [hasGlobalScope]);
 
     // Filter classes based on search and status
     const filteredClasses = classes.filter(c => {
@@ -306,10 +336,9 @@ export default function ClassesPage() {
         ];
 
         const timeOptions = [
-            '08:00-12:00',
+            '08:00-11:00',
             '14:00-17:00', 
-            '18:00-21:30',
-            '19:00-21:30'
+            '18:00-21:00'
         ];
 
         return (
@@ -342,6 +371,55 @@ export default function ClassesPage() {
                     if (selectedDays.length === 0 || !selectedTime) {
                         newErrors.schedule = 'Vui lòng chọn đầy đủ ngày và giờ học';
                     }
+                    
+                    // Validate: Tối đa 2 ngày học
+                    if (selectedDays.length > 2) {
+                        newErrors.schedule = 'Chỉ được chọn tối đa 2 ngày học trong tuần';
+                    }
+                    
+                    // Validate study days based on start/end date (only if < 7 days)
+                    if (startDate && endDate && selectedDays.length > 0) {
+                        const start = new Date(startDate);
+                        const end = new Date(endDate);
+                        const diffTime = Math.abs(end.getTime() - start.getTime());
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                        // Only validate if duration < 7 days
+                        if (diffDays < 7) {
+                            const startDayOfWeek = start.getDay(); // 0 = CN, 1 = T2, ..., 6 = T7
+                            const endDayOfWeek = end.getDay();
+                            
+                            const dayNumberMap: Record<string, number> = {
+                                'CN': 0,
+                                'Thứ 2': 1,
+                                'Thứ 3': 2,
+                                'Thứ 4': 3,
+                                'Thứ 5': 4,
+                                'Thứ 6': 5,
+                                'Thứ 7': 6
+                            };
+
+                            const invalidDays = selectedDays.filter(day => {
+                                const dayNum = dayNumberMap[day];
+                                // Check if day is within start-end range
+                                if (startDayOfWeek <= endDayOfWeek) {
+                                    // Normal case: e.g., Thứ 4 -> CN (3 -> 0)
+                                    return dayNum < startDayOfWeek || dayNum > endDayOfWeek;
+                                } else {
+                                    // Wrap around week: e.g., Thứ 6 -> Thứ 2 (5 -> 1)
+                                    return dayNum < startDayOfWeek && dayNum > endDayOfWeek;
+                                }
+                            });
+
+                            if (invalidDays.length > 0) {
+                                const dayNames = dayOptions;
+                                const startDayName = dayNames[startDayOfWeek === 0 ? 6 : startDayOfWeek - 1];
+                                const endDayName = dayNames[endDayOfWeek === 0 ? 6 : endDayOfWeek - 1];
+                                newErrors.schedule = `Lớp học < 7 ngày. Chỉ chọn ngày từ ${startDayName} đến ${endDayName}`;
+                            }
+                        }
+                    }
+                    
                     if (!room || room.trim().length < 2) {
                         newErrors.location = 'Phòng học tối thiểu 2 ký tự';
                     }
@@ -365,15 +443,9 @@ export default function ClassesPage() {
                     
                     // Map UI time to API StudyTime
                     const timeMap: Record<string, StudyTime> = {
-                        '08:00-12:00': 'MORNING',
                         '08:00-11:00': 'MORNING',
-                        '09:00-17:00': 'AFTERNOON',
                         '14:00-17:00': 'AFTERNOON',
-                        '18:00-20:30': 'EVENING',
-                        '18:00-21:30': 'EVENING',
-                        '18:30-21:00': 'EVENING',
-                        '19:00-21:30': 'EVENING',
-                        '19:30-21:30': 'EVENING'
+                        '18:00-21:00': 'EVENING'
                     };
 
                     const studyDays = selectedDays.map(d => dayMap[d]).filter(Boolean);
@@ -409,13 +481,26 @@ export default function ClassesPage() {
                         } else {
                             // Create new class
                             const description = String(form.get('description') || '');
+                            const centerIdFromForm = form.get('centerId');
                             
                             // Build payload - only include fields with actual values
                             const createPayload: any = {
-                                centerId: 1, // Required for Super Admin - TODO: add center selection dropdown
                                 programId,
                                 name
                             };
+                            
+                            // Add centerId based on user scope
+                            if (hasGlobalScope) {
+                                // GLOBAL scope: use selected center from dropdown
+                                if (centerIdFromForm) {
+                                    createPayload.centerId = Number(centerIdFromForm);
+                                }
+                            } else {
+                                // CENTER scope: use user's centerId (backend will also validate this)
+                                if (userProfile?.centerId) {
+                                    createPayload.centerId = userProfile.centerId;
+                                }
+                            }
                             
                             if (description.trim()) createPayload.description = description.trim();
                             if (startDate) createPayload.startDate = startDate;
@@ -509,6 +594,37 @@ export default function ClassesPage() {
                                 </select>
                                 {errors.program && <div className="text-xs text-red-600 mt-1">{errors.program}</div>}
                             </div>
+                            
+                            {/* Center Field: Dropdown for GLOBAL scope, Read-only for CENTER scope */}
+                            {hasGlobalScope ? (
+                                <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Trung tâm *</label>
+                                    <select
+                                        name="centerId"
+                                        required
+                                        className="w-full h-9 rounded-md border px-2 text-sm"
+                                    >
+                                        <option value="">Chọn trung tâm</option>
+                                        {centers.map(center => (
+                                            <option key={center.centerId} value={center.centerId}>
+                                                {center.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Trung tâm</label>
+                                    <input
+                                        type="text"
+                                        value={userProfile?.centerName || ''}
+                                        readOnly
+                                        className="w-full h-9 rounded-md border px-3 text-sm bg-gray-50 text-gray-600 cursor-not-allowed"
+                                    />
+                                    <input type="hidden" name="centerId" value={userProfile?.centerId || ''} />
+                                </div>
+                            )}
+                            
                             <div className="md:col-span-2">
                                 <label className="block text-xs text-gray-600 mb-1">Mô tả</label>
                                 <textarea
@@ -540,7 +656,7 @@ export default function ClassesPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-600 mb-1">Ngày học *</label>
+                                <label className="block text-xs text-gray-600 mb-1">Ngày học * (tối đa 2 ngày)</label>
                                 <MultiSelect
                                     options={dayOptions}
                                     selectedValues={selectedDays}
@@ -548,6 +664,7 @@ export default function ClassesPage() {
                                     placeholder="Chọn ngày học"
                                     name="scheduleDays"
                                     error={errors.schedule}
+                                    maxSelection={2}
                                 />
                             </div>
                             <div>
