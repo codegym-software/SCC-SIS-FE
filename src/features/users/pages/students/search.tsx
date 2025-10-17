@@ -34,7 +34,7 @@ const StudentSearch: React.FC<StudentSearchProps> = ({
                         value={query}
                         onChange={(e) => onQueryChange(e.target.value)}
                         className="w-full h-9 pl-10 pr-3 rounded-md border text-sm outline-none focus:ring-2 focus:ring-blue-200"
-                        placeholder="Tìm kiếm theo tên, email, mã SV..."
+                        placeholder="Tìm kiếm theo tên, email..."
                     />
                 </div>
 
