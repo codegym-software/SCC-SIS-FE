@@ -59,6 +59,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
     const [isLoading, setIsLoading] = useState(true);
     const [editingStatus, setEditingStatus] = useState<number | null>(null);
     const [newStatus, setNewStatus] = useState<string>('');
+    const [newNote, setNewNote] = useState<string>('');
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
     // Load students from API
@@ -132,9 +133,16 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
         if (!newStatus) return;
         
         try {
-            await updateEnrollment(parseInt(classItem.id), student.enrollmentId, {
+            const payload: any = {
                 status: newStatus
-            });
+            };
+            
+            // Add note if changed or provided
+            if (newNote.trim()) {
+                payload.note = newNote.trim();
+            }
+            
+            await updateEnrollment(parseInt(classItem.id), student.enrollmentId, payload);
             
             const statusText = newStatus === 'ACTIVE' ? 'Đang học' :
                              newStatus === 'SUSPENDED' ? 'Bảo lưu' :
@@ -143,6 +151,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
             
             showSuccessToast(`Đã cập nhật trạng thái thành ${statusText}`);
             setEditingStatus(null);
+            setNewNote('');
             loadStudents();
         } catch (error: any) {
             console.error('Error updating status:', error);
@@ -260,11 +269,11 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                             {/* Status */}
                             <div className="col-span-4">
                                 {editingStatus === student.enrollmentId ? (
-                                    <div className="flex items-center gap-2">
+                                    <div className="space-y-2">
                                         <select
                                             value={newStatus}
                                             onChange={(e) => setNewStatus(e.target.value)}
-                                            className="flex-1 text-xs border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-200"
+                                            className="w-full text-xs border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-200"
                                             autoFocus
                                         >
                                             <option value="">Chọn trạng thái</option>
@@ -273,35 +282,55 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                                             <option value="COMPLETED">Hoàn thành</option>
                                             <option value="DROPPED">Đã nghỉ</option>
                                         </select>
-                                        <button
-                                            onClick={() => handleChangeStatus(student)}
-                                            disabled={!newStatus || newStatus === student.status}
-                                            className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                        >
-                                            Lưu
-                                        </button>
-                                        <button
-                                            onClick={() => setEditingStatus(null)}
-                                            className="text-xs px-2 py-1 border rounded hover:bg-gray-50"
-                                        >
-                                            Hủy
-                                        </button>
+                                        <textarea
+                                            value={newNote}
+                                            onChange={(e) => setNewNote(e.target.value)}
+                                            placeholder="Ghi chú (tùy chọn)"
+                                            className="w-full text-xs border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+                                            rows={2}
+                                        />
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleChangeStatus(student)}
+                                                disabled={!newStatus || newStatus === student.status}
+                                                className="flex-1 text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                            >
+                                                Lưu
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setEditingStatus(null);
+                                                    setNewNote('');
+                                                }}
+                                                className="flex-1 text-xs px-2 py-1 border rounded hover:bg-gray-50"
+                                            >
+                                                Hủy
+                                            </button>
+                                        </div>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-2">
-                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${getStatusColor(student.status)}`}>
-                                            {getStatusText(student.status)}
-                                        </span>
-                                        <button
-                                            onClick={() => {
-                                                setEditingStatus(student.enrollmentId);
-                                                setNewStatus(student.status);
-                                            }}
-                                            className="text-gray-400 hover:text-blue-600"
-                                            title="Đổi trạng thái"
-                                        >
-                                            <Edit2 size={14} />
-                                        </button>
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${getStatusColor(student.status)}`}>
+                                                {getStatusText(student.status)}
+                                            </span>
+                                            <button
+                                                onClick={() => {
+                                                    setEditingStatus(student.enrollmentId);
+                                                    setNewStatus(student.status);
+                                                    setNewNote(student.note || '');
+                                                }}
+                                                className="text-gray-400 hover:text-blue-600"
+                                                title="Đổi trạng thái"
+                                            >
+                                                <Edit2 size={14} />
+                                            </button>
+                                        </div>
+                                        {student.note && (
+                                            <div className="text-xs text-gray-500 italic">
+                                                Note: {student.note}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
