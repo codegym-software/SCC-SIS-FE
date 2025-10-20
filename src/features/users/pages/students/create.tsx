@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { X, Calendar, ChevronDown } from 'lucide-react';
 import { createStudent } from '@/shared/api/students';
 import type { CreateStudentDto } from '@/shared/types/student';
+import { useToast } from '@/shared/hooks/useToast';
 
 interface CreateStudentModalProps {
     open: boolean;
@@ -13,6 +14,7 @@ interface CreateStudentModalProps {
 const genders = ['Nam', 'Nữ', 'Khác'] as const;
 
 export default function CreateStudentModal({ open, onClose, onSuccess }: CreateStudentModalProps) {
+    const toast = useToast();
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -94,6 +96,8 @@ export default function CreateStudentModal({ open, onClose, onSuccess }: CreateS
 
             await createStudent(payload);
             
+            toast.success('Tạo thành công!', `Học viên ${formData.fullName} đã được thêm vào hệ thống`);
+            
             // Reset form
             setFormData({
                 fullName: '',
@@ -116,13 +120,15 @@ export default function CreateStudentModal({ open, onClose, onSuccess }: CreateS
             console.error('Error creating student:', error);
             if (error.response?.status === 400) {
                 const message = error.response?.data?.message || '';
-                if (message.includes('email')) {
+                if (message.includes('email') || message.includes('Email')) {
                     setErrors(prev => ({ ...prev, email: 'Email đã tồn tại trong hệ thống' }));
+                    toast.error('Dữ liệu không hợp lệ', 'Email đã tồn tại trong hệ thống');
                 } else {
-                    alert('Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.');
+                    toast.error('Dữ liệu không hợp lệ', message || 'Vui lòng kiểm tra lại thông tin đã nhập');
                 }
             } else {
-                alert('Có lỗi xảy ra khi tạo học viên mới');
+                const errorMessage = error.response?.data?.message || 'Có lỗi xảy ra khi tạo học viên';
+                toast.error('Tạo thất bại', errorMessage);
             }
         } finally {
             setSubmitting(false);

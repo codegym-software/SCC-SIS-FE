@@ -19,6 +19,9 @@ export type UpdateClassRequest = {
     endDate?: string;
     room?: string;
     capacity?: number;
+    status?: ClassStatus;
+    studyDays?: string[];
+    studyTime?: string;
 };
 
 export type ClassResponse = {

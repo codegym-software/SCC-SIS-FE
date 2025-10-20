@@ -131,3 +131,34 @@ export const updateClass = (classId: number, payload: UpdateClassDto) =>
  */
 export const deleteClass = (classId: number) => 
     api.delete(`/api/classes/${classId}`);
+
+// ===== ENROLLMENT APIs =====
+/**
+ * Lấy danh sách học viên trong lớp
+ * GET /api/classes/{classId}/students
+ */
+export const getClassStudents = (classId: number, params?: { status?: string; page?: number; size?: number; sort?: string }) => 
+    api.get(`/api/classes/${classId}/students`, { params });
+
+/**
+ * Thêm học viên vào lớp (Enroll)
+ * POST /api/classes/{classId}/students
+ */
+export const enrollStudent = (classId: number, payload: { studentId: number; enrolledAt?: string; note?: string }) => 
+    api.post(`/api/classes/${classId}/students`, payload);
+
+/**
+ * Cập nhật trạng thái enrollment
+ * PATCH /api/classes/{classId}/students/{enrollmentId}
+ */
+export const updateEnrollment = (classId: number, enrollmentId: number, payload: { status?: string; leftAt?: string; note?: string }) => 
+    api.patch(`/api/classes/${classId}/students/${enrollmentId}`, payload);
+
+/**
+ * Xóa học viên khỏi lớp (Soft delete - DROPPED)
+ * DELETE /api/classes/{classId}/students/{enrollmentId}
+ */
+export const removeStudentFromClass = (classId: number, enrollmentId: number, reason?: string) => 
+    api.delete(`/api/classes/${classId}/students/${enrollmentId}`, { 
+        params: reason ? { reason } : undefined 
+    });

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, UserCheck } from 'lucide-react';
+import { updateStudentStatus } from '@/shared/api/students';
 
 type Student = {
     id: string;
@@ -22,12 +23,41 @@ interface ChangeStatusModalProps {
 
 const ChangeStatusModal: React.FC<ChangeStatusModalProps> = ({ student, onClose, onSave }) => {
     const [selectedStatus, setSelectedStatus] = useState<Student['status']>(student.status);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string>('');
 
-    const handleSave = () => {
-        if (selectedStatus !== student.status) {
-            onSave(student.id, selectedStatus);
+    // Map UI status to backend enum
+    const mapStatusToAPI = (status: Student['status']): string => {
+        switch(status) {
+            case 'Đang học': return 'ACTIVE';
+            case 'Bảo lưu': return 'SUSPENDED';
+            case 'Tốt nghiệp': return 'GRADUATED';
+            case 'Tạm dừng': return 'INACTIVE';
+            default: return 'ACTIVE';
         }
-        onClose();
+    };
+
+    const handleSave = async () => {
+        if (selectedStatus === student.status) {
+            onClose();
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            setError('');
+            
+            const apiStatus = mapStatusToAPI(selectedStatus);
+            await updateStudentStatus(parseInt(student.id), apiStatus);
+            
+            onSave(student.id, selectedStatus);
+            onClose();
+        } catch (err: any) {
+            console.error('Error updating student status:', err);
+            setError(err?.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const statusOptions: { value: Student['status']; label: string; description: string }[] = [
@@ -76,6 +106,13 @@ const ChangeStatusModal: React.FC<ChangeStatusModalProps> = ({ student, onClose,
 
             {/* Content */}
             <div className="px-6 py-6">
+                {/* Error Message */}
+                {error && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm text-red-600">{error}</p>
+                    </div>
+                )}
+
                 {/* Student Info */}
                 <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-4 justify-center">
@@ -135,10 +172,10 @@ const ChangeStatusModal: React.FC<ChangeStatusModalProps> = ({ student, onClose,
                 </button>
                 <button
                     onClick={handleSave}
-                    disabled={selectedStatus === student.status}
+                    disabled={selectedStatus === student.status || isSubmitting}
                     className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                    Cập nhật trạng thái
+                    {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật trạng thái'}
                 </button>
             </div>
         </div>
