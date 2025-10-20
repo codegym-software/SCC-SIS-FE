@@ -6,10 +6,8 @@ import StudentEdit from './edit';
 import CreateStudentModal from './create';
 import ChangeStatusModal from './components/ChangeStatusModal';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
-import { listStudents, getStudentById, updateStudent, deleteStudent, searchStudents, exportStudents } from '@/shared/api/students';
-import type { StudentDto, UpdateStudentDto } from '@/shared/types/student';
 import ImportStudentsModal from './components/ImportStudentsModal';
-import { listStudents, getStudentById, updateStudent, deleteStudent, searchStudents } from '@/shared/api/students';
+import { listStudents, getStudentById, updateStudent, deleteStudent, searchStudents, exportStudents } from '@/shared/api/students';
 import { listClasses, getClassStudents } from '@/shared/api/classes';
 import { getPrograms } from '@/shared/api/programs';
 import type { StudentDto, UpdateStudentDto } from '@/shared/types/student';
@@ -62,7 +60,6 @@ function StatusModal({ open, onClose, children }: { open: boolean; onClose: () =
 }
 
 export default function StudentProfilePage() {
-    const { success, error: showError } = useToast();
     const toast = useToast();
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
@@ -280,10 +277,10 @@ export default function StudentProfilePage() {
             a.download = 'students.xlsx';
             a.click();
             URL.revokeObjectURL(url);
-            success('Tải xuống thành công', 'File Excel đã được tải về');
+            toast.success('Tải xuống thành công', 'File Excel đã được tải về');
             setExportConfirm(false);
         } catch (err) {
-            showError('Lỗi tải xuống', 'Không thể tải file Excel');
+            toast.error('Lỗi tải xuống', 'Không thể tải file Excel');
             setExportConfirm(false);
         }
     };
