@@ -6,6 +6,9 @@ import StudentEdit from './edit';
 import CreateStudentModal from './create';
 import ChangeStatusModal from './components/ChangeStatusModal';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
+import { listStudents, getStudentById, updateStudent, deleteStudent, searchStudents, exportStudents } from '@/shared/api/students';
+import type { StudentDto, UpdateStudentDto } from '@/shared/types/student';
+import ImportStudentsModal from './components/ImportStudentsModal';
 import { listStudents, getStudentById, updateStudent, deleteStudent, searchStudents } from '@/shared/api/students';
 import { listClasses, getClassStudents } from '@/shared/api/classes';
 import { getPrograms } from '@/shared/api/programs';
@@ -59,6 +62,7 @@ function StatusModal({ open, onClose, children }: { open: boolean; onClose: () =
 }
 
 export default function StudentProfilePage() {
+    const { success, error: showError } = useToast();
     const toast = useToast();
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
@@ -73,6 +77,8 @@ export default function StudentProfilePage() {
     const studentsPerPage = 8;
 
     const [students, setStudents] = useState<Student[]>([]);
+    const [openImport, setOpenImport] = useState(false);
+    const [exportConfirm, setExportConfirm] = useState(false);
     const [enrollmentMap, setEnrollmentMap] = useState<Map<number, any>>(new Map());
     const [isLoading, setIsLoading] = useState(true);
     const [programs, setPrograms] = useState<Array<{ programId: number; name: string }>>([]);
@@ -255,8 +261,31 @@ export default function StudentProfilePage() {
     };
 
     const handleImport = () => {
-        console.log('Import Excel');
-        // TODO: Implement Excel import
+        setOpenImport(true);
+    };
+
+    const handleExport = () => {
+        setExportConfirm(true);
+    };
+
+    const confirmExport = async () => {
+        try {
+            const response = await exportStudents();
+            const blob = new Blob([response.data], { 
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'students.xlsx';
+            a.click();
+            URL.revokeObjectURL(url);
+            success('Tải xuống thành công', 'File Excel đã được tải về');
+            setExportConfirm(false);
+        } catch (err) {
+            showError('Lỗi tải xuống', 'Không thể tải file Excel');
+            setExportConfirm(false);
+        }
     };
 
     const handleMenuToggle = (id: string) => {
@@ -354,6 +383,7 @@ export default function StudentProfilePage() {
                 programs={programs}
                 onCreate={handleCreate}
                 onImport={handleImport}
+                onExport={handleExport}
             />
 
             {/* Students List */}
@@ -407,6 +437,16 @@ export default function StudentProfilePage() {
                 }}
             />
 
+            {/* Import Students Modal */}
+            <ImportStudentsModal
+                open={openImport}
+                onClose={() => setOpenImport(false)}
+                onSuccess={async () => {
+                    setOpenImport(false);
+                    await fetchStudents();
+                }}
+            />
+
             {/* Change Status Modal */}
             <StatusModal open={!!openChangeStatus} onClose={() => setOpenChangeStatus(null)}>
                 {openChangeStatus && (
@@ -426,6 +466,18 @@ export default function StudentProfilePage() {
                 title="Xác nhận xóa học viên"
                 description={`Bạn có chắc chắn muốn xóa học viên "${deleteConfirm?.name}" khỏi hệ thống? Hành động này không thể hoàn tác.`}
                 confirmText="Xóa"
+                cancelText="Hủy"
+                variant="danger"
+            />
+
+            {/* Export Confirmation Dialog */}
+            <ConfirmDialog
+                open={exportConfirm}
+                onClose={() => setExportConfirm(false)}
+                onConfirm={confirmExport}
+                title="Xác nhận xuất danh sách"
+                description="Bạn có muốn tải xuống danh sách tất cả học viên ra file Excel? File sẽ chứa đầy đủ thông tin của các học viên hiện tại."
+                confirmText="Tải xuống"
                 cancelText="Hủy"
                 variant="danger"
             />

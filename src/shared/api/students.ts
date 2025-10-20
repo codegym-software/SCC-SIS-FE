@@ -48,3 +48,27 @@ export const updateStudentStatus = (studentId: number, status: string) =>
  */
 export const searchStudents = (keyword: string) => 
     api.get<StudentDto[]>(`/api/students/search?keyword=${encodeURIComponent(keyword)}`);
+
+/**
+ * Export danh sách học viên ra file Excel (.xlsx)
+ * GET /api/students/export
+ * Returns: Blob (Excel file)
+ */
+export const exportStudents = () => 
+    api.get('/api/students/export', { 
+        responseType: 'blob',
+        headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+    });
+
+/**
+ * Import học viên từ file Excel (.xlsx)
+ * POST /api/students/import
+ * Returns: Array of created StudentDto
+ */
+export const importStudentsFromExcel = (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post<StudentDto[]>('/api/students/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
+};
