@@ -6,9 +6,10 @@ import StudentEdit from './edit';
 import CreateStudentModal from './create';
 import ChangeStatusModal from './components/ChangeStatusModal';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
-import { listStudents, getStudentById, updateStudent, deleteStudent, searchStudents } from '@/shared/api/students';
+import { listStudents, getStudentById, updateStudent, deleteStudent, searchStudents, exportStudents } from '@/shared/api/students';
 import type { StudentDto, UpdateStudentDto } from '@/shared/types/student';
 import ImportStudentsModal from './components/ImportStudentsModal';
+import { useToast } from '@/shared/hooks/useToast';
 
 type Student = {
     id: string;
@@ -55,6 +56,7 @@ function StatusModal({ open, onClose, children }: { open: boolean; onClose: () =
 }
 
 export default function StudentProfilePage() {
+    const { success, error: showError } = useToast();
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [programFilter, setProgramFilter] = useState('Tất cả chương trình');
@@ -69,6 +71,7 @@ export default function StudentProfilePage() {
 
     const [students, setStudents] = useState<Student[]>([]);
     const [openImport, setOpenImport] = useState(false);
+    const [exportConfirm, setExportConfirm] = useState(false);
 
     // Helper function: Convert StudentDto từ BE sang Student type của FE
     const mapStudentDtoToStudent = (dto: StudentDto): Student => {
@@ -177,6 +180,30 @@ export default function StudentProfilePage() {
         setOpenImport(true);
     };
 
+    const handleExport = () => {
+        setExportConfirm(true);
+    };
+
+    const confirmExport = async () => {
+        try {
+            const response = await exportStudents();
+            const blob = new Blob([response.data], { 
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'students.xlsx';
+            a.click();
+            URL.revokeObjectURL(url);
+            success('Tải xuống thành công', 'File Excel đã được tải về');
+            setExportConfirm(false);
+        } catch (err) {
+            showError('Lỗi tải xuống', 'Không thể tải file Excel');
+            setExportConfirm(false);
+        }
+    };
+
     const handleMenuToggle = (id: string) => {
         setOpenMenuId(openMenuId === id ? null : id);
     };
@@ -257,6 +284,7 @@ export default function StudentProfilePage() {
                 onProgramFilterChange={setProgramFilter}
                 onCreate={handleCreate}
                 onImport={handleImport}
+                onExport={handleExport}
             />
 
             {/* Students List */}
@@ -333,6 +361,18 @@ export default function StudentProfilePage() {
                 title="Xác nhận xóa học viên"
                 description={`Bạn có chắc chắn muốn xóa học viên "${deleteConfirm?.name}" khỏi hệ thống? Hành động này không thể hoàn tác.`}
                 confirmText="Xóa"
+                cancelText="Hủy"
+                variant="danger"
+            />
+
+            {/* Export Confirmation Dialog */}
+            <ConfirmDialog
+                open={exportConfirm}
+                onClose={() => setExportConfirm(false)}
+                onConfirm={confirmExport}
+                title="Xác nhận xuất danh sách"
+                description="Bạn có muốn tải xuống danh sách tất cả học viên ra file Excel? File sẽ chứa đầy đủ thông tin của các học viên hiện tại."
+                confirmText="Tải xuống"
                 cancelText="Hủy"
                 variant="danger"
             />

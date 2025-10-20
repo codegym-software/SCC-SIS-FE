@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, Upload, Plus } from 'lucide-react';
+import { Search, Filter, Upload, Plus, Download } from 'lucide-react';
 
 interface StudentSearchProps {
     query: string;
@@ -10,6 +10,7 @@ interface StudentSearchProps {
     onProgramFilterChange: (filter: string) => void;
     onCreate: () => void;
     onImport: () => void;
+    onExport?: () => void;
 }
 
 const StudentSearch: React.FC<StudentSearchProps> = ({
@@ -20,7 +21,8 @@ const StudentSearch: React.FC<StudentSearchProps> = ({
     programFilter,
     onProgramFilterChange,
     onCreate,
-    onImport
+    onImport,
+    onExport
 }) => {
     return (
         <div className="space-y-4">
@@ -74,6 +76,15 @@ const StudentSearch: React.FC<StudentSearchProps> = ({
             {/* Action Buttons Row */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                    {onExport && (
+                        <button
+                            onClick={onExport}
+                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                        >
+                            <Download size={16} />
+                            Export Excel
+                        </button>
+                    )}
                     <button
                         onClick={onImport}
                         className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
