@@ -8,6 +8,7 @@ import ChangeStatusModal from './components/ChangeStatusModal';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
 import { listStudents, getStudentById, updateStudent, deleteStudent, searchStudents } from '@/shared/api/students';
 import type { StudentDto, UpdateStudentDto } from '@/shared/types/student';
+import ImportStudentsModal from './components/ImportStudentsModal';
 
 type Student = {
     id: string;
@@ -67,6 +68,7 @@ export default function StudentProfilePage() {
     const studentsPerPage = 8;
 
     const [students, setStudents] = useState<Student[]>([]);
+    const [openImport, setOpenImport] = useState(false);
 
     // Helper function: Convert StudentDto từ BE sang Student type của FE
     const mapStudentDtoToStudent = (dto: StudentDto): Student => {
@@ -172,8 +174,7 @@ export default function StudentProfilePage() {
     };
 
     const handleImport = () => {
-        console.log('Import Excel');
-        // TODO: Implement Excel import
+        setOpenImport(true);
     };
 
     const handleMenuToggle = (id: string) => {
@@ -299,6 +300,16 @@ export default function StudentProfilePage() {
                 open={openCreate}
                 onClose={() => setOpenCreate(false)}
                 onSuccess={async () => {
+                    await fetchStudents();
+                }}
+            />
+
+            {/* Import Students Modal */}
+            <ImportStudentsModal
+                open={openImport}
+                onClose={() => setOpenImport(false)}
+                onSuccess={async () => {
+                    setOpenImport(false);
                     await fetchStudents();
                 }}
             />
