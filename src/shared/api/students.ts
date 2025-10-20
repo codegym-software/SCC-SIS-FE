@@ -29,11 +29,18 @@ export const updateStudent = (studentId: number, payload: UpdateStudentDto) =>
     api.put<StudentDto>(`/api/students/${studentId}`, payload);
 
 /**
- * Xóa mềm học viên
+ * Xóa mềm học viên (soft delete - đổi status sang INACTIVE)
  * DELETE /api/students/{id}
  */
 export const deleteStudent = (studentId: number) => 
     api.delete(`/api/students/${studentId}`);
+
+/**
+ * Cập nhật trạng thái học viên
+ * PATCH /api/students/{id}/status
+ */
+export const updateStudentStatus = (studentId: number, status: string) => 
+    api.patch<StudentDto>(`/api/students/${studentId}/status`, { status });
 
 /**
  * Tìm kiếm học viên theo tên hoặc email

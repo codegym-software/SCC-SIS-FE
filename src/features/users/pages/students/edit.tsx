@@ -12,9 +12,11 @@ type Student = {
     program: string;
     registrationDate: string;
     status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
-    address?: string;
-    dateOfBirth?: string;
     avatar?: string;
+    dob?: string | null;
+    address?: string | null;
+    gender?: string | null;
+    nationalIdNo?: string | null;
 };
 
 interface StudentEditProps {
@@ -28,8 +30,8 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
         name: student.name,
         email: student.email,
         phone: student.phone,
-        address: student.address || '123 Nguyễn Văn Cừ, Q.5, TP.HCM',
-        dateOfBirth: student.dateOfBirth || '15/05/2000',
+        address: student.address || '',
+        dateOfBirth: student.dob || '',
         avatar: student.avatar || ''
     });
 

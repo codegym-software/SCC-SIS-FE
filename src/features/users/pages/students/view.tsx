@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, User, Mail, Phone, Calendar, GraduationCap, Clock, CheckCircle, BookOpen, MapPin, Users, BarChart3, FileText } from 'lucide-react';
+import { listClasses } from '@/shared/api/classes';
+import { getClassStudents } from '@/shared/api/classes';
+import type { EnrollmentResponse } from '@/shared/types/classes';
 
 type Student = {
     id: string;
@@ -12,6 +15,10 @@ type Student = {
     program: string;
     registrationDate: string;
     status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
+    dob?: string | null;
+    address?: string | null;
+    gender?: string | null;
+    nationalIdNo?: string | null;
 };
 
 interface StudentViewProps {
@@ -21,6 +28,58 @@ interface StudentViewProps {
 
 const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
     const [activeTab, setActiveTab] = useState('info');
+    const [enrollments, setEnrollments] = useState<any[]>([]);
+    const [isLoadingEnrollments, setIsLoadingEnrollments] = useState(false);
+
+    // Load student's enrollments when viewing classes tab
+    useEffect(() => {
+        loadEnrollments(); // Load ngay khi mount để có activeEnrollment
+    }, [student.id]);
+
+
+    const loadEnrollments = async () => {
+        try {
+            setIsLoadingEnrollments(true);
+            // Get all classes
+            const classesResponse = await listClasses();
+            const classes = classesResponse.data;
+            
+            // For each class, get enrollments and find this student
+            const studentEnrollments: any[] = [];
+            
+            for (const classItem of classes) {
+                try {
+                    const response = await getClassStudents(classItem.classId, {
+                        page: 0,
+                        size: 1000
+                    });
+                    const enrollmentsData: EnrollmentResponse[] = response.data.content || response.data;
+                    
+                    // Find this student's enrollment in this class
+                    const studentEnrollment = enrollmentsData.find(e => e.studentId === parseInt(student.id));
+                    if (studentEnrollment) {
+                        const enrollment = {
+                            ...studentEnrollment,
+                            className: classItem.name,
+                            classId: classItem.classId,
+                            programName: classItem.programName
+                        };
+                        studentEnrollments.push(enrollment);
+                    }
+                } catch (error) {
+                    // Skip if can't access this class
+                    console.log(`Cannot access class ${classItem.classId}`);
+                }
+            }
+            
+            setEnrollments(studentEnrollments);
+        } catch (error: any) {
+            console.error('Error loading enrollments:', error);
+            toast.error(error?.response?.data?.message || 'Không thể tải danh sách lớp học');
+        } finally {
+            setIsLoadingEnrollments(false);
+        }
+    };
 
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -54,6 +113,7 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
 
     const tabs = [
         { id: 'info', label: 'Thông tin', icon: User },
+        { id: 'classes', label: 'Lớp học', icon: BookOpen },
         { id: 'attendance', label: 'Điểm danh', icon: Users },
         { id: 'scores', label: 'Điểm thi', icon: BarChart3 },
         { id: 'logs', label: 'Nhật ký', icon: FileText },
@@ -76,14 +136,36 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                                     <Phone size={16} className="text-gray-500" />
                                     <span className="text-sm">{student.phone}</span>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <MapPin size={16} className="text-gray-500" />
-                                    <span className="text-sm">123 Nguyễn Văn Cừ, Q.5, TP.HCM</span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <Calendar size={16} className="text-gray-500" />
-                                    <span className="text-sm">Sinh: 2000-05-15</span>
-                                </div>
+                                {student.address && (
+                                    <div className="flex items-center gap-3">
+                                        <MapPin size={16} className="text-gray-500" />
+                                        <span className="text-sm">{student.address}</span>
+                                    </div>
+                                )}
+                                {student.dob && (
+                                    <div className="flex items-center gap-3">
+                                        <Calendar size={16} className="text-gray-500" />
+                                        <span className="text-sm">Sinh: {student.dob}</span>
+                                    </div>
+                                )}
+                                {student.gender && (
+                                    <div className="flex items-center gap-3">
+                                        <User size={16} className="text-gray-500" />
+                                        <span className="text-sm">
+                                            Giới tính: {
+                                                student.gender === 'MALE' ? 'Nam' :
+                                                student.gender === 'FEMALE' ? 'Nữ' :
+                                                student.gender === 'OTHER' ? 'Khác' : student.gender
+                                            }
+                                        </span>
+                                    </div>
+                                )}
+                                {student.nationalIdNo && (
+                                    <div className="flex items-center gap-3">
+                                        <Calendar size={16} className="text-gray-500" />
+                                        <span className="text-sm">CMND/CCCD: {student.nationalIdNo}</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -112,16 +194,51 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                             </div>
                         </div>
 
-                        {/* Change Status */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-900 mb-2">Thay đổi trạng thái</label>
-                            <select className="w-full h-9 px-3 rounded-md border text-sm outline-none focus:ring-2 focus:ring-blue-200">
-                                <option value="Đang học">Đang học</option>
-                                <option value="Bảo lưu">Bảo lưu</option>
-                                <option value="Tốt nghiệp">Tốt nghiệp</option>
-                                <option value="Tạm dừng">Tạm dừng</option>
-                            </select>
-                        </div>
+                    </div>
+                );
+
+            case 'classes':
+                return (
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-medium text-gray-900">Danh sách lớp học đã đăng ký</h4>
+                        
+                        {isLoadingEnrollments ? (
+                            <div className="text-center py-8 text-gray-500">Đang tải...</div>
+                        ) : enrollments.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500">Chưa đăng ký lớp học nào</div>
+                        ) : (
+                            <div className="space-y-3">
+                                {enrollments.map((enrollment) => (
+                                    <div key={enrollment.enrollmentId} className="border rounded-lg p-4 space-y-3">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <h5 className="font-medium text-gray-900">{enrollment.className}</h5>
+                                                <p className="text-sm text-gray-500">{enrollment.programName}</p>
+                                                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                                    <span>Đăng ký: {enrollment.enrolledAt}</span>
+                                                    {enrollment.leftAt && <span>Kết thúc: {enrollment.leftAt}</span>}
+                                                </div>
+                                            </div>
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                enrollment.status === 'ACTIVE' ? 'bg-green-50 text-green-700' :
+                                                enrollment.status === 'SUSPENDED' ? 'bg-yellow-50 text-yellow-700' :
+                                                'bg-red-50 text-red-700'
+                                            }`}>
+                                                {enrollment.status === 'ACTIVE' ? 'Đang học' :
+                                                 enrollment.status === 'SUSPENDED' ? 'Tạm dừng' : 'Đã rớt'}
+                                            </span>
+                                        </div>
+
+                                        {enrollment.note && (
+                                            <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                                                Ghi chú: {enrollment.note}
+                                            </p>
+                                        )}
+
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 );
 

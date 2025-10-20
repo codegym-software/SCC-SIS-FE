@@ -362,7 +362,8 @@ export default function ClassesPage() {
                     if (!name || name.trim().length < 3) {
                         newErrors.name = 'Tên lớp học tối thiểu 3 ký tự';
                     }
-                    if (!programId || isNaN(programId)) {
+                    // Chỉ validate programId khi tạo mới (không validate khi edit)
+                    if (!editing && (!programId || isNaN(programId))) {
                         newErrors.program = 'Vui lòng chọn chương trình';
                     }
                     if (!startDate) {
@@ -456,10 +457,9 @@ export default function ClassesPage() {
                             // Update existing class
                             const description = String(form.get('description') || '');
                             
-                            // Build payload - always include programId and name
+                            // Build payload - KHÔNG gửi programId vì backend không cho phép update program
                             const updatePayload: any = {
-                                programId, // Always include programId
-                                name
+                                name // Chỉ name là required
                             };
                             
                             if (description.trim()) updatePayload.description = description.trim();
@@ -467,7 +467,10 @@ export default function ClassesPage() {
                             if (endDate) updatePayload.endDate = endDate;
                             if (room.trim()) updatePayload.room = room.trim();
                             if (capacity > 0) updatePayload.capacity = capacity;
-                            if (status) updatePayload.status = mapStatusToAPI(status);
+                            
+                            // Update status
+                            updatePayload.status = mapStatusToAPI(status);
+                            
                             if (studyDays.length > 0) updatePayload.studyDays = studyDays;
                             if (studyTime) updatePayload.studyTime = studyTime;
                             
@@ -579,20 +582,35 @@ export default function ClassesPage() {
                             </div>
                             <div>
                                 <label className="block text-xs text-gray-600 mb-1">Chương trình học *</label>
-                                <select
-                                    name="programId"
-                                    defaultValue={editing?.programId}
-                                    required
-                                    className={`w-full h-9 rounded-md border px-2 text-sm ${errors.program ? 'border-red-500' : ''}`}
-                                >
-                                    <option value="">Chọn chương trình</option>
-                                    {programs.map(program => (
-                                        <option key={program.programId} value={program.programId}>
-                                            {program.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.program && <div className="text-xs text-red-600 mt-1">{errors.program}</div>}
+                                {editing ? (
+                                    // EDIT MODE: Read-only, cannot change program
+                                    <>
+                                        <input
+                                            type="text"
+                                            value={editing.program}
+                                            readOnly
+                                            className="w-full h-9 rounded-md border px-3 text-sm bg-gray-50 text-gray-600 cursor-not-allowed"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Không thể thay đổi chương trình sau khi tạo lớp</p>
+                                    </>
+                                ) : (
+                                    // CREATE MODE: Dropdown
+                                    <>
+                                        <select
+                                            name="programId"
+                                            required
+                                            className={`w-full h-9 rounded-md border px-2 text-sm ${errors.program ? 'border-red-500' : ''}`}
+                                        >
+                                            <option value="">Chọn chương trình</option>
+                                            {programs.map(program => (
+                                                <option key={program.programId} value={program.programId}>
+                                                    {program.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.program && <div className="text-xs text-red-600 mt-1">{errors.program}</div>}
+                                    </>
+                                )}
                             </div>
                             
                             {/* Center Field: 
@@ -669,6 +687,7 @@ export default function ClassesPage() {
                                 <input
                                     name="endDate"
                                     type="date"
+                                    defaultValue={editing?.endDate}
                                     className="w-full h-9 rounded-md border px-3 text-sm"
                                 />
                             </div>

@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, User, Mail, Phone, Check } from 'lucide-react';
+import { X, Search, Mail, Phone, Check } from 'lucide-react';
+import { enrollStudent } from '@/shared/api/classes';
+import { listStudents } from '@/shared/api/students';
+import { useToast } from '@/shared/hooks/useToast';
+import type { StudentDto } from '@/shared/types/student';
 
 type Student = {
-    id: string;
-    studentId: string;
-    name: string;
+    studentId: number;
+    fullName: string;
     email: string;
     phone: string;
     initial: string;
-    class: string;
-    program: string;
-    registrationDate: string;
-    status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
+    overallStatus?: string;
 };
 
 type Class = {
@@ -41,124 +41,58 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     classItem,
     onAddStudents
 }) => {
+    const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
-    const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+    const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [allStudents, setAllStudents] = useState<Student[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Mock data for students (in real app, this would come from API)
-    const [allStudents, setAllStudents] = useState<Student[]>([
-        {
-            id: '1',
-            studentId: 'SV001',
-            name: 'Pham Minh Đức',
-            email: 'duc.pham@student.edu',
-            phone: '0911111111',
-            initial: 'P',
-            class: '',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-01-15',
-            status: 'Đang học',
-        },
-        {
-            id: '2',
-            studentId: 'SV002',
-            name: 'Hoàng Thị Mai',
-            email: 'mai.hoang@student.edu',
-            phone: '0922222222',
-            initial: 'H',
-            class: '',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-01-15',
-            status: 'Đang học',
-        },
-        {
-            id: '3',
-            studentId: 'SV003',
-            name: 'Vũ Đình Nam',
-            email: 'nam.vu@student.edu',
-            phone: '0933333333',
-            initial: 'V',
-            class: '',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-01-15',
-            status: 'Bảo lưu',
-        },
-        {
-            id: '4',
-            studentId: 'SV004',
-            name: 'Nguyễn Thu Hằng',
-            email: 'hang.nguyen@student.edu',
-            phone: '0944444444',
-            initial: 'N',
-            class: '',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-02-01',
-            status: 'Đang học',
-        },
-        {
-            id: '5',
-            studentId: 'SV005',
-            name: 'Trần Văn Bình',
-            email: 'binh.tran@student.edu',
-            phone: '0955555555',
-            initial: 'T',
-            class: '',
-            program: 'Digital Marketing',
-            registrationDate: '2024-02-10',
-            status: 'Đang học',
-        },
-        {
-            id: '6',
-            studentId: 'SV006',
-            name: 'Lê Thị Cẩm',
-            email: 'cam.le@student.edu',
-            phone: '0966666666',
-            initial: 'L',
-            class: '',
-            program: 'Thiết kế Đồ họa',
-            registrationDate: '2024-02-15',
-            status: 'Đang học',
-        },
-        {
-            id: '7',
-            studentId: 'SV007',
-            name: 'Phạm Văn Dũng',
-            email: 'dung.pham@student.edu',
-            phone: '0977777777',
-            initial: 'P',
-            class: '',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-02-20',
-            status: 'Tạm dừng',
-        },
-        {
-            id: '8',
-            studentId: 'SV008',
-            name: 'Nguyễn Thị Em',
-            email: 'em.nguyen@student.edu',
-            phone: '0988888888',
-            initial: 'N',
-            class: '',
-            program: 'Data Science',
-            registrationDate: '2024-03-01',
-            status: 'Đang học',
-        },
-    ]);
+    // Load students from API
+    useEffect(() => {
+        if (open) {
+            loadStudents();
+        }
+    }, [open]);
+
+    const loadStudents = async () => {
+        try {
+            setIsLoading(true);
+            const response = await listStudents();
+            const students: StudentDto[] = response.data;
+            
+            const formattedStudents: Student[] = students.map(student => ({
+                studentId: student.studentId,
+                fullName: student.fullName,
+                email: student.email,
+                phone: student.phone,
+                initial: student.fullName.charAt(0).toUpperCase(),
+                overallStatus: student.overallStatus
+            }));
+            
+            setAllStudents(formattedStudents);
+        } catch (error: any) {
+            console.error('Error loading students:', error);
+            showErrorToast(error?.response?.data?.message || 'Không thể tải danh sách học viên');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     // Filter students based on search and status
     const filteredStudents = allStudents.filter(student => {
         const matchesQuery = 
-            student.name.toLowerCase().includes(query.toLowerCase()) ||
+            student.fullName.toLowerCase().includes(query.toLowerCase()) ||
             student.email.toLowerCase().includes(query.toLowerCase()) ||
-            student.studentId.toLowerCase().includes(query.toLowerCase());
+            student.studentId.toString().includes(query.toLowerCase());
         
-        const matchesStatus = statusFilter === 'Tất cả trạng thái' || student.status === statusFilter;
+        const matchesStatus = statusFilter === 'Tất cả trạng thái' || student.overallStatus === statusFilter;
         
         return matchesQuery && matchesStatus;
     });
 
-    const handleStudentSelect = (studentId: string) => {
+    const handleStudentSelect = (studentId: number) => {
         setSelectedStudents(prev => 
             prev.includes(studentId) 
                 ? prev.filter(id => id !== studentId)
@@ -170,7 +104,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         if (selectedStudents.length === filteredStudents.length) {
             setSelectedStudents([]);
         } else {
-            setSelectedStudents(filteredStudents.map(s => s.id));
+            setSelectedStudents(filteredStudents.map(s => s.studentId));
         }
     };
 
@@ -179,12 +113,23 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         
         setIsSubmitting(true);
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            onAddStudents(selectedStudents);
-            onClose();
-        } catch (error) {
+            // Call API to enroll each selected student
+            const enrollmentPromises = selectedStudents.map(studentId => {
+                return enrollStudent(parseInt(classItem.id), {
+                    studentId: studentId,
+                    enrolledAt: new Date().toISOString().split('T')[0],
+                    note: ''
+                });
+            });
+
+            await Promise.all(enrollmentPromises);
+            
+            showSuccessToast(`Đã thêm ${selectedStudents.length} học viên vào lớp thành công!`);
+            onAddStudents([]);
+            handleClose();
+        } catch (error: any) {
             console.error('Error adding students:', error);
+            showErrorToast(error?.response?.data?.message || 'Có lỗi xảy ra khi thêm học viên');
         } finally {
             setIsSubmitting(false);
         }
@@ -260,64 +205,69 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
                     {/* Student List */}
                     <div className="px-6 py-4 max-h-96 overflow-y-auto">
-                        <div className="space-y-2">
-                            {filteredStudents.map((student) => (
-                                <div
-                                    key={student.id}
-                                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                                        selectedStudents.includes(student.id)
-                                            ? 'border-blue-500 bg-blue-50'
-                                            : 'border-gray-200 hover:border-gray-300'
-                                    }`}
-                                    onClick={() => handleStudentSelect(student.id)}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                                            selectedStudents.includes(student.id)
-                                                ? 'bg-gray-900 text-white'
-                                                : 'bg-gray-100 text-gray-700'
-                                        }`}>
-                                            {selectedStudents.includes(student.id) ? (
-                                                <Check size={16} />
-                                            ) : (
-                                                student.initial
-                                            )}
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="font-medium">{student.name}</h3>
-                                                <span className="text-xs text-gray-500">({student.studentId})</span>
-                                            </div>
-                                            <div className="flex items-center gap-4 text-sm text-gray-500">
-                                                <div className="flex items-center gap-1">
-                                                    <Mail size={12} />
-                                                    {student.email}
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <Phone size={12} />
-                                                    {student.phone}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className={`px-2 py-1 rounded-full text-xs ${
-                                                student.status === 'Đang học' ? 'bg-green-100 text-green-700' :
-                                                student.status === 'Bảo lưu' ? 'bg-orange-100 text-orange-700' :
-                                                student.status === 'Tốt nghiệp' ? 'bg-blue-100 text-blue-700' :
-                                                'bg-gray-100 text-gray-700'
-                                            }`}>
-                                                {student.status}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        
-                        {filteredStudents.length === 0 && (
+                        {isLoading ? (
                             <div className="text-center py-8 text-gray-500">
-                                Không tìm thấy học viên nào
+                                Đang tải danh sách học viên...
                             </div>
+                        ) : (
+                            <>
+                                <div className="space-y-2">
+                                    {filteredStudents.map((student) => (
+                                        <div
+                                            key={student.studentId}
+                                            className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                                                selectedStudents.includes(student.studentId)
+                                                    ? 'border-blue-500 bg-blue-50'
+                                                    : 'border-gray-200 hover:border-gray-300'
+                                            }`}
+                                            onClick={() => handleStudentSelect(student.studentId)}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                                                    selectedStudents.includes(student.studentId)
+                                                        ? 'bg-gray-900 text-white'
+                                                        : 'bg-gray-100 text-gray-700'
+                                                }`}>
+                                                    {selectedStudents.includes(student.studentId) ? (
+                                                        <Check size={16} />
+                                                    ) : (
+                                                        student.initial
+                                                    )}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="font-medium">{student.fullName}</h3>
+                                                        <span className="text-xs text-gray-500">(ID: {student.studentId})</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                                                        <div className="flex items-center gap-1">
+                                                            <Mail size={12} />
+                                                            {student.email}
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <Phone size={12} />
+                                                            {student.phone}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {student.overallStatus && (
+                                                    <div className="text-right">
+                                                        <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
+                                                            {student.overallStatus}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                
+                                {filteredStudents.length === 0 && !isLoading && (
+                                    <div className="text-center py-8 text-gray-500">
+                                        Không tìm thấy học viên nào
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
 
