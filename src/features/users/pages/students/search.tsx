@@ -8,6 +8,7 @@ interface StudentSearchProps {
     onStatusFilterChange: (filter: string) => void;
     programFilter: string;
     onProgramFilterChange: (filter: string) => void;
+    programs: Array<{ programId: number; name: string }>;
     onCreate: () => void;
     onImport: () => void;
 }
@@ -19,6 +20,7 @@ const StudentSearch: React.FC<StudentSearchProps> = ({
     onStatusFilterChange,
     programFilter,
     onProgramFilterChange,
+    programs,
     onCreate,
     onImport
 }) => {
@@ -62,10 +64,11 @@ const StudentSearch: React.FC<StudentSearchProps> = ({
                         className="h-9 px-3 pr-8 rounded-md border text-sm outline-none focus:ring-2 focus:ring-blue-200 appearance-none bg-white"
                     >
                         <option>Tất cả chương trình</option>
-                        <option>Công nghệ Thông tin</option>
-                        <option>Digital Marketing</option>
-                        <option>Thiết kế Đồ họa</option>
-                        <option>Kế toán</option>
+                        {programs.map((program) => (
+                            <option key={program.programId} value={program.name}>
+                                {program.name}
+                            </option>
+                        ))}
                     </select>
                     <Filter size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>

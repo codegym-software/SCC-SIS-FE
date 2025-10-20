@@ -8,6 +8,7 @@ import ChangeStatusModal from './components/ChangeStatusModal';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
 import { listStudents, getStudentById, updateStudent, deleteStudent, searchStudents } from '@/shared/api/students';
 import { listClasses, getClassStudents } from '@/shared/api/classes';
+import { getPrograms } from '@/shared/api/programs';
 import type { StudentDto, UpdateStudentDto } from '@/shared/types/student';
 import { useToast } from '@/shared/hooks/useToast';
 
@@ -74,6 +75,7 @@ export default function StudentProfilePage() {
     const [students, setStudents] = useState<Student[]>([]);
     const [enrollmentMap, setEnrollmentMap] = useState<Map<number, any>>(new Map());
     const [isLoading, setIsLoading] = useState(true);
+    const [programs, setPrograms] = useState<Array<{ programId: number; name: string }>>([]);
 
     // Load tất cả enrollments một lần để tối ưu
     const loadAllEnrollments = async () => {
@@ -160,12 +162,29 @@ export default function StudentProfilePage() {
         }
     };
 
+    // Load programs
+    const loadPrograms = async () => {
+        try {
+            const response = await getPrograms();
+            const programList = response.data.map(p => ({
+                programId: p.programId,
+                name: p.name
+            }));
+            setPrograms(programList);
+        } catch (error) {
+            console.error('Error loading programs:', error);
+        }
+    };
+
     // Load enrollments và students on mount
     useEffect(() => {
         const initData = async () => {
             setIsLoading(true);
-            await loadAllEnrollments(); // Load enrollments trước
-            await fetchStudents(); // Sau đó load students
+            await Promise.all([
+                loadPrograms(), // Load programs
+                loadAllEnrollments(), // Load enrollments
+            ]);
+            await fetchStudents(); // Load students sau
             setIsLoading(false);
         };
         initData();
@@ -332,6 +351,7 @@ export default function StudentProfilePage() {
                 onStatusFilterChange={setStatusFilter}
                 programFilter={programFilter}
                 onProgramFilterChange={setProgramFilter}
+                programs={programs}
                 onCreate={handleCreate}
                 onImport={handleImport}
             />
