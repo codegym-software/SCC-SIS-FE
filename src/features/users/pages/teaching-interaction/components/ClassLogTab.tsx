@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Calendar, Clock, FileText, BookOpen, X } from 'lucide-react';
+import { Search, Plus, Calendar, Clock, FileText, X, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
-import http from '@/shared/api/http';
+import { useUserProfile } from '@/stores/userProfile';
+import type { JournalResponse, JournalType } from '@/shared/types/journal';
+import {
+  createJournal,
+  updateJournal,
+  deleteJournal,
+  getJournalsByClass
+} from '@/shared/api/journals';
 
 type Class = {
     classId: number;
@@ -11,104 +18,58 @@ type Class = {
     status: string;
 };
 
-type ClassLog = {
-    logId: number;
-    title: string;
-    content: string;
-    type: 'LEARNING_PROGRESS' | 'HOMEWORK' | 'ANNOUNCEMENT' | 'OTHER';
-    date: string;
-    time: string;
-    author: string;
-    moduleCode?: string;
-};
-
-type LogType = 'LEARNING_PROGRESS' | 'HOMEWORK' | 'ANNOUNCEMENT' | 'OTHER';
-
 interface ClassLogTabProps {
     selectedClass: Class | null;
 }
 
 const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
     const { success: showSuccessToast, error: showErrorToast } = useToast();
-    const [logs, setLogs] = useState<ClassLog[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { me: userProfile } = useUserProfile();
+    const [logs, setLogs] = useState<JournalResponse[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingJournal, setEditingJournal] = useState<JournalResponse | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState<string>('all');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Form state
     const [formData, setFormData] = useState({
         title: '',
         content: '',
-        type: 'LEARNING_PROGRESS' as LogType,
-        date: new Date().toISOString().split('T')[0],
-        time: new Date().toTimeString().slice(0, 5),
-        moduleCode: ''
+        journalType: 'NOTE' as JournalType,
+        journalDate: new Date().toISOString().split('T')[0],
+        journalTime: new Date().toTimeString().slice(0, 5) // HH:mm
     });
 
-    // Fetch logs
     useEffect(() => {
-        const fetchLogs = async () => {
-            if (!selectedClass) return;
+        const fetchJournals = async () => {
+            if (!selectedClass) {
+                setLogs([]);
+                setIsLoading(false);
+                return;
+            }
 
             try {
                 setIsLoading(true);
-                const response = await http.get(`/api/classes/${selectedClass.classId}/logs`);
-                const logsData = response.data;
-                
-                const mappedLogs: ClassLog[] = logsData.map((item: any) => ({
-                    logId: item.logId,
-                    title: item.title,
-                    content: item.content,
-                    type: item.type,
-                    date: item.date,
-                    time: item.time,
-                    author: item.author,
-                    moduleCode: item.moduleCode
-                }));
-
-                setLogs(mappedLogs);
-            } catch (error) {
-                console.error('Error fetching logs:', error);
-                // Mock data for demonstration
-                setLogs([
-                    {
-                        logId: 1,
-                        title: 'Bài học về OOP trong Java',
-                        content: 'Hôm nay chúng ta đã học về khái niệm lập trình hướng đối tượng. Các học viên đã nắm được cơ bản về class, object, inheritance.',
-                        type: 'LEARNING_PROGRESS',
-                        date: '2024-12-19',
-                        time: '19:00',
-                        author: 'Nguyễn Văn A',
-                        moduleCode: 'JAVA101'
-                    },
-                    {
-                        logId: 2,
-                        title: 'Thông báo bài tập về nhà',
-                        content: 'Các em làm bài tập chương 3, nộp trước thứ 6 tuần tới. Ai có thắc mắc liên hệ qua email.',
-                        type: 'HOMEWORK',
-                        date: '2024-12-18',
-                        time: '20:30',
-                        author: 'Nguyễn Văn A',
-                        moduleCode: 'JAVA101'
-                    },
-                    {
-                        logId: 3,
-                        title: 'Cập nhật lịch học',
-                        content: 'Lịch học tuần tới sẽ có thay đổi. Buổi học thứ 3 sẽ được dời sang thứ 4.',
-                        type: 'ANNOUNCEMENT',
-                        date: '2024-12-17',
-                        time: '14:15',
-                        author: 'Nguyễn Văn A'
-                    }
-                ]);
+                const data = await getJournalsByClass(selectedClass.classId);
+                setLogs(data);
+            } catch (error: any) {
+                // Backend API chưa sẵn sàng, sử dụng empty state
+                if (error.code === 'ECONNABORTED' || error.response?.status === 500 || error.response?.status === 404) {
+                    console.warn('Journal API chưa sẵn sàng');
+                    setLogs([]); // Hiển thị empty state thay vì error
+                } else {
+                    console.error('Error fetching journals:', error);
+                    showErrorToast('Lỗi tải dữ liệu', 'Không thể tải danh sách nhật ký');
+                    setLogs([]);
+                }
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchLogs();
+        fetchJournals();
     }, [selectedClass]);
 
     const handleCreateLog = async (e: React.FormEvent) => {
@@ -117,308 +78,439 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
 
         setIsSubmitting(true);
         try {
-            const response = await http.post(`/api/classes/${selectedClass.classId}/logs`, {
+            const now = new Date();
+            const newJournal = await createJournal({
+                classId: selectedClass.classId,
                 title: formData.title,
                 content: formData.content,
-                type: formData.type,
-                date: formData.date,
-                time: formData.time,
-                moduleCode: formData.moduleCode || null
+                journalType: formData.journalType,
+                journalDate: now.toISOString().split('T')[0],
+                journalTime: now.toTimeString().slice(0, 8) // HH:mm:ss
             });
 
-            const newLog: ClassLog = {
-                logId: response.data.logId || Date.now(),
-                title: formData.title,
-                content: formData.content,
-                type: formData.type,
-                date: formData.date,
-                time: formData.time,
-                author: 'Current User',
-                moduleCode: formData.moduleCode || undefined
-            };
-
-            setLogs(prev => [newLog, ...prev]);
+            setLogs(prev => [newJournal, ...prev]);
             showSuccessToast('Tạo nhật ký thành công', 'Nhật ký đã được tạo');
             
-            // Reset form
             setFormData({
                 title: '',
                 content: '',
-                type: 'LEARNING_PROGRESS',
-                date: new Date().toISOString().split('T')[0],
-                time: new Date().toTimeString().slice(0, 5),
-                moduleCode: ''
+                journalType: 'NOTE',
+                journalDate: new Date().toISOString().split('T')[0],
+                journalTime: new Date().toTimeString().slice(0, 5)
             });
             setShowCreateModal(false);
-        } catch (error) {
-            console.error('Error creating log:', error);
-            showErrorToast('Lỗi tạo nhật ký', 'Không thể tạo nhật ký');
+        } catch (error: any) {
+            console.error('Error creating journal:', error);
+            showErrorToast('Lỗi tạo nhật ký', error.message || 'Không thể tạo nhật ký');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const getTypeLabel = (type: LogType) => {
-        switch (type) {
-            case 'LEARNING_PROGRESS':
-                return 'Tiến độ học tập';
-            case 'HOMEWORK':
-                return 'Bài tập';
-            case 'ANNOUNCEMENT':
-                return 'Thông báo';
-            case 'OTHER':
-                return 'Khác';
-            default:
-                return type;
+    const handleEditLog = (journal: JournalResponse) => {
+        setEditingJournal(journal);
+        setFormData({
+            title: journal.title,
+            content: journal.content,
+            journalType: journal.journalType,
+            journalDate: journal.journalDate,
+            journalTime: journal.journalTime
+        });
+        setShowEditModal(true);
+    };
+
+    const handleUpdateLog = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingJournal) return;
+
+        setIsSubmitting(true);
+        try {
+            const now = new Date();
+            const updatedJournal = await updateJournal(editingJournal.journalId, {
+                title: formData.title,
+                content: formData.content,
+                journalType: formData.journalType,
+                journalDate: now.toISOString().split('T')[0],
+                journalTime: now.toTimeString().slice(0, 8) // HH:mm:ss
+            });
+
+            setLogs(prev => prev.map(log => 
+                log.journalId === updatedJournal.journalId ? updatedJournal : log
+            ));
+            showSuccessToast('Cập nhật thành công', 'Nhật ký đã được cập nhật');
+            
+            setFormData({
+                title: '',
+                content: '',
+                journalType: 'NOTE',
+                journalDate: new Date().toISOString().split('T')[0],
+                journalTime: new Date().toTimeString().slice(0, 5)
+            });
+            setShowEditModal(false);
+            setEditingJournal(null);
+        } catch (error: any) {
+            console.error('Error updating journal:', error);
+            showErrorToast('Lỗi cập nhật', error.message || 'Không thể cập nhật nhật ký');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    const getTypeColor = (type: LogType) => {
+    const handleDeleteLog = async (journalId: number) => {
+        if (!confirm('Bạn có chắc chắn muốn xóa nhật ký này?')) return;
+
+        try {
+            await deleteJournal(journalId);
+            setLogs(prev => prev.filter(log => log.journalId !== journalId));
+            showSuccessToast('Xóa thành công', 'Nhật ký đã được xóa');
+        } catch (error: any) {
+            console.error('Error deleting journal:', error);
+            showErrorToast('Lỗi xóa', error.message || 'Không thể xóa nhật ký');
+        }
+    };
+
+    const getTypeLabel = (type: JournalType) => {
         switch (type) {
-            case 'LEARNING_PROGRESS':
-                return 'bg-blue-100 text-blue-800';
-            case 'HOMEWORK':
-                return 'bg-green-100 text-green-800';
-            case 'ANNOUNCEMENT':
-                return 'bg-orange-100 text-orange-800';
-            case 'OTHER':
-                return 'bg-gray-100 text-gray-800';
-            default:
-                return 'bg-gray-100 text-gray-800';
+            case 'PROGRESS': return 'Tiến độ';
+            case 'ANNOUNCEMENT': return 'Thông báo';
+            case 'ISSUE': return 'Vấn đề';
+            case 'NOTE': return 'Ghi chú';
+            case 'OTHER': return 'Khác';
+            default: return type;
+        }
+    };
+
+    const getTypeColor = (type: JournalType) => {
+        switch (type) {
+            case 'PROGRESS': return 'bg-blue-50 text-blue-700 border border-blue-200';
+            case 'ANNOUNCEMENT': return 'bg-orange-50 text-orange-700 border border-orange-200';
+            case 'ISSUE': return 'bg-red-50 text-red-700 border border-red-200';
+            case 'NOTE': return 'bg-green-50 text-green-700 border border-green-200';
+            case 'OTHER': return 'bg-gray-50 text-gray-700 border border-gray-200';
+            default: return 'bg-gray-50 text-gray-700 border border-gray-200';
         }
     };
 
     const filteredLogs = logs.filter(log => {
         const matchesSearch = log.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             log.content.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesFilter = filterType === 'all' || log.type === filterType;
+        const matchesFilter = filterType === 'all' || log.journalType === filterType;
         return matchesSearch && matchesFilter;
     });
+
+    const canEditDelete = (journal: JournalResponse) => {
+        const isSuperAdmin = userProfile?.roles.some(role => role.code === 'SUPER_ADMIN');
+        const isOwner = journal.teacherId === userProfile?.userId;
+        return isSuperAdmin || isOwner;
+    };
 
     return (
         <div className="space-y-6">
             {/* Action Bar */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 flex-1">
-                        <div className="relative flex-1 max-w-md">
-                            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Tìm kiếm nhật ký..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                        </div>
-                        <select
-                            value={filterType}
-                            onChange={(e) => setFilterType(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                            <option value="all">Tất cả loại</option>
-                            <option value="LEARNING_PROGRESS">Tiến độ học tập</option>
-                            <option value="HOMEWORK">Bài tập</option>
-                            <option value="ANNOUNCEMENT">Thông báo</option>
-                            <option value="OTHER">Khác</option>
-                        </select>
-                    </div>
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                        <Plus size={16} className="mr-2" />
-                        Viết Nhật ký mới
-                    </button>
+            <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-6 flex flex-wrap items-center gap-4">
+                <div className="relative flex-grow">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Tìm kiếm nhật ký..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-[#f3f3f5] border-transparent rounded-lg pl-10 pr-4 py-2 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
                 </div>
+                <div className="relative w-full sm:w-auto md:w-48">
+                    <select
+                        value={filterType}
+                        onChange={(e) => setFilterType(e.target.value)}
+                        className="appearance-none w-full bg-[#f3f3f5] rounded-lg px-4 py-2 text-sm focus:outline-none"
+                    >
+                        <option value="all">Tất cả loại</option>
+                        <option value="PROGRESS">Tiến độ</option>
+                        <option value="ANNOUNCEMENT">Thông báo</option>
+                        <option value="ISSUE">Vấn đề</option>
+                        <option value="NOTE">Ghi chú</option>
+                        <option value="OTHER">Khác</option>
+                    </select>
+                </div>
+                <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#030213] text-white text-sm font-medium px-4 py-2 hover:bg-black focus:outline-none"
+                >
+                    <Plus className="w-4 h-4" />
+                    Viết Nhật ký mới
+                </button>
             </div>
 
             {/* Logs List */}
             <div className="space-y-4">
                 {isLoading ? (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                        <p className="text-gray-600">Đang tải nhật ký...</p>
+                    <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3"></div>
+                        <p className="text-sm text-gray-600">Đang tải nhật ký...</p>
                     </div>
                 ) : filteredLogs.length > 0 ? (
                     filteredLogs.map((log) => (
-                        <div key={log.logId} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{log.title}</h3>
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(log.type)}`}>
-                                            {getTypeLabel(log.type)}
-                                        </span>
-                                        {log.moduleCode && (
-                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                {log.moduleCode}
-                                            </span>
-                                        )}
+                        <div 
+                            key={log.journalId} 
+                            className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all duration-200"
+                            role="article"
+                            aria-label={`Nhật ký: ${log.title}`}
+                        >
+                            {/* Header: Badge + Actions */}
+                            <div className="flex items-center justify-between mb-3">
+                                <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium ${getTypeColor(log.journalType)}`}>
+                                    {getTypeLabel(log.journalType)}
+                                </span>
+                                {canEditDelete(log) && (
+                                    <div className="flex items-center gap-2.5">
+                                        <button
+                                            onClick={() => handleEditLog(log)}
+                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                                            title="Chỉnh sửa nhật ký"
+                                            aria-label={`Chỉnh sửa nhật ký ${log.title}`}
+                                        >
+                                            <Edit size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteLog(log.journalId)}
+                                            className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                                            title="Xóa nhật ký"
+                                            aria-label={`Xóa nhật ký ${log.title}`}
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
                                     </div>
-                                </div>
+                                )}
                             </div>
+
+                            {/* Title */}
+                            <h3 className="text-base font-bold text-gray-900 mb-3 line-clamp-1">
+                                {log.title}
+                            </h3>
                             
-                            <p className="text-gray-700 mb-4 leading-relaxed">{log.content}</p>
+                            {/* Content Preview */}
+                            <p className="text-sm text-gray-600 leading-relaxed mb-4 line-clamp-2">
+                                {log.content}
+                            </p>
                             
-                            <div className="flex items-center gap-4 text-sm text-gray-500">
-                                <div className="flex items-center gap-1">
-                                    <Calendar size={14} />
-                                    {new Date(log.date).toLocaleDateString('vi-VN')}
+                            {/* Footer Metadata */}
+                            <div className="flex items-center gap-4 text-xs text-gray-500 pt-3 border-t border-gray-100">
+                                <div className="flex items-center gap-1.5">
+                                    <Calendar size={14} className="text-gray-400" />
+                                    <span>{new Date(log.journalDate).toLocaleDateString('vi-VN')}</span>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    <Clock size={14} />
-                                    {log.time}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <FileText size={14} />
-                                    {log.author}
+                                {log.teacherName && (
+                                    <div className="flex items-center gap-1.5">
+                                        <FileText size={14} className="text-gray-400" />
+                                        <span className="truncate max-w-[120px]">{log.teacherName}</span>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-1.5">
+                                    <Clock size={14} className="text-gray-400" />
+                                    <span>{new Date(log.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                             </div>
                         </div>
                     ))
                 ) : (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-                        <div className="text-gray-400 mb-4">
-                            <FileText size={48} className="mx-auto" />
+                    <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+                        <div className="text-gray-300 mb-3">
+                            <FileText size={40} className="mx-auto" strokeWidth={1.5} />
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có nhật ký nào</h3>
-                        <p className="text-gray-600 mb-4">Hãy tạo nhật ký đầu tiên cho lớp học này.</p>
+                        <h3 className="text-sm font-semibold text-gray-900 mb-1">Chưa có nhật ký nào</h3>
+                        <p className="text-xs text-gray-500 mb-4">Hãy tạo nhật ký đầu tiên cho lớp học này</p>
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                            className="inline-flex items-center gap-2 rounded-lg bg-[#030213] text-white text-sm font-medium px-4 py-2 hover:bg-black"
                         >
-                            <Plus size={16} className="mr-2" />
+                            <Plus size={16} />
                             Viết Nhật ký mới
                         </button>
                     </div>
                 )}
             </div>
 
-            {/* Create Log Modal */}
+            {/* Create Modal */}
             {showCreateModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center" style={{backgroundColor: 'rgba(0, 0, 0, 0.5)'}}>
-                    <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" style={{boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'}}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200">
                         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                             <div>
-                                <h2 className="text-lg font-semibold text-gray-900">Viết Nhật ký Lớp học mới</h2>
-                                <p className="text-sm text-gray-600 mt-1">
-                                    Ghi lại tiến độ, thông báo hoặc ghi chú về lớp học.
-                                </p>
+                                <h2 className="text-base font-semibold text-gray-900">Viết Nhật ký Lớp học mới</h2>
+                                <p className="text-xs text-gray-500 mt-0.5">Ghi lại tiến độ, thông báo hoặc ghi chú về lớp học</p>
                             </div>
-                            <button
-                                onClick={() => setShowCreateModal(false)}
-                                className="text-gray-400 hover:text-gray-600"
-                            >
-                                <X size={20} />
+                            <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-lg transition-colors">
+                                <X size={18} />
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateLog} className="px-6 py-6 space-y-4">
+                        <form onSubmit={handleCreateLog} className="px-6 py-5 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Tiêu đề
-                                </label>
+                                <label className="block text-sm font-medium text-gray-900 mb-2">Tiêu đề</label>
                                 <input
                                     type="text"
                                     value={formData.title}
                                     onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                                     placeholder="Tiêu đề nhật ký"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full bg-[#f3f3f5] border-transparent rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     required
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Nội dung
-                                </label>
+                                <label className="block text-sm font-medium text-gray-900 mb-2">Nội dung</label>
                                 <textarea
                                     value={formData.content}
                                     onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
                                     placeholder="Nội dung chi tiết..."
-                                    rows={4}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    rows={5}
+                                    className="w-full bg-[#f3f3f5] border-transparent rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
                                     required
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Loại
-                                </label>
+                                <label className="block text-sm font-medium text-gray-900 mb-2">Loại</label>
                                 <select
-                                    value={formData.type}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as LogType }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    value={formData.journalType}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, journalType: e.target.value as JournalType }))}
+                                    className="w-full bg-[#f3f3f5] border-transparent rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                 >
-                                    <option value="LEARNING_PROGRESS">Tiến độ học tập</option>
-                                    <option value="HOMEWORK">Bài tập</option>
+                                    <option value="PROGRESS">Tiến độ</option>
                                     <option value="ANNOUNCEMENT">Thông báo</option>
+                                    <option value="ISSUE">Vấn đề</option>
+                                    <option value="NOTE">Ghi chú</option>
                                     <option value="OTHER">Khác</option>
                                 </select>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Ngày
-                                    </label>
+                                    <label className="block text-sm font-medium text-gray-900 mb-2">Ngày ghi nhật ký</label>
                                     <div className="relative">
                                         <input
-                                            type="date"
-                                            value={formData.date}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            type="text"
+                                            value={new Date().toLocaleDateString('vi-VN')}
+                                            readOnly
+                                            className="w-full bg-gray-100 border-transparent rounded-lg px-4 py-2.5 text-sm text-gray-700 cursor-not-allowed"
                                         />
-                                        <Calendar size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                        <Calendar size={14} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Giờ
-                                    </label>
+                                    <label className="block text-sm font-medium text-gray-900 mb-2">Giờ ghi nhật ký</label>
                                     <div className="relative">
                                         <input
-                                            type="time"
-                                            value={formData.time}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            type="text"
+                                            value={new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                            readOnly
+                                            className="w-full bg-gray-100 border-transparent rounded-lg px-4 py-2.5 text-sm text-gray-700 cursor-not-allowed"
                                         />
-                                        <Clock size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                        <Clock size={14} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
                                     </div>
                                 </div>
                             </div>
 
+                            <div className="flex gap-3 pt-4 border-t border-gray-200">
+                                <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors">
+                                    Hủy
+                                </button>
+                                <button type="submit" disabled={isSubmitting} className="flex-1 px-4 py-2.5 border border-transparent text-white text-sm font-medium bg-[#030213] rounded-lg hover:bg-black focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                    {isSubmitting ? 'Đang tạo...' : 'Tạo Nhật ký'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Modal */}
+            {showEditModal && editingJournal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200">
+                        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Module liên quan (tùy chọn)
-                                </label>
+                                <h2 className="text-base font-semibold text-gray-900">Chỉnh sửa Nhật ký</h2>
+                                <p className="text-xs text-gray-500 mt-0.5">Cập nhật thông tin nhật ký lớp học</p>
+                            </div>
+                            <button onClick={() => { setShowEditModal(false); setEditingJournal(null); }} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-lg transition-colors">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateLog} className="px-6 py-5 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-900 mb-2">Tiêu đề</label>
+                                <input
+                                    type="text"
+                                    value={formData.title}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                                    placeholder="Tiêu đề nhật ký"
+                                    className="w-full bg-[#f3f3f5] border-transparent rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-900 mb-2">Nội dung</label>
+                                <textarea
+                                    value={formData.content}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                                    placeholder="Nội dung chi tiết..."
+                                    rows={5}
+                                    className="w-full bg-[#f3f3f5] border-transparent rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-900 mb-2">Loại</label>
                                 <select
-                                    value={formData.moduleCode}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, moduleCode: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    value={formData.journalType}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, journalType: e.target.value as JournalType }))}
+                                    className="w-full bg-[#f3f3f5] border-transparent rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                 >
-                                    <option value="">Không liên quan đến module cụ thể</option>
-                                    <option value="JAVA101">JAVA101 - Lập trình Java Cơ bản</option>
-                                    <option value="JAVA201">JAVA201 - Lập trình Java Nâng cao</option>
+                                    <option value="PROGRESS">Tiến độ</option>
+                                    <option value="ANNOUNCEMENT">Thông báo</option>
+                                    <option value="ISSUE">Vấn đề</option>
+                                    <option value="NOTE">Ghi chú</option>
+                                    <option value="OTHER">Khác</option>
                                 </select>
                             </div>
 
-                            <div className="flex gap-3 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                >
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-900 mb-2">Ngày ghi nhật ký</label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={new Date().toLocaleDateString('vi-VN')}
+                                            readOnly
+                                            className="w-full bg-gray-100 border-transparent rounded-lg px-4 py-2.5 text-sm text-gray-700 cursor-not-allowed"
+                                        />
+                                        <Calendar size={14} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-900 mb-2">Giờ ghi nhật ký</label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                            readOnly
+                                            className="w-full bg-gray-100 border-transparent rounded-lg px-4 py-2.5 text-sm text-gray-700 cursor-not-allowed"
+                                        />
+                                        <Clock size={14} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 pt-4 border-t border-gray-200">
+                                <button type="button" onClick={() => { setShowEditModal(false); setEditingJournal(null); }} className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors">
                                     Hủy
                                 </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="flex-1 px-4 py-2 border border-transparent text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isSubmitting ? 'Đang tạo...' : 'Tạo Nhật ký'}
+                                <button type="submit" disabled={isSubmitting} className="flex-1 px-4 py-2.5 border border-transparent text-white text-sm font-medium bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                    {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật'}
                                 </button>
                             </div>
                         </form>
