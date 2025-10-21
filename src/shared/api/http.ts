@@ -9,6 +9,20 @@ const api = axios.create({
 
 // ========== REQUEST INTERCEPTOR ==========
 api.interceptors.request.use(async (config) => {
+    // Check if we're in development mode
+    const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    if (isDevelopment) {
+        // Use mock token in development
+        const mockToken = (window as any).token || 'dev-mock-token';
+        if (!config.headers) {
+            config.headers = {} as any;
+        }
+        config.headers.Authorization = `Bearer ${mockToken}`;
+        return config;
+    }
+    
+    // Production mode: Use real Keycloak
     const token = await ensureValidToken(30);
     
     if (token) {
@@ -26,8 +40,9 @@ api.interceptors.response.use(
     (res) => res,
     async (err: AxiosError) => {
         const status = err.response?.status;
+        const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-        if (status === 401) {
+        if (status === 401 && !isDevelopment) {
             try {
                 await keycloak.login();
             } catch (loginError) {

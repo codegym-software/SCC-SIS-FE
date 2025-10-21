@@ -1,17 +1,24 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { cva, type VariantProps } from 'class-variance-authority';
+import { cva } from 'class-variance-authority';
 import { Slot as SlotPrimitive } from 'radix-ui';
 
-export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {
+export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'outline' | 'destructive';
+  appearance?: 'default' | 'light' | 'outline' | 'ghost';
+  disabled?: boolean;
+  size?: 'lg' | 'md' | 'sm' | 'xs';
+  shape?: 'default' | 'circle';
+  asChild?: boolean;
+  dotClassName?: string;
   asChild?: boolean;
   dotClassName?: string;
   disabled?: boolean;
 }
 
-export interface BadgeButtonProps
-  extends React.ButtonHTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeButtonVariants> {
+export interface BadgeButtonProps extends React.ButtonHTMLAttributes<HTMLDivElement> {
+  variant?: 'default';
+  asChild?: boolean;
   asChild?: boolean;
 }
 
@@ -188,7 +195,7 @@ function Badge({
   asChild = false,
   disabled,
   ...props
-}: React.ComponentProps<'span'> & VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
+}: React.ComponentProps<'span'> & BadgeProps) {
   const Comp = asChild ? SlotPrimitive.Slot : 'span';
 
   return (
@@ -205,7 +212,7 @@ function BadgeButton({
   variant,
   asChild = false,
   ...props
-}: React.ComponentProps<'button'> & VariantProps<typeof badgeButtonVariants> & { asChild?: boolean }) {
+}: React.ComponentProps<'button'> & BadgeButtonProps) {
   const Comp = asChild ? SlotPrimitive.Slot : 'span';
   return (
     <Comp
