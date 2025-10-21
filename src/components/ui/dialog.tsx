@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { cva } from 'class-variance-authority';
+import { cva, VariantProps } from 'class-variance-authority';
 import { X } from 'lucide-react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 
@@ -57,8 +57,8 @@ function DialogContent({
   overlay = true,
   variant,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & {
-    variant?: 'default' | 'fullscreen';
+}: React.ComponentProps<typeof DialogPrimitive.Content> &
+  VariantProps<typeof dialogContentVariants> & {
     showCloseButton?: boolean;
     overlay?: boolean;
   }) {

@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { cva } from 'class-variance-authority';
-import { ChevronDown } from 'lucide-react';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { ChevronDown, LucideIcon } from 'lucide-react';
 import { Slot as SlotPrimitive } from 'radix-ui';
 import { cn } from '@/lib/utils';
 
@@ -371,16 +371,8 @@ function Button({
   asChild = false,
   placeholder = false,
   ...props
-}: React.ComponentProps<'button'> & {
-    variant?: 'primary' | 'mono' | 'destructive' | 'secondary' | 'outline' | 'dashed' | 'ghost' | 'dim' | 'foreground' | 'inverse';
-    appearance?: 'default' | 'ghost';
-    underline?: 'solid' | 'dashed';
-    underlined?: 'solid' | 'dashed';
-    size?: 'lg' | 'md' | 'sm' | 'icon';
-    autoHeight?: boolean;
-    shape?: 'default' | 'circle';
-    mode?: 'default' | 'icon' | 'link' | 'input';
-    placeholder?: boolean;
+}: React.ComponentProps<'button'> &
+  VariantProps<typeof buttonVariants> & {
     selected?: boolean;
     asChild?: boolean;
   }) {
@@ -410,7 +402,7 @@ function Button({
 }
 
 interface ButtonArrowProps extends React.SVGProps<SVGSVGElement> {
-  icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  icon?: LucideIcon; // Allows passing any Lucide icon
 }
 
 function ButtonArrow({ icon: Icon = ChevronDown, className, ...props }: ButtonArrowProps) {
