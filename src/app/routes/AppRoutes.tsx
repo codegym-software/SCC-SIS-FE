@@ -6,6 +6,7 @@ import RolesPage from '../../features/roles/pages/RolesPage'
 import CentersPage from '../../features/centers/pages/CentersPage'
 import ProgramsPage from '../../features/users/pages/programs/ProgramsPage';
 import ClassesPage from '../../features/users/pages/classes/ClassesPage.tsx';
+import TeachingInteractionPage from '../../features/users/pages/teaching-interaction/TeachingInteractionPage';
 import StudentProfilePage from '../../features/users/pages/students/StudentProfilePage';
 import SettingsPage from '../../features/users/pages/settings/SettingsPage';
 
@@ -21,6 +22,7 @@ export default function AppRoutes() {
             <Route path="/roles" element={<RolesPage />} />
             <Route path="/programs" element={<ProgramsPage />} />
             <Route path="/classes" element={<ClassesPage />} />
+            <Route path="/teaching-interaction" element={<TeachingInteractionPage />} />
             <Route path="/students" element={<StudentProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />
             {/* Chỉ redirect khi thực sự không tìm thấy route */}
