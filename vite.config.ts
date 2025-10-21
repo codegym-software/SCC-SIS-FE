@@ -15,7 +15,7 @@ export default defineConfig({
         port: 5173,
         strictPort: true, // Không tự động tìm port khác nếu 5173 bị chiếm
         proxy: {
-            '/api': 'http://localhost:7001',
+            '/api': 'http://localhost:7000',
         },
     },
     // Cấu hình để hỗ trợ SPA routing - tất cả routes sẽ fallback về index.html
