@@ -369,8 +369,8 @@ const ScoresModal: React.FC<ScoresModalProps> = ({ classItem, onClose }) => {
 
             {/* Add/Edit Score Modal */}
             {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
-                    <div className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200">
+                <div className="fixed inset-0 z-50 flex items-center justify-center" style={{backgroundColor: 'rgba(0, 0, 0, 0.5)'}}>
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" style={{boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'}}>
                         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                             <h3 className="text-lg font-semibold text-gray-900">
                                 {editingScore ? 'Chỉnh sửa điểm' : 'Thêm điểm mới'}
