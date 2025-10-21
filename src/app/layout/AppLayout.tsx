@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Building2, Users2, Shield, BookOpen, GraduationCap, User, Settings, LogOut, ChevronLeft, ChevronRight, NotebookPen } from 'lucide-react';
+import { Home, Building2, Users2, Shield, BookOpen, GraduationCap, User, Settings, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { keycloak } from '../../keycloak';
 import { NavLink } from 'react-router-dom';
@@ -125,12 +125,6 @@ function AppLayout({ children }: AppLayoutProps) {
                     label: 'Hồ sơ Học viên',
                     path: '/students',
                     icon: User,
-                },
-                {
-                    id: 'teaching',
-                    label: 'Giảng dạy & Tương tác',
-                    path: '/teaching/logs',
-                    icon: NotebookPen,
                 },
             ],
         },

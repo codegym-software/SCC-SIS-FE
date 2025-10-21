@@ -8,7 +8,6 @@ import ProgramsPage from '../../features/users/pages/programs/ProgramsPage';
 import ClassesPage from '../../features/users/pages/classes/ClassesPage.tsx';
 import StudentProfilePage from '../../features/users/pages/students/StudentProfilePage';
 import SettingsPage from '../../features/users/pages/settings/SettingsPage';
-import TeachingLogsPage from '../../features/teaching/pages/TeachingLogsPage';
 
 
 
@@ -23,7 +22,6 @@ export default function AppRoutes() {
             <Route path="/programs" element={<ProgramsPage />} />
             <Route path="/classes" element={<ClassesPage />} />
             <Route path="/students" element={<StudentProfilePage />} />
-            <Route path="/teaching/logs" element={<TeachingLogsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             {/* Chỉ redirect khi thực sự không tìm thấy route */}
             <Route path="*" element={<Navigate to="/" replace />} />

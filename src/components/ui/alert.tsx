@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { cva } from 'class-variance-authority';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { X } from 'lucide-react';
 
 const alertVariants = cva('flex items-stretch w-full gap-2 group-[.toaster]:w-(--width)', {
@@ -185,16 +185,12 @@ const alertVariants = cva('flex items-stretch w-full gap-2 group-[.toaster]:w-(-
   },
 });
 
-interface AlertProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'destructive';
-  close?: boolean;
-  onClose?: () => void;
+interface AlertProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof alertVariants> {
   close?: boolean;
   onClose?: () => void;
 }
 
-interface AlertIconProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'destructive';}
+interface AlertIconProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof alertVariants> {}
 
 function Alert({ className, variant, size, icon, appearance, close = false, onClose, children, ...props }: AlertProps) {
   return (
