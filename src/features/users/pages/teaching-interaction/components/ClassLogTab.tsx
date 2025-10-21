@@ -297,7 +297,7 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
 
             {/* Create Log Modal */}
             {showCreateModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
                     <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                             <div>
