@@ -84,6 +84,9 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
     const [isAssigning, setIsAssigning] = useState(false);
     const [isRemoving, setIsRemoving] = useState(false);
 
+    // Maximum number of active lecturers allowed per class
+    const MAX_ACTIVE_LECTURERS = 3;
+
     // State to track assigned instructors locally for immediate UI updates
     const [localAssignedInstructors, setLocalAssignedInstructors] = useState<ClassInstructor[]>([]);
 
@@ -127,30 +130,31 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
     // State for assigned instructors (from API)
     const [assignedInstructorsFromAPI, setAssignedInstructorsFromAPI] = useState<ClassInstructor[]>([]);
 
-    // Fetch available instructors for assignment from API
+    // Function to fetch and refresh available instructors
+    const fetchAvailableInstructors = async () => {
+        try {
+            const response = await http.get(`/api/classes/${classItem.id}/lecturers/available`);
+            const apiData: APIAvailableLecturer[] = response.data.items;
+
+            // Map API data to component format
+            const mappedInstructors: Instructor[] = apiData.map(item => ({
+                id: item.id.toString(),
+                name: item.fullName,
+                email: item.email,
+                specialization: '',
+                initial: item.fullName.charAt(0).toUpperCase(),
+                assigned: false
+            }));
+
+            setInstructors(mappedInstructors);
+        } catch (error) {
+            console.error('Error fetching available instructors:', error);
+            setInstructors([]);
+        }
+    };
+
+    // Fetch available instructors for assignment from API on mount
     useEffect(() => {
-        const fetchAvailableInstructors = async () => {
-            try {
-                const response = await http.get(`/api/classes/${classItem.id}/lecturers/available`);
-                const apiData: APIAvailableLecturer[] = response.data.items;
-
-                // Map API data to component format
-                const mappedInstructors: Instructor[] = apiData.map(item => ({
-                    id: item.id.toString(),
-                    name: item.fullName,
-                    email: item.email,
-                    specialization: '',
-                    initial: item.fullName.charAt(0).toUpperCase(),
-                    assigned: false
-                }));
-
-                setInstructors(mappedInstructors);
-            } catch (error) {
-                console.error('Error fetching available instructors:', error);
-                setInstructors([]);
-            }
-        };
-
         if (classItem.id) {
             fetchAvailableInstructors();
         }
@@ -174,6 +178,15 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
     const availableInstructors = filteredInstructors.slice(startIndex, endIndex);
 
     const handleAssignInstructor = () => {
+        // Check if already at maximum capacity
+        if (assignedInstructors.length >= MAX_ACTIVE_LECTURERS) {
+            showErrorToast(
+                'Đã đạt giới hạn giảng viên',
+                `Lớp học chỉ được phân công tối đa ${MAX_ACTIVE_LECTURERS} giảng viên active.`
+            );
+            return;
+        }
+
         setShowAssignModal(true);
         if (currentPage !== 1) {
             setCurrentPage(1); // Reset to first page when opening modal
@@ -196,9 +209,23 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
     const handleSelectInstructor = (instructorId: string) => {
         setSelectedInstructors(prev => {
             const isSelected = prev.includes(instructorId);
-            return isSelected
-                ? prev.filter(id => id !== instructorId)
-                : [...prev, instructorId];
+            
+            // If deselecting, just remove it
+            if (isSelected) {
+                return prev.filter(id => id !== instructorId);
+            }
+            
+            // If selecting, check if we still have available slots
+            const remainingSlots = MAX_ACTIVE_LECTURERS - assignedInstructors.length;
+            if (prev.length >= remainingSlots) {
+                showErrorToast(
+                    'Không thể chọn thêm',
+                    `Lớp học chỉ còn ${remainingSlots} slot trống. Bạn đã chọn đủ số lượng giảng viên.`
+                );
+                return prev;
+            }
+            
+            return [...prev, instructorId];
         });
     };
 
@@ -241,7 +268,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                     );
                 }
 
-                // Refresh data by calling the GET API again
+                // Refresh assigned lecturers by calling the GET API again
                 const refreshResponse = await http.get(`/api/classes/${classItem.id}/lecturers`);
                 const apiData: APIClassInstructor[] = refreshResponse.data.items;
 
@@ -260,6 +287,9 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
 
                 setAssignedInstructorsFromAPI(mappedInstructors);
                 setLocalAssignedInstructors(mappedInstructors);
+
+                // Refresh available lecturers list to remove newly assigned ones
+                await fetchAvailableInstructors();
 
                 // Update parent component
                 if (onUpdateInstructors) {
@@ -334,6 +364,9 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
             setLocalAssignedInstructors(updatedAssignedInstructors);
             setAssignedInstructorsFromAPI(updatedAssignedInstructors);
 
+            // Refresh available lecturers list to add back the removed one
+            await fetchAvailableInstructors();
+
             // Update parent component
             if (onUpdateInstructors) {
                 onUpdateInstructors(classItem.id, updatedAssignedInstructors as Instructor[]);
@@ -406,11 +439,26 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                 {/* Instructor Count and Assign Button */}
                 <div className="px-4 py-3 border-b flex items-center justify-between">
                     <div className="text-sm text-gray-600">
-                        Giảng viên: {assignedInstructors.length} người
+                        Giảng viên: {assignedInstructors.length}/{MAX_ACTIVE_LECTURERS} người
+                        {assignedInstructors.length >= MAX_ACTIVE_LECTURERS && (
+                            <span className="ml-2 text-amber-600 font-medium">
+                                (Đã đạt giới hạn tối đa)
+                            </span>
+                        )}
                     </div>
                     <button
                         onClick={handleAssignInstructor}
-                        className="flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
+                        disabled={assignedInstructors.length >= MAX_ACTIVE_LECTURERS}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            assignedInstructors.length >= MAX_ACTIVE_LECTURERS
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-purple-600 text-white hover:bg-purple-700'
+                        }`}
+                        title={
+                            assignedInstructors.length >= MAX_ACTIVE_LECTURERS
+                                ? `Lớp học đã đạt giới hạn tối đa ${MAX_ACTIVE_LECTURERS} giảng viên`
+                                : 'Phân công giảng viên cho lớp học'
+                        }
                     >
                         <Plus size={16} />
                         Phân công giảng viên
@@ -515,8 +563,13 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                         {/* Available Instructors */}
                         <div className="px-4 py-3 border-b">
                             <div className="flex items-center justify-between mb-3">
-                                <div className="text-sm text-gray-600">
-                                    Có {availableInstructors.length} giảng viên có thể phân công cho lớp
+                                <div className="text-sm">
+                                    <span className="text-gray-600">
+                                        Có {availableInstructors.length} giảng viên có thể phân công
+                                    </span>
+                                    <span className="ml-3 text-purple-600 font-medium">
+                                        • Còn lại {MAX_ACTIVE_LECTURERS - assignedInstructors.length}/{MAX_ACTIVE_LECTURERS} slot
+                                    </span>
                                 </div>
                             </div>
 
@@ -575,8 +628,8 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                                     <button
                                                         onClick={() => handleSelectInstructor(instructor.id)}
                                                         className={`h-6 w-6 rounded border-2 flex items-center justify-center ${selectedInstructors.includes(instructor.id)
-                                                            ? 'bg-red-500 border-red-500 text-white'
-                                                            : 'border-gray-300 hover:border-red-400'
+                                                            ? 'bg-blue-500 border-blue-500 text-white'
+                                                            : 'border-gray-300 hover:border-blue-400'
                                                             }`}
                                                     >
                                                         {selectedInstructors.includes(instructor.id) && (
@@ -599,7 +652,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
 
                                             {/* Form for selected instructor */}
                                             {selectedInstructors.includes(instructor.id) && (
-                                                <div className="px-6 py-4 bg-gray-50 border-l-4 border-red-500">
+                                                <div className="px-6 py-4 bg-gray-50 border-l-4 border-blue-500">
                                                     <div className="grid grid-cols-3 gap-6">
                                                         <div>
                                                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -615,7 +668,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                                                         startDate: e.target.value
                                                                     }
                                                                 }))}
-                                                                className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                                                className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                             />
                                                         </div>
                                                         <div className="col-span-2">
@@ -632,7 +685,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                                                         note: e.target.value
                                                                     }
                                                                 }))}
-                                                                className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                                                className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                                 placeholder="Nhập ghi chú cho giảng viên..."
                                                             />
                                                         </div>
@@ -696,8 +749,17 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                             </button>
                             <button
                                 onClick={handleConfirmAssign}
-                                disabled={selectedInstructors.length === 0 || isAssigning}
+                                disabled={
+                                    selectedInstructors.length === 0 || 
+                                    isAssigning ||
+                                    selectedInstructors.length > (MAX_ACTIVE_LECTURERS - assignedInstructors.length)
+                                }
                                 className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+                                title={
+                                    selectedInstructors.length > (MAX_ACTIVE_LECTURERS - assignedInstructors.length)
+                                        ? `Chỉ còn ${MAX_ACTIVE_LECTURERS - assignedInstructors.length} slot trống`
+                                        : ''
+                                }
                             >
                                 {isAssigning && (
                                     <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
