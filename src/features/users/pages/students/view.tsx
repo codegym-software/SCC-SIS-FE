@@ -13,6 +13,7 @@ type Student = {
     initial: string;
     class: string;
     program: string;
+    classes: Array<{ className: string; programName: string }>;
     registrationDate: string;
     status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
     dob?: string | null;

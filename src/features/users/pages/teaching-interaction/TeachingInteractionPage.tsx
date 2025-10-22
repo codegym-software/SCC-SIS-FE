@@ -203,26 +203,6 @@ const TeachingInteractionPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Class Selection Card */}
-            <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                <label className="block text-sm font-medium text-gray-900 mb-3">Lớp học đang giảng dạy</label>
-                <select
-                    value={selectedClass?.classId || ''}
-                    onChange={(e) => {
-                        const classId = parseInt(e.target.value);
-                        const classItem = classes.find(c => c.classId === classId);
-                        setSelectedClass(classItem || null);
-                    }}
-                    className="w-full bg-[#f3f3f5] border-transparent rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                >
-                    {classes.map((classItem) => (
-                        <option key={classItem.classId} value={classItem.classId}>
-                            {classItem.name} - {classItem.programName}
-                        </option>
-                    ))}
-                </select>
-            </div>
-
             {/* Tabs Navigation */}
             <div className="flex space-x-2 bg-gray-100 p-2 rounded-lg w-full">
                 <button
@@ -247,6 +227,26 @@ const TeachingInteractionPage: React.FC = () => {
                     <FileText size={20} />
                     Nhật ký Lớp học
                 </button>
+            </div>
+
+            {/* Class Selection Card */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                <label className="block text-sm font-medium text-gray-900 mb-3">Lớp học đang giảng dạy</label>
+                <select
+                    value={selectedClass?.classId || ''}
+                    onChange={(e) => {
+                        const classId = parseInt(e.target.value);
+                        const classItem = classes.find(c => c.classId === classId);
+                        setSelectedClass(classItem || null);
+                    }}
+                    className="w-full bg-[#f3f3f5] border-transparent rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                    {classes.map((classItem) => (
+                        <option key={classItem.classId} value={classItem.classId}>
+                            {classItem.name} - {classItem.programName}
+                        </option>
+                    ))}
+                </select>
             </div>
 
             {/* Tab Content */}

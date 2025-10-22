@@ -22,6 +22,7 @@ type Student = {
     initial: string;
     class: string;
     program: string;
+    classes: Array<{ className: string; programName: string }>; // Multiple classes support
     registrationDate: string;
     status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
     avatar?: string;
@@ -85,7 +86,7 @@ export default function StudentProfilePage() {
         try {
             const classesResponse = await listClasses();
             const classes = classesResponse.data;
-            const map = new Map();
+            const map = new Map<number, Array<{ className: string; programName: string }>>();
             
             // Load enrollments của tất cả classes
             for (const classItem of classes) {
@@ -97,14 +98,15 @@ export default function StudentProfilePage() {
                     });
                     const enrollments = enrollmentsResponse.data.content || enrollmentsResponse.data;
                     
-                    // Map student ID -> class info
+                    // Map student ID -> array of classes
                     enrollments.forEach((enrollment: any) => {
                         if (!map.has(enrollment.studentId)) {
-                            map.set(enrollment.studentId, {
-                                className: classItem.name,
-                                programName: classItem.programName
-                            });
+                            map.set(enrollment.studentId, []);
                         }
+                        map.get(enrollment.studentId)!.push({
+                            className: classItem.name,
+                            programName: classItem.programName
+                        });
                     });
                 } catch (error) {
                     // Skip if can't access this class
@@ -120,9 +122,9 @@ export default function StudentProfilePage() {
     // Helper function: Convert StudentDto từ BE sang Student type của FE
     const mapStudentDtoToStudent = (dto: StudentDto): Student => {
         // Lấy thông tin lớp học từ enrollment map
-        const enrollmentInfo = enrollmentMap.get(dto.studentId);
-        const className = enrollmentInfo?.className || 'Chưa có lớp';
-        const programName = enrollmentInfo?.programName || 'Chưa đăng ký';
+        const enrollmentInfo = enrollmentMap.get(dto.studentId) || [];
+        const className = enrollmentInfo.length > 0 ? enrollmentInfo[0].className : 'Chưa có lớp';
+        const programName = enrollmentInfo.length > 0 ? enrollmentInfo[0].programName : 'Chưa đăng ký';
         
         return {
             id: dto.studentId.toString(),
@@ -133,6 +135,7 @@ export default function StudentProfilePage() {
             initial: dto.fullName.split(' ').map(n => n[0]).join(''),
             class: className,
             program: programName,
+            classes: enrollmentInfo, // All classes
             registrationDate: dto.createdAt.split('T')[0],
             status: (dto.overallStatus === 'ACTIVE' ? 'Đang học' : 
                      dto.overallStatus === 'INACTIVE' ? 'Tạm dừng' : 
@@ -277,10 +280,10 @@ export default function StudentProfilePage() {
             a.download = 'students.xlsx';
             a.click();
             URL.revokeObjectURL(url);
-            toast.success('Tải xuống thành công', 'File Excel đã được tải về');
+            toast.success('Xuất file thành công', 'Dữ liệu học viên đã được tải về dưới dạng file Excel');
             setExportConfirm(false);
         } catch (err) {
-            toast.error('Lỗi tải xuống', 'Không thể tải file Excel');
+            toast.error('Lỗi xuất file', 'Không thể tải file Excel');
             setExportConfirm(false);
         }
     };
@@ -474,9 +477,9 @@ export default function StudentProfilePage() {
                 onConfirm={confirmExport}
                 title="Xác nhận xuất danh sách"
                 description="Bạn có muốn tải xuống danh sách tất cả học viên ra file Excel? File sẽ chứa đầy đủ thông tin của các học viên hiện tại."
-                confirmText="Tải xuống"
+                confirmText="Xuất file"
                 cancelText="Hủy"
-                variant="danger"
+                variant="primary"
             />
         </div>
     );

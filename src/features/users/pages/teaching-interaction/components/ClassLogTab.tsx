@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, Calendar, Clock, FileText, X, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
 import { useUserProfile } from '@/stores/userProfile';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
 import type { JournalResponse, JournalType } from '@/shared/types/journal';
 import {
   createJournal,
@@ -30,6 +31,7 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingJournal, setEditingJournal] = useState<JournalResponse | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<JournalResponse | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState<string>('all');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -101,7 +103,10 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
             setShowCreateModal(false);
         } catch (error: any) {
             console.error('Error creating journal:', error);
-            showErrorToast('Lỗi tạo nhật ký', error.message || 'Không thể tạo nhật ký');
+            console.log('Full error response:', error.response);
+            console.log('Error message from backend:', error.response?.data?.message);
+            const errorMessage = error.response?.data?.message || error.message || 'Không thể tạo nhật ký';
+            showErrorToast('Lỗi tạo nhật ký', errorMessage);
         } finally {
             setIsSubmitting(false);
         }
@@ -150,22 +155,32 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
             setEditingJournal(null);
         } catch (error: any) {
             console.error('Error updating journal:', error);
-            showErrorToast('Lỗi cập nhật', error.message || 'Không thể cập nhật nhật ký');
+            console.log('Full error response:', error.response);
+            console.log('Error message from backend:', error.response?.data?.message);
+            const errorMessage = error.response?.data?.message || error.message || 'Không thể cập nhật nhật ký';
+            showErrorToast('Lỗi cập nhật', errorMessage);
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const handleDeleteLog = async (journalId: number) => {
-        if (!confirm('Bạn có chắc chắn muốn xóa nhật ký này?')) return;
+    const handleDeleteLog = (journal: JournalResponse) => {
+        setDeleteConfirm(journal);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteConfirm) return;
 
         try {
-            await deleteJournal(journalId);
-            setLogs(prev => prev.filter(log => log.journalId !== journalId));
+            await deleteJournal(deleteConfirm.journalId);
+            setLogs(prev => prev.filter(log => log.journalId !== deleteConfirm.journalId));
             showSuccessToast('Xóa thành công', 'Nhật ký đã được xóa');
+            setDeleteConfirm(null);
         } catch (error: any) {
             console.error('Error deleting journal:', error);
-            showErrorToast('Lỗi xóa', error.message || 'Không thể xóa nhật ký');
+            const errorMessage = error.response?.data?.message || error.message || 'Không thể xóa nhật ký';
+            showErrorToast('Lỗi xóa', errorMessage);
+            setDeleteConfirm(null);
         }
     };
 
@@ -272,7 +287,7 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
                                             <Edit size={18} />
                                         </button>
                                         <button
-                                            onClick={() => handleDeleteLog(log.journalId)}
+                                            onClick={() => handleDeleteLog(log)}
                                             className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
                                             title="Xóa nhật ký"
                                             aria-label={`Xóa nhật ký ${log.title}`}
@@ -517,6 +532,18 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
                     </div>
                 </div>
             )}
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                open={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                onConfirm={confirmDelete}
+                title="Xác nhận xóa nhật ký"
+                description={`Bạn có chắc chắn muốn xóa nhật ký "${deleteConfirm?.title}"? Hành động này không thể hoàn tác.`}
+                confirmText="Xóa"
+                cancelText="Hủy"
+                variant="danger"
+            />
         </div>
     );
 };
