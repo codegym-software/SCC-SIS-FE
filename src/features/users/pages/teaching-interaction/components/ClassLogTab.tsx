@@ -339,18 +339,9 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass, readOnly = fal
                             <FileText size={40} className="mx-auto" strokeWidth={1.5} />
                         </div>
                         <h3 className="text-sm font-semibold text-gray-900 mb-1">Chưa có nhật ký nào</h3>
-                        <p className="text-xs text-gray-500 mb-4">
-                            {readOnly ? "Chưa có nhật ký nào cho lớp học này" : "Hãy tạo nhật ký đầu tiên cho lớp học này"}
+                        <p className="text-xs text-gray-500">
+                            Hãy tạo nhật ký đầu tiên cho lớp học này
                         </p>
-                        {!readOnly && (
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="inline-flex items-center gap-2 rounded-lg bg-[#030213] text-white text-sm font-medium px-4 py-2 hover:bg-black"
-                        >
-                            <Plus size={16} />
-                            Viết Nhật ký mới
-                        </button>
-                        )}
                     </div>
                 )}
             </div>

@@ -41,10 +41,11 @@ const ClassList: React.FC<ClassListProps> = ({
                     </div>
                 </div>
 
-                <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-10 gap-3">
-                    <div className="col-span-3">Lớp học</div>
-                    <div className="col-span-2">Chương trình</div>
+                <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-11 gap-3">
+                    <div className="col-span-2">Lớp học</div>
+                    <div className="col-span-2">Trung tâm</div>
                     <div className="col-span-2">Thời gian</div>
+                    <div className="col-span-2">Chương trình</div>
                     <div className="col-span-1">Phòng học</div>
                     <div className="col-span-1">Trạng thái</div>
                     <div className="col-span-1"></div>
@@ -54,9 +55,9 @@ const ClassList: React.FC<ClassListProps> = ({
                     {classes.map((c) => (
                         <div
                             key={c.id}
-                            className="px-3 py-3 pr-12 grid grid-cols-10 gap-3 items-center border-t first:border-t-0 relative"
+                            className="px-3 py-3 pr-12 grid grid-cols-11 gap-3 items-center border-t first:border-t-0 relative"
                         >
-                            <div className="col-span-12 md:col-span-3">
+                            <div className="col-span-12 md:col-span-2">
                                 <div className="flex items-start gap-3">
                                     <div>
                                         <div className="text-sm font-medium">{c.name}</div>
@@ -66,7 +67,7 @@ const ClassList: React.FC<ClassListProps> = ({
                             </div>
                             <div className="col-span-12 md:col-span-2">
                                 <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">
-                                    {c.program}
+                                    {c.centerName || 'Chưa có'}
                                 </span>
                             </div>
                             <div className="col-span-12 md:col-span-2">
@@ -78,6 +79,11 @@ const ClassList: React.FC<ClassListProps> = ({
                                     <Calendar size={12} className="text-gray-400" />
                                     {c.schedule}
                                 </div>
+                            </div>
+                            <div className="col-span-12 md:col-span-2">
+                                <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">
+                                    {c.program}
+                                </span>
                             </div>
                             <div className="col-span-6 md:col-span-1 text-sm flex items-center gap-1 pl-4">
                                 <MapPin size={14} className="text-gray-500" />

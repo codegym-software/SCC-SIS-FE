@@ -131,10 +131,10 @@ const StudentList: React.FC<StudentListProps> = ({
                             </div>
                         </div>
 
-                        {/* Class Info - Show multiple classes like role badges */}
+                        {/* Class Info - Show multiple classes vertically */}
                         <div className="col-span-2">
                             {student.classes && student.classes.length > 0 ? (
-                                <div className="flex flex-wrap items-center gap-1">
+                                <div className="flex flex-col gap-1.5">
                                     {student.classes.slice(0, 2).map((cls, idx) => (
                                         <div key={idx} className="flex flex-col">
                                             <span className="text-xs font-medium text-gray-900">{cls.className}</span>
