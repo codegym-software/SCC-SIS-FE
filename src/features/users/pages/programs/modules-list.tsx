@@ -1,5 +1,5 @@
-import { FolderOpen, Clock, GraduationCap, FileText, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { FolderOpen, Clock, GraduationCap, FileText } from 'lucide-react';
+import { useMemo } from 'react';
 import ProgramActions from './components/actions';
 
 type Module = {
@@ -16,6 +16,8 @@ type Module = {
 
 interface ModulesListProps {
     modules: Module[];
+    query: string;
+    statusFilter: string;
     onView: (module: Module) => void;
     onEdit: (module: Module) => void;
     onDelete: (module: Module) => void;
@@ -25,20 +27,18 @@ interface ModulesListProps {
     onPageChange: (page: number) => void;
 }
 
-const ModulesList: React.FC<ModulesListProps> = ({
-    modules,
-    onView,
-    onEdit,
-    onDelete,
+const ModulesList: React.FC<ModulesListProps> = ({ 
+    modules, 
+    query, 
+    statusFilter, 
+    onView, 
+    onEdit, 
+    onDelete, 
     onCreate,
     currentPage,
     itemsPerPage,
-    onPageChange,
+    onPageChange
 }) => {
-    const [query, setQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState('Tất cả');
-    const [fieldFilter, setFieldFilter] = useState('Tất cả');
-
     const filtered = useMemo(() => {
         let result = modules.filter(
             (m) =>
@@ -51,12 +51,8 @@ const ModulesList: React.FC<ModulesListProps> = ({
             result = result.filter((m) => m.status === statusFilter);
         }
 
-        if (fieldFilter !== 'Tất cả') {
-            result = result.filter((m) => m.field === fieldFilter);
-        }
-
         return result;
-    }, [modules, query, statusFilter, fieldFilter]);
+    }, [modules, query, statusFilter]);
 
     // Pagination logic
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -86,35 +82,27 @@ const ModulesList: React.FC<ModulesListProps> = ({
 
             <div className="px-3 py-2 border-b flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div className="flex gap-2 w-full md:max-w-xl">
-                    <div className="flex-1 relative">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            className="w-full h-9 pl-10 pr-3 rounded-md border text-sm outline-none focus:ring-2 focus:ring-gray-200"
-                            placeholder="Tìm kiếm module..."
-                        />
-                    </div>
-                    <select
-                        value={fieldFilter}
-                        onChange={(e) => setFieldFilter(e.target.value)}
-                        className="h-9 rounded-md border px-3 text-sm"
-                    >
-                        <option value="Tất cả">Tất cả lĩnh vực</option>
-                        <option value="Kỹ thuật">Kỹ thuật</option>
-                        <option value="Lập trình">Lập trình</option>
-                        <option value="Thiết kế">Thiết kế</option>
-                        <option value="Kinh doanh">Kinh doanh</option>
-                    </select>
+                    <input
+                        value={query}
+                        onChange={(e) => {
+                            // This will be handled by parent component
+                        }}
+                        className="flex-1 h-8 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                        placeholder="Tìm kiếm module..."
+                        readOnly
+                    />
                     <select
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="h-9 rounded-md border px-3 text-sm"
+                        onChange={(e) => {
+                            // This will be handled by parent component
+                        }}
+                        className="h-8 rounded-md border px-2 text-sm"
+                        disabled
                     >
-                        <option value="Tất cả">Tất cả trạng thái</option>
-                        <option value="Hoạt động">Hoạt động</option>
-                        <option value="Tạm dừng">Tạm dừng</option>
-                        <option value="Hoàn thành">Hoàn thành</option>
+                        <option>Tất cả</option>
+                        <option>Hoạt động</option>
+                        <option>Tạm dừng</option>
+                        <option>Hoàn thành</option>
                     </select>
                 </div>
             </div>
@@ -199,31 +187,32 @@ const ModulesList: React.FC<ModulesListProps> = ({
             {totalPages > 1 && (
                 <div className="px-3 py-3 border-t flex items-center justify-between text-sm text-gray-500">
                     <div>
-                        Hiển thị {startIndex + 1} - {Math.min(endIndex, filtered.length)} trong số {filtered.length} kết
-                        quả
+                        Hiển thị {startIndex + 1} - {Math.min(endIndex, filtered.length)} trong số {filtered.length} kết quả
                     </div>
                     <div className="flex items-center gap-2">
-                        <button
+                        <button 
                             onClick={() => onPageChange(currentPage - 1)}
                             disabled={currentPage === 1}
                             className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Previous
                         </button>
-
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                             <button
                                 key={page}
                                 onClick={() => onPageChange(page)}
                                 className={`h-8 px-3 rounded-md text-sm ${
-                                    currentPage === page ? 'bg-gray-900 text-white' : 'border bg-white hover:bg-gray-50'
+                                    currentPage === page 
+                                        ? 'bg-gray-900 text-white' 
+                                        : 'border bg-white hover:bg-gray-50'
                                 }`}
                             >
                                 {page}
                             </button>
                         ))}
-
-                        <button
+                        
+                        <button 
                             onClick={() => onPageChange(currentPage + 1)}
                             disabled={currentPage === totalPages}
                             className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
@@ -238,3 +227,4 @@ const ModulesList: React.FC<ModulesListProps> = ({
 };
 
 export default ModulesList;
+

@@ -5,17 +5,16 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '../../../../../components/ui/dropdown-menu';
-import { Edit, Eye, Trash, MoreHorizontal, ListOrdered } from 'lucide-react';
+import { Edit, Eye, Trash, MoreHorizontal } from 'lucide-react';
 import React from 'react';
 
 interface ProgramActionsProps {
     onView?: () => void;
     onEdit?: () => void;
     onDelete?: () => void;
-    onManageModules?: () => void;
 }
 
-const ProgramActions: React.FC<ProgramActionsProps> = ({ onView, onEdit, onDelete, onManageModules }) => {
+const ProgramActions: React.FC<ProgramActionsProps> = ({ onView, onEdit, onDelete }) => {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center">
@@ -27,12 +26,6 @@ const ProgramActions: React.FC<ProgramActionsProps> = ({ onView, onEdit, onDelet
                         <DropdownMenuItem onClick={onView}>
                             <Eye size={14} />
                             <span>Xem chi tiết</span>
-                        </DropdownMenuItem>
-                    )}
-                    {onManageModules && (
-                        <DropdownMenuItem onClick={onManageModules}>
-                            <ListOrdered size={14} />
-                            <span>Sắp xếp modules</span>
                         </DropdownMenuItem>
                     )}
                     {onEdit && (
@@ -54,3 +47,4 @@ const ProgramActions: React.FC<ProgramActionsProps> = ({ onView, onEdit, onDelet
 };
 
 export default ProgramActions;
+

@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { BookOpen, FolderOpen, Search, Plus } from 'lucide-react';
 
 // Import components
 import ProgramsList from './programs-list';
 import ModulesList from './modules-list';
 import ProgramForm from './form';
 import ProgramView from './view';
-import ModuleDetailModal from './components/ModuleDetailModal';
-import ModuleForm from './components/ModuleForm';
-import ProgramModulesManager from './components/ProgramModulesManager';
 
 // Import API and types
-import {
-    getPrograms,
-    createProgram,
-    updateProgram,
+import { 
+    getPrograms, 
+    createProgram, 
+    updateProgram, 
     deleteProgram,
     type Program as ProgramDto,
     type CreateProgramDto,
-    type UpdateProgramDto,
+    type UpdateProgramDto
 } from '../../../../shared/api/programs';
 
 type Program = ProgramDto;
@@ -49,21 +47,21 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
 }
 
 export default function ProgramsPage() {
+    const [isLoaded, setIsLoaded] = useState(false);
     const [activeTab, setActiveTab] = useState<'programs' | 'modules'>('programs');
+    const [query, setQuery] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('Tất cả');
+    const [statusFilter, setStatusFilter] = useState('Tất cả');
     const [openCreate, setOpenCreate] = useState(false);
     const [openEdit, setOpenEdit] = useState<Program | null>(null);
     const [openView, setOpenView] = useState<Program | null>(null);
-    const [openModuleDetail, setOpenModuleDetail] = useState<Module | null>(null);
-    const [openModuleCreate, setOpenModuleCreate] = useState(false);
-    const [openModuleEdit, setOpenModuleEdit] = useState<Module | null>(null);
-    const [openModulesManager, setOpenModulesManager] = useState<Program | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-
+    
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
-
+    
     const [programs, setPrograms] = useState<Program[]>([]);
 
     // Fetch programs from API
@@ -80,13 +78,14 @@ export default function ProgramsPage() {
     };
 
     useEffect(() => {
+        setIsLoaded(true);
         fetchPrograms();
     }, []);
 
-    // Reset pagination when switching tabs
+    // Reset pagination when switching tabs or changing filters
     useEffect(() => {
         setCurrentPage(1);
-    }, [activeTab]);
+    }, [activeTab, query, categoryFilter, statusFilter]);
 
     const [modules, setModules] = useState<Module[]>([
         {
@@ -259,7 +258,7 @@ export default function ProgramsPage() {
     const handleSubmit = async (formData: any) => {
         try {
             setIsSubmitting(true);
-
+            
             if (openEdit) {
                 // Update existing program
                 const updateData: UpdateProgramDto = {
@@ -269,7 +268,7 @@ export default function ProgramsPage() {
                     deliveryMode: formData.deliveryMode,
                     categoryCode: formData.categoryCode,
                     level: formData.level,
-                    isActive: formData.isActive ?? true,
+                    isActive: formData.isActive ?? true
                 };
                 await updateProgram(openEdit.programId, updateData);
             } else {
@@ -282,7 +281,7 @@ export default function ProgramsPage() {
                     deliveryMode: formData.deliveryMode,
                     categoryCode: formData.categoryCode,
                     level: formData.level,
-                    isActive: formData.isActive ?? true,
+                    isActive: formData.isActive ?? true
                 };
                 await createProgram(createData);
             }
@@ -330,73 +329,6 @@ export default function ProgramsPage() {
         setOpenView(null);
     };
 
-    // Program modules manager
-    const handleManageModules = (program: Program) => {
-        setOpenModulesManager(program);
-    };
-
-    const handleSaveModulesOrder = (moduleIds: string[]) => {
-        // TODO: Call API to save module order for program
-        console.log('Saving module order:', moduleIds);
-        // Simulate API call
-        setTimeout(() => {
-            alert('Đã lưu thứ tự modules thành công!');
-        }, 300);
-    };
-
-    // Module handlers
-    const handleModuleCreate = () => {
-        setOpenModuleEdit(null);
-        setOpenModuleCreate(true);
-    };
-
-    const handleModuleEdit = (module: Module) => {
-        setOpenModuleEdit(module);
-        setOpenModuleCreate(true);
-    };
-
-    const handleModuleDelete = (module: Module) => {
-        if (window.confirm(`Bạn có chắc chắn muốn xóa module "${module.name}" không?`)) {
-            setModules((prev) => prev.filter((m) => m.id !== module.id));
-        }
-    };
-
-    const handleModuleSubmit = (formData: any) => {
-        setIsSubmitting(true);
-
-        // Simulate API call
-        setTimeout(() => {
-            if (openModuleEdit) {
-                // Update existing module
-                setModules((prev) =>
-                    prev.map((m) => (m.id === openModuleEdit.id ? { ...openModuleEdit, ...formData } : m)),
-                );
-            } else {
-                // Create new module
-                const newModule: Module = {
-                    id: Date.now().toString(),
-                    name: formData.name,
-                    moduleId: formData.moduleId,
-                    field: formData.field,
-                    credits: formData.credits,
-                    duration: formData.duration,
-                    prerequisite: formData.prerequisite || 'Không',
-                    syllabus: formData.syllabus || 'Chưa có',
-                    status: formData.status || 'Hoạt động',
-                };
-                setModules((prev) => [newModule, ...prev]);
-            }
-            setOpenModuleCreate(false);
-            setOpenModuleEdit(null);
-            setIsSubmitting(false);
-        }, 500);
-    };
-
-    const handleModuleCancel = () => {
-        setOpenModuleCreate(false);
-        setOpenModuleEdit(null);
-    };
-
     return (
         <div className="space-y-6">
             <div className="flex items-start justify-between gap-4">
@@ -428,15 +360,51 @@ export default function ProgramsPage() {
                 </button>
             </div>
 
+            {/* Search and Filter */}
+            <div className="flex items-center gap-4">
+                <div className="flex-1 relative">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        className="w-full h-9 pl-10 pr-3 rounded-md border text-sm outline-none focus:ring-2 focus:ring-gray-200"
+                        placeholder="Tìm kiếm..."
+                    />
+                </div>
+                <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="h-9 rounded-md border px-3 text-sm"
+                >
+                    <option>Danh mục</option>
+                    <option>Kỹ thuật</option>
+                    <option>Lập trình</option>
+                    <option>Thiết kế</option>
+                    <option>Kinh doanh</option>
+                </select>
+                <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="h-9 rounded-md border px-3 text-sm"
+                >
+                    <option>Trạng thái</option>
+                    <option>Đang hoạt động</option>
+                    <option>Tạm dừng</option>
+                    <option>Hoàn thành</option>
+                </select>
+            </div>
+
             {/* Tab content */}
             {activeTab === 'programs' && (
                 <ProgramsList
                     programs={programs}
+                    query={query}
+                    categoryFilter={categoryFilter}
+                    statusFilter={statusFilter}
                     onView={handleView}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onCreate={handleCreate}
-                    onManageModules={handleManageModules}
                     currentPage={currentPage}
                     itemsPerPage={itemsPerPage}
                     onPageChange={setCurrentPage}
@@ -446,10 +414,12 @@ export default function ProgramsPage() {
             {activeTab === 'modules' && (
                 <ModulesList
                     modules={modules}
-                    onView={(module) => setOpenModuleDetail(module)}
-                    onEdit={handleModuleEdit}
-                    onDelete={handleModuleDelete}
-                    onCreate={handleModuleCreate}
+                    query={query}
+                    statusFilter={statusFilter}
+                    onView={() => {}}
+                    onEdit={() => {}}
+                    onDelete={() => {}}
+                    onCreate={() => {}}
                     currentPage={currentPage}
                     itemsPerPage={itemsPerPage}
                     onPageChange={setCurrentPage}
@@ -482,39 +452,7 @@ export default function ProgramsPage() {
                     />
                 )}
             </Modal>
-
-            {/* Module Detail Modal */}
-            {openModuleDetail && (
-                <ModuleDetailModal
-                    open={!!openModuleDetail}
-                    onClose={() => setOpenModuleDetail(null)}
-                    module={openModuleDetail}
-                />
-            )}
-
-            {/* Module Form Modal */}
-            <Modal open={openModuleCreate} onClose={handleModuleCancel}>
-                <ModuleForm
-                    open={openModuleCreate}
-                    onClose={handleModuleCancel}
-                    editing={openModuleEdit}
-                    onSubmit={handleModuleSubmit}
-                    onCancel={handleModuleCancel}
-                    isSubmitting={isSubmitting}
-                />
-            </Modal>
-
-            {/* Program Modules Manager Modal */}
-            {openModulesManager && (
-                <ProgramModulesManager
-                    open={!!openModulesManager}
-                    onClose={() => setOpenModulesManager(null)}
-                    program={openModulesManager}
-                    allModules={modules}
-                    programModules={modules.slice(0, 4)} // Mock: first 4 modules in program
-                    onSave={handleSaveModulesOrder}
-                />
-            )}
         </div>
     );
 }
+
