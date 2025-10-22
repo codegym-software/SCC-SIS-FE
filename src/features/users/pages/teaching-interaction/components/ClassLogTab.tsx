@@ -21,9 +21,10 @@ type Class = {
 
 interface ClassLogTabProps {
     selectedClass: Class | null;
+    readOnly?: boolean; // View-only mode (no create/edit/delete/search/filter)
 }
 
-const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
+const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass, readOnly = false }) => {
     const { success: showSuccessToast, error: showErrorToast } = useToast();
     const { me: userProfile } = useUserProfile();
     const [logs, setLogs] = useState<JournalResponse[]>([]);
@@ -207,6 +208,9 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
     };
 
     const filteredLogs = logs.filter(log => {
+        // In readOnly mode, skip filtering
+        if (readOnly) return true;
+        
         const matchesSearch = log.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             log.content.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesFilter = filterType === 'all' || log.journalType === filterType;
@@ -222,6 +226,7 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
     return (
         <div className="space-y-6">
             {/* Action Bar */}
+            {!readOnly && (
             <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-6 flex flex-wrap items-center gap-4">
                 <div className="relative flex-grow">
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -255,6 +260,7 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
                     Viết Nhật ký mới
                 </button>
             </div>
+            )}
 
             {/* Logs List */}
             <div className="space-y-4">
@@ -276,7 +282,7 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
                                 <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium ${getTypeColor(log.journalType)}`}>
                                     {getTypeLabel(log.journalType)}
                                 </span>
-                                {canEditDelete(log) && (
+                                {!readOnly && canEditDelete(log) && (
                                     <div className="flex items-center gap-2.5">
                                         <button
                                             onClick={() => handleEditLog(log)}
@@ -333,7 +339,10 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
                             <FileText size={40} className="mx-auto" strokeWidth={1.5} />
                         </div>
                         <h3 className="text-sm font-semibold text-gray-900 mb-1">Chưa có nhật ký nào</h3>
-                        <p className="text-xs text-gray-500 mb-4">Hãy tạo nhật ký đầu tiên cho lớp học này</p>
+                        <p className="text-xs text-gray-500 mb-4">
+                            {readOnly ? "Chưa có nhật ký nào cho lớp học này" : "Hãy tạo nhật ký đầu tiên cho lớp học này"}
+                        </p>
+                        {!readOnly && (
                         <button
                             onClick={() => setShowCreateModal(true)}
                             className="inline-flex items-center gap-2 rounded-lg bg-[#030213] text-white text-sm font-medium px-4 py-2 hover:bg-black"
@@ -341,6 +350,7 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass }) => {
                             <Plus size={16} />
                             Viết Nhật ký mới
                         </button>
+                        )}
                     </div>
                 )}
             </div>
