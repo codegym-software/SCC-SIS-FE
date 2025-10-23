@@ -267,7 +267,6 @@ export default function ProgramsPage() {
                     durationHours: formData.durationHours,
                     deliveryMode: formData.deliveryMode,
                     categoryCode: formData.categoryCode,
-                    level: formData.level,
                     isActive: formData.isActive ?? true
                 };
                 await updateProgram(openEdit.programId, updateData);
@@ -280,7 +279,6 @@ export default function ProgramsPage() {
                     durationHours: formData.durationHours,
                     deliveryMode: formData.deliveryMode,
                     categoryCode: formData.categoryCode,
-                    level: formData.level,
                     isActive: formData.isActive ?? true
                 };
                 await createProgram(createData);

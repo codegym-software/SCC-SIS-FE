@@ -40,7 +40,6 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                     categoryCode: form.get('categoryCode') as string,
                     durationHours: parseInt(form.get('durationHours') as string),
                     deliveryMode: form.get('deliveryMode') as 'ONLINE' | 'OFFLINE' | 'HYBRID',
-                    level: form.get('level') as string,
                     isActive: form.get('isActive') === 'true',
                 };
                 onSubmit(formData);
@@ -132,19 +131,6 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                                 <option value="ONLINE">ONLINE</option>
                                 <option value="OFFLINE">OFFLINE</option>
                                 <option value="HYBRID">HYBRID</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs text-gray-600 mb-1">Trình độ *</label>
-                            <select
-                                name="level"
-                                defaultValue={editing?.level ?? 'Beginner'}
-                                required
-                                className="w-full h-8 rounded-md border px-2 text-xs"
-                            >
-                                <option value="Beginner">Cơ bản</option>
-                                <option value="Intermediate">Trung cấp</option>
-                                <option value="Advanced">Nâng cao</option>
                             </select>
                         </div>
                     </div>
