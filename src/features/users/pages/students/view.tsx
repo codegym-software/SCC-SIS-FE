@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, User, Mail, Phone, Calendar, GraduationCap, Clock, CheckCircle, BookOpen, MapPin, Users, BarChart3, FileText } from 'lucide-react';
 import { listClasses } from '@/shared/api/classes';
 import { getClassStudents } from '@/shared/api/classes';
+import { useToast } from '@/shared/hooks/useToast';
+import ClassLogTab from '@/features/users/pages/teaching-interaction/components/ClassLogTab';
 import type { EnrollmentResponse } from '@/shared/types/classes';
 
 type Student = {
@@ -13,6 +15,7 @@ type Student = {
     initial: string;
     class: string;
     program: string;
+    classes: Array<{ className: string; programName: string }>;
     registrationDate: string;
     status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
     dob?: string | null;
@@ -27,9 +30,11 @@ interface StudentViewProps {
 }
 
 const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
+    const { error: showErrorToast } = useToast();
     const [activeTab, setActiveTab] = useState('info');
     const [enrollments, setEnrollments] = useState<any[]>([]);
     const [isLoadingEnrollments, setIsLoadingEnrollments] = useState(false);
+    const [selectedClass, setSelectedClass] = useState<any | null>(null);
 
     // Load student's enrollments when viewing classes tab
     useEffect(() => {
@@ -73,9 +78,19 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
             }
             
             setEnrollments(studentEnrollments);
+            // Auto-select first class if available
+            if (studentEnrollments.length > 0 && !selectedClass) {
+                setSelectedClass({
+                    classId: studentEnrollments[0].classId,
+                    name: studentEnrollments[0].className,
+                    programName: studentEnrollments[0].programName,
+                    centerName: '',
+                    status: 'ACTIVE'
+                });
+            }
         } catch (error: any) {
             console.error('Error loading enrollments:', error);
-            toast.error(error?.response?.data?.message || 'Không thể tải danh sách lớp học');
+            showErrorToast('Lỗi tải danh sách lớp học', error?.response?.data?.message || 'Không thể tải danh sách lớp học');
         } finally {
             setIsLoadingEnrollments(false);
         }
@@ -318,31 +333,53 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
             case 'logs':
                 return (
                     <div className="space-y-4">
-                        <h4 className="text-sm font-medium text-gray-900">Nhật ký Lớp học liên quan</h4>
-                        
-                        <div className="space-y-3">
-                            <div className="p-4 bg-gray-50 rounded-lg">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h5 className="text-sm font-medium">Bài học về OOP trong Java</h5>
-                                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Tiến độ học tập</span>
-                                </div>
-                                <p className="text-sm text-gray-600 mb-2">
-                                    Hôm nay chúng ta đã học về khái niệm lập trình hướng đối tượng...
-                                </p>
-                                <div className="text-xs text-gray-500">2024-12-19</div>
+                        {/* Class Selector - Scrollable horizontal list */}
+                        {isLoadingEnrollments ? (
+                            <div className="text-center py-4">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                                <p className="text-sm text-gray-600 mt-2">Đang tải danh sách lớp học...</p>
                             </div>
+                        ) : enrollments.length > 0 ? (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-900 mb-3">Lớp học đã đăng ký</label>
+                                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                                    {enrollments.map((enrollment) => (
+                                        <button
+                                            key={enrollment.classId}
+                                            onClick={() => setSelectedClass({
+                                                classId: enrollment.classId,
+                                                name: enrollment.className,
+                                                programName: enrollment.programName,
+                                                centerName: '',
+                                                status: 'ACTIVE'
+                                            })}
+                                            className={`flex-shrink-0 px-4 py-3 rounded-lg border-2 transition-all ${
+                                                selectedClass?.classId === enrollment.classId
+                                                    ? 'border-blue-500 bg-blue-50'
+                                                    : 'border-gray-200 bg-white hover:border-blue-300'
+                                            }`}
+                                        >
+                                            <div className="text-left">
+                                                <div className="text-sm font-medium text-gray-900">{enrollment.className}</div>
+                                                <div className="text-xs text-gray-500 mt-1">{enrollment.programName}</div>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                <BookOpen size={48} className="mx-auto text-gray-300 mb-2" />
+                                <p className="text-sm text-gray-600">Học viên chưa được gán vào lớp học nào</p>
+                            </div>
+                        )}
 
-                            <div className="p-4 bg-gray-50 rounded-lg">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h5 className="text-sm font-medium">Thông báo bài tập về nhà</h5>
-                                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Bài tập</span>
-                                </div>
-                                <p className="text-sm text-gray-600 mb-2">
-                                    Các em làm bài tập chương 3, nộp trước thứ 6 tuần tới...
-                                </p>
-                                <div className="text-xs text-gray-500">2024-12-18</div>
+                        {/* Journal List for Selected Class */}
+                        {selectedClass && (
+                            <div className="mt-4">
+                                <ClassLogTab selectedClass={selectedClass} readOnly={true} />
                             </div>
-                        </div>
+                        )}
                     </div>
                 );
 

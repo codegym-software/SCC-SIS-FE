@@ -80,10 +80,6 @@ const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program
                             </span>
                         </div>
                         <div>
-                            <label className="block text-xs text-gray-500 mb-1">Trình độ</label>
-                            <div className="text-sm">{program.level}</div>
-                        </div>
-                        <div>
                             <label className="block text-xs text-gray-500 mb-1">Trạng thái</label>
                             <span
                                 className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${

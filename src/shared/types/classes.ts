@@ -38,6 +38,8 @@ export type ClassResponse = {
     status: ClassStatus;
     room: string;
     capacity: number;
+    studyDays?: string[];
+    studyTime?: string;
     createdAt: string;
     updatedAt: string;
     createdBy: number;

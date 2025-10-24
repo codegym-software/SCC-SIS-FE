@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, GraduationCap, Check } from 'lucide-react';
+import { X, Plus, GraduationCap, Check, MapPin, Calendar, Clock, AlertCircle } from 'lucide-react';
 import http from '@/shared/api/http';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
 import { useToast } from '@/shared/hooks/useToast';
+
+type StudyDay = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
+type StudyTime = 'MORNING' | 'AFTERNOON' | 'EVENING';
 
 type ClassInstructor = {
     id: string;
@@ -55,6 +58,9 @@ type ClassItem = {
     maxStudents: number;
     instructors: ClassInstructor[];
     status: 'Chuẩn bị' | 'Đang học' | 'Hoàn thành' | 'Tạm dừng';
+    studyDays?: StudyDay[];
+    studyTime?: StudyTime;
+    centerName?: string;
 };
 
 type Instructor = {
@@ -66,11 +72,44 @@ type Instructor = {
     assigned: boolean;
 };
 
+type EnrolledClass = {
+    classId: number;
+    centerName: string;
+    name: string;
+    studyDays?: StudyDay[];
+    studyTime?: StudyTime;
+};
+
 interface AssignInstructorModalProps {
     classItem: ClassItem;
     onClose?: () => void;
     onUpdateInstructors?: (classId: string, updatedInstructors: Instructor[]) => void;
 }
+
+// Helper functions to format study days and time
+const formatStudyDays = (days?: StudyDay[]): string => {
+    if (!days || days.length === 0) return 'Chưa có lịch';
+    const dayMap: Record<StudyDay, string> = {
+        'MONDAY': 'Thứ 2',
+        'TUESDAY': 'Thứ 3',
+        'WEDNESDAY': 'Thứ 4',
+        'THURSDAY': 'Thứ 5',
+        'FRIDAY': 'Thứ 6',
+        'SATURDAY': 'Thứ 7',
+        'SUNDAY': 'Chủ nhật'
+    };
+    return days.map(d => dayMap[d]).join(', ');
+};
+
+const formatStudyTime = (time?: StudyTime): string => {
+    if (!time) return '';
+    const timeMap: Record<StudyTime, string> = {
+        'MORNING': 'Sáng (8h-11h)',
+        'AFTERNOON': 'Chiều (14h-17h)',
+        'EVENING': 'Tối (18h-21h)'
+    };
+    return timeMap[time] || time;
+};
 
 const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem, onClose, onUpdateInstructors }) => {
     const { success: showSuccessToast, error: showErrorToast } = useToast();
@@ -130,6 +169,9 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
     // State for assigned instructors (from API)
     const [assignedInstructorsFromAPI, setAssignedInstructorsFromAPI] = useState<ClassInstructor[]>([]);
 
+    // State for tracking lecturer's enrolled classes (for conflict checking)
+    const [lecturerEnrolledClasses, setLecturerEnrolledClasses] = useState<Record<string, EnrolledClass[]>>({});
+
     // Function to fetch and refresh available instructors
     const fetchAvailableInstructors = async () => {
         try {
@@ -160,6 +202,72 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
         }
     }, [classItem.id]);
 
+    // Fetch enrolled classes for all available instructors when modal opens
+    useEffect(() => {
+        if (showAssignModal && instructors.length > 0) {
+            instructors.forEach(instructor => {
+                if (!lecturerEnrolledClasses[instructor.id]) {
+                    fetchLecturerClasses(instructor.id);
+                }
+            });
+        }
+    }, [showAssignModal, instructors]);
+
+    // Helper function to get time range from StudyTime enum
+    const getTimeRange = (studyTime: string): { start: number; end: number } | null => {
+        const timeMap: Record<string, { start: number; end: number }> = {
+            'MORNING': { start: 8, end: 11 },      // 8h-11h
+            'AFTERNOON': { start: 14, end: 17 },   // 14h-17h
+            'EVENING': { start: 18, end: 21 },     // 18h-21h
+        };
+        return timeMap[studyTime] || null;
+    };
+
+    // Check if two time ranges overlap
+    const doTimeRangesOverlap = (time1: string, time2: string): boolean => {
+        const range1 = getTimeRange(time1);
+        const range2 = getTimeRange(time2);
+        
+        if (!range1 || !range2) return false;
+        
+        // Two ranges overlap if: start1 < end2 AND start2 < end1
+        return range1.start < range2.end && range2.start < range1.end;
+    };
+
+    // Check if instructor has schedule conflict with the class
+    const checkInstructorScheduleConflict = (instructorId: string): { hasConflict: boolean; conflictMessage?: string } => {
+        const enrolledClasses = lecturerEnrolledClasses[instructorId];
+        
+        if (!enrolledClasses || enrolledClasses.length === 0) {
+            return { hasConflict: false };
+        }
+
+        if (!classItem.studyDays || !classItem.studyTime) {
+            return { hasConflict: false };
+        }
+
+        for (const enrolledClass of enrolledClasses) {
+            if (!enrolledClass.studyDays || !enrolledClass.studyTime) continue;
+
+            // Check if any day overlaps
+            const hasOverlappingDay = classItem.studyDays.some(day => 
+                enrolledClass.studyDays?.includes(day)
+            );
+
+            // Check if time ranges overlap (not just exact match)
+            const hasTimeConflict = doTimeRangesOverlap(classItem.studyTime, enrolledClass.studyTime);
+
+            if (hasOverlappingDay && hasTimeConflict) {
+                return {
+                    hasConflict: true,
+                    conflictMessage: `Trùng lịch với lớp "${enrolledClass.name}" tại ${enrolledClass.centerName} (${formatStudyDays(enrolledClass.studyDays)} - ${formatStudyTime(enrolledClass.studyTime)})`
+                };
+            }
+        }
+
+        return { hasConflict: false };
+    };
+
     // Use local state for immediate UI updates
     const assignedInstructors = localAssignedInstructors;
     const filteredInstructors = instructors.filter(i => {
@@ -171,11 +279,22 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                 i.email.toLowerCase().includes(searchTerm.toLowerCase()));
     });
 
+    // Sort instructors: assignable first, conflicting last
+    const sortedInstructors = [...filteredInstructors].sort((a, b) => {
+        const aConflict = checkInstructorScheduleConflict(a.id).hasConflict;
+        const bConflict = checkInstructorScheduleConflict(b.id).hasConflict;
+        
+        // Non-conflicting instructors come first
+        if (aConflict && !bConflict) return 1;
+        if (!aConflict && bConflict) return -1;
+        return 0;
+    });
+
     // Pagination logic
-    const totalPages = Math.ceil(filteredInstructors.length / itemsPerPage);
+    const totalPages = Math.ceil(sortedInstructors.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    const availableInstructors = filteredInstructors.slice(startIndex, endIndex);
+    const availableInstructors = sortedInstructors.slice(startIndex, endIndex);
 
     const handleAssignInstructor = () => {
         // Check if already at maximum capacity
@@ -206,27 +325,80 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
         }
     };
 
-    const handleSelectInstructor = (instructorId: string) => {
-        setSelectedInstructors(prev => {
-            const isSelected = prev.includes(instructorId);
+    // Fetch enrolled classes for a lecturer
+    const fetchLecturerClasses = async (lecturerId: string) => {
+        try {
+            const response = await http.get(`/api/lecturers/${lecturerId}/classes`);
+            // Backend returns List<ClassResponse> directly, not wrapped in items
+            const apiData = Array.isArray(response.data) ? response.data : [];
+            const classes: EnrolledClass[] = apiData
+                .filter((c: any) => c.classId !== parseInt(classItem.id)) // Exclude current class
+                .map((c: any) => ({
+                    classId: c.classId,
+                    centerName: c.centerName,
+                    name: c.name,
+                    studyDays: c.studyDays,
+                    studyTime: c.studyTime
+                }));
             
-            // If deselecting, just remove it
-            if (isSelected) {
-                return prev.filter(id => id !== instructorId);
-            }
-            
-            // If selecting, check if we still have available slots
-            const remainingSlots = MAX_ACTIVE_LECTURERS - assignedInstructors.length;
-            if (prev.length >= remainingSlots) {
-                showErrorToast(
-                    'Không thể chọn thêm',
-                    `Lớp học chỉ còn ${remainingSlots} slot trống. Bạn đã chọn đủ số lượng giảng viên.`
-                );
-                return prev;
-            }
-            
-            return [...prev, instructorId];
-        });
+            setLecturerEnrolledClasses(prev => ({
+                ...prev,
+                [lecturerId]: classes
+            }));
+        } catch (error) {
+            console.error('Error fetching lecturer classes:', error);
+            setLecturerEnrolledClasses(prev => ({
+                ...prev,
+                [lecturerId]: []
+            }));
+        }
+    };
+
+    const handleSelectInstructor = async (instructorId: string) => {
+        const isSelected = selectedInstructors.includes(instructorId);
+        
+        // If deselecting, just remove it
+        if (isSelected) {
+            setSelectedInstructors(prev => prev.filter(id => id !== instructorId));
+            return;
+        }
+        
+        // Check for schedule conflict before allowing selection
+        const conflictCheck = checkInstructorScheduleConflict(instructorId);
+        if (conflictCheck.hasConflict) {
+            showErrorToast(
+                'Không thể phân công giảng viên',
+                conflictCheck.conflictMessage || 'Giảng viên có lịch trùng với lớp học này.'
+            );
+            return;
+        }
+        
+        // If selecting, check if we still have available slots
+        const remainingSlots = MAX_ACTIVE_LECTURERS - assignedInstructors.length;
+        if (selectedInstructors.length >= remainingSlots) {
+            showErrorToast(
+                'Không thể chọn thêm',
+                `Lớp học chỉ còn ${remainingSlots} slot trống. Bạn đã chọn đủ số lượng giảng viên.`
+            );
+            return;
+        }
+
+        // Fetch lecturer's classes if not already fetched
+        if (!lecturerEnrolledClasses[instructorId]) {
+            await fetchLecturerClasses(instructorId);
+        }
+
+        // Check for schedule conflict
+        const conflict = checkInstructorScheduleConflict(instructorId);
+        if (conflict.hasConflict) {
+            showErrorToast(
+                'Xung đột lịch dạy',
+                conflict.conflictMessage || 'Giảng viên đã có lịch dạy trùng với lớp này.'
+            );
+            return;
+        }
+        
+        setSelectedInstructors(prev => [...prev, instructorId]);
     };
 
     const handleConfirmAssign = async () => {
@@ -411,29 +583,65 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
         <>
             <div className="bg-white rounded-lg max-w-6xl w-full">
                 {/* Modal Header */}
-                <div className="px-4 py-3 border-b flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-purple-50 text-purple-600 grid place-items-center">
-                            <GraduationCap size={16} />
+                <div className="px-4 py-3 border-b">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-purple-50 text-purple-600 grid place-items-center">
+                                <GraduationCap size={16} />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-900">
+                                    Phân công Giảng viên - {classItem.name}
+                                </h2>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Xem và quản lý danh sách giảng viên được phân công cho lớp học
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="text-lg font-semibold text-gray-900">
-                                Phân công Giảng viên - {classItem.name}
-                            </h2>
-                            <p className="text-sm text-gray-500 mt-1">
-                                Xem và quản lý danh sách giảng viên được phân công cho lớp học
-                            </p>
+                        <button
+                            className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
+                            onClick={() => {
+                                console.log('Close button clicked');
+                                onClose?.();
+                            }}
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+                    
+                    {/* Class Information */}
+                    <div className="bg-blue-50 rounded-lg px-4 py-3">
+                        <div className="grid grid-cols-4 gap-4 text-sm">
+                            <div className="flex items-center gap-2">
+                                <MapPin size={16} className="text-blue-600" />
+                                <div>
+                                    <div className="text-gray-500 text-xs">Trung tâm</div>
+                                    <div className="font-medium text-gray-900">{classItem.centerName || 'Chưa có'}</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Calendar size={16} className="text-blue-600" />
+                                <div>
+                                    <div className="text-gray-500 text-xs">Ngày học</div>
+                                    <div className="font-medium text-gray-900">{formatStudyDays(classItem.studyDays)}</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Clock size={16} className="text-blue-600" />
+                                <div>
+                                    <div className="text-gray-500 text-xs">Ca học</div>
+                                    <div className="font-medium text-gray-900">{formatStudyTime(classItem.studyTime) || 'Chưa có'}</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <MapPin size={16} className="text-blue-600" />
+                                <div>
+                                    <div className="text-gray-500 text-xs">Phòng học</div>
+                                    <div className="font-medium text-gray-900">{classItem.location || 'Chưa có'}</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <button
-                        className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
-                        onClick={() => {
-                            console.log('Close button clicked');
-                            onClose?.();
-                        }}
-                    >
-                        <X size={20} />
-                    </button>
                 </div>
 
                 {/* Instructor Count and Assign Button */}
@@ -620,38 +828,126 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                 </div>
                             ) : (
                                 <div className="divide-y">
-                                    {availableInstructors.map((instructor) => (
-                                        <div key={instructor.id}>
-                                            <div className="px-6 py-4 flex items-center gap-6">
-                                                {/* Checkbox */}
-                                                <div className="flex items-center">
-                                                    <button
-                                                        onClick={() => handleSelectInstructor(instructor.id)}
-                                                        className={`h-6 w-6 rounded border-2 flex items-center justify-center ${selectedInstructors.includes(instructor.id)
-                                                            ? 'bg-blue-500 border-blue-500 text-white'
-                                                            : 'border-gray-300 hover:border-blue-400'
+                                    {availableInstructors.map((instructor) => {
+                                        const conflictCheck = checkInstructorScheduleConflict(instructor.id);
+                                        const hasConflict = conflictCheck.hasConflict;
+                                        
+                                        return (
+                                            <div key={instructor.id} className={hasConflict ? 'bg-gray-50' : ''}>
+                                                <div className="px-6 py-4 flex items-center gap-6">
+                                                    {/* Checkbox */}
+                                                    <div className="flex items-center">
+                                                        <button
+                                                            onClick={() => !hasConflict && handleSelectInstructor(instructor.id)}
+                                                            disabled={hasConflict}
+                                                            className={`h-6 w-6 rounded border-2 flex items-center justify-center transition-colors ${
+                                                                hasConflict
+                                                                    ? 'bg-gray-200 border-gray-300 cursor-not-allowed'
+                                                                    : selectedInstructors.includes(instructor.id)
+                                                                        ? 'bg-blue-500 border-blue-500 text-white'
+                                                                        : 'border-gray-300 hover:border-blue-400'
                                                             }`}
-                                                    >
-                                                        {selectedInstructors.includes(instructor.id) && (
-                                                            <Check size={14} />
+                                                        >
+                                                            {selectedInstructors.includes(instructor.id) && !hasConflict && (
+                                                                <Check size={14} />
+                                                            )}
+                                                            {hasConflict && (
+                                                                <X size={14} className="text-gray-500" />
+                                                            )}
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Instructor Info */}
+                                                    <div className="flex items-center gap-4 flex-1">
+                                                        <div className={`h-10 w-10 rounded-full grid place-items-center text-sm font-medium ${
+                                                            hasConflict 
+                                                                ? 'bg-gray-200 text-gray-500'
+                                                                : 'bg-purple-100 text-purple-700'
+                                                        }`}>
+                                                            {instructor.initial}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <div className={`text-sm font-medium ${hasConflict ? 'text-gray-500' : 'text-gray-900'}`}>
+                                                                {instructor.name}
+                                                                {hasConflict && (
+                                                                    <span className="ml-2 text-xs font-normal text-red-600">
+                                                                        (Không thể gán)
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-xs text-gray-500">{instructor.email}</div>
+                                                            
+                                                            {/* Show conflict message */}
+                                                            {hasConflict && conflictCheck.conflictMessage && (
+                                                                <div className="mt-1 flex items-start gap-1.5 text-xs text-red-600">
+                                                                    <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
+                                                                    <span>{conflictCheck.conflictMessage}</span>
+                                                                </div>
+                                                            )}
+                                                        
+                                                        {/* Show lecturer's current classes */}
+                                                        {lecturerEnrolledClasses[instructor.id] && lecturerEnrolledClasses[instructor.id].length > 0 && (
+                                                            <div className="mt-2 space-y-1.5">
+                                                                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-700">
+                                                                    <GraduationCap size={12} className="flex-shrink-0" />
+                                                                    <span>Đang dạy {lecturerEnrolledClasses[instructor.id].length} lớp khác</span>
+                                                                </div>
+                                                                {lecturerEnrolledClasses[instructor.id].map((enrolledClass, idx) => {
+                                                                    // Check if this class conflicts with the current class
+                                                                    const hasOverlappingDay = classItem.studyDays?.some(day => 
+                                                                        enrolledClass.studyDays?.includes(day)
+                                                                    );
+                                                                    const hasTimeConflict = classItem.studyTime && enrolledClass.studyTime 
+                                                                        ? doTimeRangesOverlap(classItem.studyTime, enrolledClass.studyTime)
+                                                                        : false;
+                                                                    const isConflicting = hasOverlappingDay && hasTimeConflict;
+                                                                    
+                                                                    return (
+                                                                        <div 
+                                                                            key={idx} 
+                                                                            className={`text-xs border rounded px-2 py-1.5 ${
+                                                                                isConflicting 
+                                                                                    ? 'bg-red-50 border-red-300' 
+                                                                                    : 'bg-white border-gray-300'
+                                                                            }`}
+                                                                        >
+                                                                            <div className="flex items-start gap-1.5">
+                                                                                <MapPin size={11} className={`mt-0.5 flex-shrink-0 ${
+                                                                                    isConflicting ? 'text-red-600' : 'text-gray-600'
+                                                                                }`} />
+                                                                                <div className="flex-1 min-w-0">
+                                                                                    <div className="font-medium text-gray-900 truncate">{enrolledClass.name}</div>
+                                                                                    <div className="text-gray-600 mt-0.5">{enrolledClass.centerName}</div>
+                                                                                    <div className="flex items-center gap-2 mt-1 text-gray-500">
+                                                                                        <span className="flex items-center gap-1">
+                                                                                            <Calendar size={10} />
+                                                                                            {formatStudyDays(enrolledClass.studyDays)}
+                                                                                        </span>
+                                                                                        <span>•</span>
+                                                                                        <span className="flex items-center gap-1">
+                                                                                            <Clock size={10} />
+                                                                                            {formatStudyTime(enrolledClass.studyTime)}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    {isConflicting && (
+                                                                                        <div className="mt-1 flex items-center gap-1 text-red-600 font-medium">
+                                                                                            <AlertCircle size={10} />
+                                                                                            <span>Trùng lịch học</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         )}
-                                                    </button>
-                                                </div>
-
-                                                {/* Instructor Info */}
-                                                <div className="flex items-center gap-4 flex-1">
-                                                    <div className="h-10 w-10 rounded-full bg-purple-100 text-purple-700 grid place-items-center text-sm font-medium">
-                                                        {instructor.initial}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="text-sm font-medium text-gray-900">{instructor.name}</div>
-                                                        <div className="text-xs text-gray-500">{instructor.email}</div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Form for selected instructor */}
-                                            {selectedInstructors.includes(instructor.id) && (
+                                                {/* Form for selected instructor */}
+                                                {selectedInstructors.includes(instructor.id) && (
                                                 <div className="px-6 py-4 bg-gray-50 border-l-4 border-blue-500">
                                                     <div className="grid grid-cols-3 gap-6">
                                                         <div>
@@ -691,9 +987,10 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                                         </div>
                                                     </div>
                                                 </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

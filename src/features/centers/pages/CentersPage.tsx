@@ -469,11 +469,9 @@ export default function CentersPage() {
                         <div className="grid grid-cols-12 gap-4 px-4 py-3 text-xs text-gray-500 border-b">
                             <div className="col-span-3">Tên Trung tâm</div>
                             <div className="col-span-3">Địa chỉ</div>
-                            <div className="col-span-2">Liên hệ</div>
+                            <div className="col-span-3">Liên hệ</div>
                             <div className="col-span-2">Trạng thái</div>
-                            <div className="col-span-1">Học viên</div>
-                            <div className="col-span-1">Giảng viên</div>
-                            <div className="col-span-0 md:col-span-0"></div>
+                            <div className="col-span-1"></div>
                         </div>
 
                         <div className="divide-y">
@@ -492,7 +490,7 @@ export default function CentersPage() {
                                         <div className="flex items-center gap-2 text-gray-700"><MapPin size={14} /> {c.addressLine}</div>
                                         <div className="text-xs text-gray-500">{[c.ward, c.district, c.province].filter(Boolean).join(', ')}</div>
                                     </div>
-                                    <div className="col-span-12 md:col-span-2 text-sm">
+                                    <div className="col-span-12 md:col-span-3 text-sm">
                                         <div className="flex items-center gap-2"><Phone size={14} /> {c.phone}</div>
                                         <div className="flex items-center gap-2 text-xs text-gray-600"><Mail size={14} /> {c.email}</div>
                                     </div>
@@ -501,7 +499,7 @@ export default function CentersPage() {
                                             {c.active ? 'Hoạt động' : 'Không hoạt động'}
                                         </span>
                                     </div>
-                                    <div className="col-span-6 md:col-span-2 relative">
+                                    <div className="col-span-6 md:col-span-1 relative">
                                         <div className="absolute right-0 top-1/2 -translate-y-1/2">
                                             <div className="relative z-40">
                                                 <button className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center" onClick={() => setOpenMenuId(openMenuId === c.id ? null : c.id)}>
