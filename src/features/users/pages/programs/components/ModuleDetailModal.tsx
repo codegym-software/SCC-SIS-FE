@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, FileText, Download, Trash2, Calendar, User, File } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
+import type { ModuleResponse } from '@/shared/types/module';
 
 type SyllabusFile = {
     id: string;
@@ -12,20 +13,7 @@ type SyllabusFile = {
     downloadUrl?: string;
 };
 
-type Module = {
-    id: string;
-    code: string;
-    name: string;
-    programId: number;
-    programName: string;
-    credits: number;
-    durationHours: number;
-    level: 'Beginner' | 'Intermediate' | 'Advanced';
-    sequenceOrder: number;
-    status: 'Hoạt động' | 'Tạm dừng' | 'Hoàn thành';
-    syllabus?: 'Có' | 'Chưa có';
-    description?: string;
-};
+type Module = ModuleResponse;
 
 interface ModuleDetailModalProps {
     open: boolean;
@@ -215,22 +203,30 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1 font-medium">Học kỳ</label>
-                                    <div className="text-sm">
-                                        Học kỳ {Math.floor((module.sequenceOrder - 1) / 6) + 1}
-                                    </div>
+                                    <div className="text-sm">Học kỳ {module.semester}</div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1 font-medium">Loại môn học</label>
+                                    <span
+                                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                            module.isMandatory
+                                                ? 'bg-red-100 text-red-700'
+                                                : 'bg-blue-100 text-blue-700'
+                                        }`}
+                                    >
+                                        {module.isMandatory ? 'Bắt buộc' : 'Tự chọn'}
+                                    </span>
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1 font-medium">Trạng thái</label>
                                     <span
                                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                            module.status === 'Hoạt động'
+                                            module.isActive
                                                 ? 'bg-green-100 text-green-700'
-                                                : module.status === 'Tạm dừng'
-                                                  ? 'bg-yellow-100 text-yellow-700'
-                                                  : 'bg-gray-100 text-gray-700'
+                                                : 'bg-gray-100 text-gray-700'
                                         }`}
                                     >
-                                        {module.status}
+                                        {module.isActive ? 'Hoạt động' : 'Tạm dừng'}
                                     </span>
                                 </div>
                             </div>

@@ -1,20 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import type { Program as ProgramDto } from '@/shared/api/programs';
+import type { ModuleResponse } from '@/shared/types/module';
 
-type Module = {
-    id: string;
-    code: string;
-    name: string;
-    programId: number;
-    programName: string;
-    credits: number;
-    durationHours: number;
-    level: 'Beginner' | 'Intermediate' | 'Advanced';
-    sequenceOrder: number;
-    status: 'Hoạt động' | 'Tạm dừng' | 'Hoàn thành';
-    syllabus?: 'Có' | 'Chưa có';
-};
+type Module = ModuleResponse;
 
 interface ModuleFormProps {
     open: boolean;
@@ -43,6 +32,7 @@ const ModuleForm: React.FC<ModuleFormProps> = ({
         durationHours: 0,
         level: 'Beginner',
         sequenceOrder: 1,
+        isMandatory: true,
     });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,6 +47,7 @@ const ModuleForm: React.FC<ModuleFormProps> = ({
                 durationHours: editing.durationHours,
                 level: editing.level,
                 sequenceOrder: editing.sequenceOrder,
+                isMandatory: editing.isMandatory ?? true,
             });
         } else {
             setFormData({
@@ -67,6 +58,7 @@ const ModuleForm: React.FC<ModuleFormProps> = ({
                 durationHours: 0,
                 level: 'Beginner',
                 sequenceOrder: 1,
+                isMandatory: true,
             });
         }
         setErrors({});
@@ -91,8 +83,14 @@ const ModuleForm: React.FC<ModuleFormProps> = ({
         if (!formData.code?.trim()) {
             newErrors.code = 'Mã module là bắt buộc';
         }
-        if (!formData.programId) {
-            newErrors.programId = 'Vui lòng chọn chương trình';
+        // Chỉ validate programId và sequenceOrder khi tạo mới
+        if (!editing) {
+            if (!formData.programId) {
+                newErrors.programId = 'Vui lòng chọn chương trình';
+            }
+            if (!formData.sequenceOrder || formData.sequenceOrder <= 0) {
+                newErrors.sequenceOrder = 'Thứ tự phải là số dương';
+            }
         }
         if (!formData.credits || formData.credits <= 0) {
             newErrors.credits = 'Số tín chỉ phải lớn hơn 0';
@@ -101,9 +99,6 @@ const ModuleForm: React.FC<ModuleFormProps> = ({
             newErrors.durationHours = 'Thời lượng (giờ) phải lớn hơn 0';
         } else if (formData.durationHours > 20) {
             newErrors.durationHours = 'Mỗi module không được vượt quá 20 giờ';
-        }
-        if (!formData.sequenceOrder || formData.sequenceOrder <= 0) {
-            newErrors.sequenceOrder = 'Thứ tự phải là số dương';
         }
 
         setErrors(newErrors);
@@ -121,9 +116,6 @@ const ModuleForm: React.FC<ModuleFormProps> = ({
         <div>
             <div className="px-4 py-3 border-b flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 grid place-items-center text-white">
-                        <Save size={16} />
-                    </div>
                     <div>
                         <div className="font-medium">
                             {editing ? 'Chỉnh sửa Module / Học phần' : 'Tạo Module / Học phần mới'}
@@ -143,28 +135,47 @@ const ModuleForm: React.FC<ModuleFormProps> = ({
             </div>
 
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
-                {/* Chương trình đào tạo */}
-                <div>
-                    <label className="block text-sm font-medium mb-1">
-                        Chương trình đào tạo <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                        value={formData.programId ?? ''}
-                        onChange={(e) => handleChange('programId', Number(e.target.value))}
-                        className={`w-full h-10 px-3 border rounded-md text-sm ${errors.programId ? 'border-red-500' : ''}`}
-                        disabled={isSubmitting}
-                    >
-                        <option value="" disabled>
-                            Chọn chương trình
-                        </option>
-                        {programs.map((p) => (
-                            <option key={p.programId} value={p.programId}>
-                                {p.name}
+                {/* Chương trình đào tạo - READ ONLY khi edit */}
+                {editing && (
+                    <div>
+                        <label className="block text-sm font-medium mb-1 text-gray-600">
+                            Chương trình đào tạo
+                        </label>
+                        <input
+                            type="text"
+                            value={programs.find((p) => p.programId === formData.programId)?.name || ''}
+                            className="w-full px-3 py-2 border rounded-md text-sm bg-gray-50 text-gray-600 cursor-not-allowed"
+                            disabled
+                            readOnly
+                        />
+                    </div>
+                )}
+
+                {/* Chương trình đào tạo - EDITABLE khi tạo mới */}
+                {!editing && (
+                    <div>
+                        <label className="block text-sm font-medium mb-1">
+                            Chương trình đào tạo <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                            value={formData.programId ?? ''}
+                            onChange={(e) => handleChange('programId', Number(e.target.value))}
+                            className={`w-full h-10 px-3 border rounded-md text-sm ${errors.programId ? 'border-red-500' : ''}`}
+                            disabled={isSubmitting}
+                        >
+                            <option value="" disabled>
+                                Chọn chương trình
                             </option>
-                        ))}
-                    </select>
-                    {errors.programId && <p className="text-xs text-red-500 mt-1">{errors.programId}</p>}
-                </div>
+                            {programs.map((p) => (
+                                <option key={p.programId} value={p.programId}>
+                                    {p.name}
+                                </option>
+                            ))}
+                        </select>
+                        {errors.programId && <p className="text-xs text-red-500 mt-1">{errors.programId}</p>}
+                    </div>
+                )}
+
                 {/* Tên Module */}
                 <div>
                     <label className="block text-sm font-medium mb-1">
@@ -259,28 +270,52 @@ const ModuleForm: React.FC<ModuleFormProps> = ({
                             <option value="Advanced">Advanced</option>
                         </select>
                     </div>
+
+                    {/* Thứ tự - READ ONLY khi edit, EDITABLE khi tạo mới */}
                     <div>
-                        <label className="block text-sm font-medium mb-1">
-                            Thứ tự <span className="text-red-500">*</span>
+                        <label className="block text-sm font-medium mb-1 text-gray-600">
+                            Thứ tự {!editing && <span className="text-red-500">*</span>}
                         </label>
                         <input
                             type="number"
                             value={formData.sequenceOrder || 1}
                             onChange={(e) => handleChange('sequenceOrder', parseInt(e.target.value) || 1)}
                             className={`w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-200 outline-none ${
-                                errors.sequenceOrder ? 'border-red-500' : ''
-                            }`}
+                                editing ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''
+                            } ${errors.sequenceOrder ? 'border-red-500' : ''}`}
                             placeholder="1"
                             min={1}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || !!editing}
+                            readOnly={!!editing}
                         />
                         {errors.sequenceOrder && <p className="text-xs text-red-500 mt-1">{errors.sequenceOrder}</p>}
                     </div>
                 </div>
 
-                {/* Preview: Semester */}
-                <div className="mt-2 p-3 border rounded-md bg-gray-50 text-sm">
-                    Học kỳ: Học kỳ {Math.floor(((formData.sequenceOrder || 1) - 1) / 6) + 1}
+                {/* Môn học bắt buộc */}
+                <div className="flex items-center gap-3 p-3 border rounded-md bg-gray-50">
+                    <input
+                        type="checkbox"
+                        id="isMandatory"
+                        checked={formData.isMandatory ?? true}
+                        onChange={(e) => handleChange('isMandatory', e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                        disabled={isSubmitting}
+                    />
+                    <label htmlFor="isMandatory" className="text-sm font-medium cursor-pointer select-none">
+                        Môn học bắt buộc
+                    </label>
+                    <span className="text-xs text-gray-500 ml-auto">
+                        {formData.isMandatory ? '(Bắt buộc)' : '(Tự chọn)'}
+                    </span>
+                </div>
+
+                {/* Preview: Học kỳ - Hiển thị dựa trên Thứ tự */}
+                <div className="p-3 border rounded-md bg-gray-50 text-sm">
+                    <span className="font-medium text-gray-900">Học kỳ:</span>{' '}
+                    <span className="text-gray-700">
+                        Học kỳ {Math.floor(((formData.sequenceOrder || 1) - 1) / 6) + 1}
+                    </span>
                 </div>
 
                 {/* Actions */}
@@ -295,7 +330,7 @@ const ModuleForm: React.FC<ModuleFormProps> = ({
                     </button>
                     <button
                         type="submit"
-                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                        className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
                         disabled={isSubmitting}
                     >
                         {isSubmitting ? (

@@ -1,28 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GripVertical, X, BookOpen, Search, Plus } from 'lucide-react';
+import type { ModuleResponse } from '@/shared/types/module';
+import type { Program as ProgramType } from '@/shared/api/programs';
+import { reorderModule } from '@/shared/api/modules';
 
-type Module = {
-    id: string;
-    code: string;
-    name: string;
-    programId: number;
-    programName: string;
-    credits: number;
-    durationHours: number;
-    level: 'Beginner' | 'Intermediate' | 'Advanced';
-    sequenceOrder: number;
-    status: 'Hoạt động' | 'Tạm dừng' | 'Hoàn thành';
-    syllabus?: 'Có' | 'Chưa có';
-};
-
-type Program = {
-    id?: string;
-    name: string;
-    code: string;
-    categoryCode?: string;
-    description?: string;
-    isActive?: boolean;
-};
+type Module = ModuleResponse;
+type Program = ProgramType;
 
 interface ProgramModulesManagerProps {
     open: boolean;
@@ -45,11 +28,21 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
     const [searchQuery, setSearchQuery] = useState('');
     const [draggedItem, setDraggedItem] = useState<Module | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+    const [isReordering, setIsReordering] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string>('');
+
+    // Update programModules when initialProgramModules changes
+    useEffect(() => {
+        setProgramModules(initialProgramModules);
+    }, [initialProgramModules]);
 
     if (!open) return null;
 
+    // Sort modules by sequenceOrder to display in correct order
+    const sortedProgramModules = [...programModules].sort((a, b) => a.sequenceOrder - b.sequenceOrder);
+
     // Filter modules that are not in program yet
-    const availableModules = allModules.filter((m) => !programModules.find((pm) => pm.id === m.id));
+    const availableModules = allModules.filter((m) => !programModules.find((pm) => pm.moduleId === m.moduleId));
 
     // Filter by search query
     const filteredAvailableModules = availableModules.filter(
@@ -78,20 +71,56 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
         setDragOverIndex(null);
     };
 
-    const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
         e.preventDefault();
-        if (!draggedItem) return;
+        if (!draggedItem || isReordering) return;
 
-        const currentIndex = programModules.findIndex((m) => m.id === draggedItem.id);
-        if (currentIndex === -1) return; // Item not in list
+        // Sử dụng sortedProgramModules để tính index đúng
+        const sortedModules = [...programModules].sort((a, b) => a.sequenceOrder - b.sequenceOrder);
+        const currentIndex = sortedModules.findIndex((m) => m.moduleId === draggedItem.moduleId);
+        
+        if (currentIndex === -1 || currentIndex === dropIndex) {
+            setDraggedItem(null);
+            setDragOverIndex(null);
+            return;
+        }
 
-        const newModules = [...programModules];
-        newModules.splice(currentIndex, 1); // Remove from old position
-        newModules.splice(dropIndex, 0, draggedItem); // Insert at new position
+        // Kiểm tra xem module có cùng học kỳ không
+        const targetModule = sortedModules[dropIndex];
+        if (draggedItem.semester !== targetModule.semester) {
+            setErrorMessage('Không thể đổi module khác học kỳ');
+            setDraggedItem(null);
+            setDragOverIndex(null);
+            // Tự động ẩn error sau 3 giây
+            setTimeout(() => setErrorMessage(''), 3000);
+            return;
+        }
 
-        setProgramModules(newModules);
-        setDraggedItem(null);
-        setDragOverIndex(null);
+        // Gọi API reorder
+        try {
+            setIsReordering(true);
+            setErrorMessage(''); // Xóa error message cũ
+            
+            // API yêu cầu: programId, currentSequenceOrder, newSequenceOrder
+            const programId = draggedItem.programId;
+            const currentSequenceOrder = draggedItem.sequenceOrder;
+            const newSequenceOrder = sortedModules[dropIndex].sequenceOrder;
+
+            const response = await reorderModule(programId, currentSequenceOrder, {
+                newSequenceOrder,
+            });
+
+            // Cập nhật lại danh sách modules từ response
+            setProgramModules(response.data);
+        } catch (error) {
+            console.error('Failed to reorder module:', error);
+            setErrorMessage('Có lỗi xảy ra khi sắp xếp module');
+            setTimeout(() => setErrorMessage(''), 3000);
+        } finally {
+            setIsReordering(false);
+            setDraggedItem(null);
+            setDragOverIndex(null);
+        }
     };
 
     const handleDragEnd = () => {
@@ -105,12 +134,12 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
     };
 
     // Remove module from program
-    const handleRemoveModule = (moduleId: string) => {
-        setProgramModules(programModules.filter((m) => m.id !== moduleId));
+    const handleRemoveModule = (moduleId: number) => {
+        setProgramModules(programModules.filter((m) => m.moduleId !== moduleId));
     };
 
     const handleSave = () => {
-        const moduleIds = programModules.map((m) => m.id);
+        const moduleIds = programModules.map((m) => String(m.moduleId));
         onSave(moduleIds);
         onClose();
     };
@@ -122,19 +151,22 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
                 <div className="w-full max-w-6xl h-[90vh] rounded-lg bg-white shadow-lg border flex flex-col">
                     {/* Header */}
                     <div className="px-6 py-4 border-b flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-purple-500 flex items-center justify-center">
-                                <BookOpen size={24} className="text-white" />
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-semibold">{program.name}</h2>
-                                <p className="text-sm text-gray-500">Sắp xếp và quản lý modules trong chương trình</p>
-                            </div>
+                        <div>
+                            <h2 className="text-lg font-semibold">{program.name}</h2>
+                            <p className="text-sm text-gray-500">Sắp xếp và quản lý modules trong chương trình</p>
                         </div>
                         <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
                             <X size={20} />
                         </button>
                     </div>
+
+                    {/* Error Message */}
+                    {errorMessage && (
+                        <div className="mx-6 mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                            <p className="text-sm text-red-700 font-medium">{errorMessage}</p>
+                        </div>
+                    )}
 
                     {/* Content */}
                     <div className="flex-1 overflow-hidden flex">
@@ -147,7 +179,12 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
                                 </p>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-4">
+                            <div className="flex-1 overflow-y-auto p-4 relative">
+                                {isReordering && (
+                                    <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+                                        <div className="text-sm text-gray-600">Đang sắp xếp lại...</div>
+                                    </div>
+                                )}
                                 {programModules.length === 0 ? (
                                     <div className="text-center text-gray-400 py-12">
                                         <BookOpen size={48} className="mx-auto mb-3 opacity-50" />
@@ -156,10 +193,10 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
                                     </div>
                                 ) : (
                                     <div className="space-y-2">
-                                        {programModules.map((module, index) => (
+                                        {sortedProgramModules.map((module, index) => (
                                             <div
-                                                key={module.id}
-                                                draggable
+                                                key={module.moduleId}
+                                                draggable={!isReordering}
                                                 onDragStart={(e) => handleDragStart(e, module)}
                                                 onDragOver={(e) => handleDragOver(e, index)}
                                                 onDragLeave={handleDragLeave}
@@ -167,23 +204,24 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
                                                 onDragEnd={handleDragEnd}
                                                 className={`
                                                     flex items-center gap-3 p-3 bg-white border rounded-lg
-                                                    cursor-move hover:shadow-md transition-all
+                                                    transition-all
+                                                    ${!isReordering ? 'cursor-move hover:shadow-md' : 'cursor-not-allowed opacity-60'}
                                                     ${dragOverIndex === index ? 'border-purple-500 bg-purple-50' : ''}
-                                                    ${draggedItem?.id === module.id ? 'opacity-50' : ''}
+                                                    ${draggedItem?.moduleId === module.moduleId ? 'opacity-50' : ''}
                                                 `}
                                             >
                                                 <GripVertical size={20} className="text-gray-400" />
                                                 <div className="w-10 h-10 rounded bg-blue-500 flex items-center justify-center flex-shrink-0">
-                                                    <BookOpen size={20} className="text-white" />
+                                                    <div className="text-white font-bold text-xs">{module.sequenceOrder}</div>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="font-medium text-sm">{module.name}</div>
                                                     <div className="text-xs text-gray-500">
-                                                        {module.code} • {module.credits} tín chỉ
+                                                        {module.code} • {module.credits} tín chỉ • HK {module.semester}
                                                     </div>
                                                 </div>
                                                 <button
-                                                    onClick={() => handleRemoveModule(module.id)}
+                                                    onClick={() => handleRemoveModule(module.moduleId)}
                                                     className="p-1.5 hover:bg-red-50 rounded text-red-500"
                                                 >
                                                     <X size={16} />
@@ -247,7 +285,7 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
                                     <div className="space-y-2">
                                         {filteredAvailableModules.map((module) => (
                                             <button
-                                                key={module.id}
+                                                key={module.moduleId}
                                                 onClick={() => handleAddModule(module)}
                                                 className="w-full flex items-center gap-3 p-3 bg-white border rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-left"
                                             >
@@ -276,7 +314,7 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
                         </button>
                         <button
                             onClick={handleSave}
-                            className="px-4 py-2 text-sm rounded-md bg-purple-600 text-white hover:bg-purple-700"
+                            className="px-4 py-2 text-sm rounded-md bg-gray-900 text-white hover:bg-black"
                         >
                             Lưu thay đổi
                         </button>

@@ -12,6 +12,7 @@ export type Program = {
     deliveryMode: DeliveryMode;
     categoryCode: string;
     isActive: boolean;
+    moduleCount?: number; // Số lượng modules trong program (từ backend)
 };
 
 export type CreateProgramDto = {

@@ -20,21 +20,18 @@ import {
     type UpdateProgramDto,
 } from '../../../../shared/api/programs';
 
-type Program = ProgramDto;
+import {
+    getModulesByProgram,
+    createModule,
+    updateModule,
+    type CreateModuleRequest,
+    type UpdateModuleRequest,
+} from '../../../../shared/api/modules';
 
-type Module = {
-    id: string;
-    code: string; // Mã module
-    name: string;
-    programId: number; // Thuộc chương trình nào
-    programName: string; // Dùng để hiển thị nhanh
-    credits: number;
-    durationHours: number; // Số giờ (<= 20h)
-    level: 'Beginner' | 'Intermediate' | 'Advanced';
-    sequenceOrder: number; // Thứ tự trong CTĐT
-    status: 'Hoạt động' | 'Tạm dừng' | 'Hoàn thành';
-    syllabus?: 'Có' | 'Chưa có';
-};
+import type { ModuleResponse } from '../../../../shared/types/module';
+
+type Program = ProgramDto;
+type Module = ModuleResponse;
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
     if (!open) return null;
@@ -66,6 +63,8 @@ export default function ProgramsPage() {
     const itemsPerPage = 5;
 
     const [programs, setPrograms] = useState<Program[]>([]);
+    const [modules, setModules] = useState<Module[]>([]);
+    const [selectedProgramIdForModules, setSelectedProgramIdForModules] = useState<number | null>(null);
 
     // Fetch programs from API
     const fetchPrograms = async () => {
@@ -77,16 +76,59 @@ export default function ProgramsPage() {
         }
     };
 
+    // Fetch modules for selected program or all programs
+    const fetchModules = async (programId?: number) => {
+        try {
+            console.log('[ProgramsPage] fetchModules called with programId:', programId);
+            
+            if (programId) {
+                // Fetch modules for specific program
+                console.log('[ProgramsPage] Fetching modules for program:', programId);
+                const response = await getModulesByProgram({ programId });
+                console.log('[ProgramsPage] Fetched modules:', response.data.length);
+                setModules(response.data);
+                setSelectedProgramIdForModules(programId);
+            } else {
+                // Fetch modules for ALL programs
+                if (programs.length === 0) {
+                    setModules([]);
+                    return;
+                }
+
+                console.log('[ProgramsPage] Fetching modules for all programs:', programs.length);
+                // Call API for each program and merge results
+                const allModulesPromises = programs.map(program => 
+                    getModulesByProgram({ programId: program.programId })
+                );
+                
+                const allModulesResponses = await Promise.all(allModulesPromises);
+                const allModules = allModulesResponses.flatMap(response => response.data);
+                
+                console.log('[ProgramsPage] Total modules fetched:', allModules.length);
+                setModules(allModules);
+                setSelectedProgramIdForModules(null); // null = showing all programs
+            }
+        } catch (error) {
+            console.error('Failed to fetch modules:', error);
+            setModules([]);
+        }
+    };
+
     useEffect(() => {
         fetchPrograms();
     }, []);
+
+    // Fetch modules when switching to modules tab or when programs are loaded
+    useEffect(() => {
+        if (activeTab === 'modules' && programs.length > 0) {
+            fetchModules();
+        }
+    }, [activeTab, programs]);
 
     // Reset pagination when switching tabs
     useEffect(() => {
         setCurrentPage(1);
     }, [activeTab]);
-
-    const [modules, setModules] = useState<Module[]>([]);
 
     const handleSubmit = async (formData: any) => {
         try {
@@ -163,17 +205,19 @@ export default function ProgramsPage() {
     };
 
     // Program modules manager
-    const handleManageModules = (program: Program) => {
+    const handleManageModules = async (program: Program) => {
+        // Load modules cho program này trước khi mở manager
+        await fetchModules(program.programId);
         setOpenModulesManager(program);
     };
 
-    const handleSaveModulesOrder = (moduleIds: string[]) => {
-        // TODO: Call API to save module order for program
-        console.log('Saving module order:', moduleIds);
-        // Simulate API call
-        setTimeout(() => {
-            alert('Đã lưu thứ tự modules thành công!');
-        }, 300);
+    const handleSaveModulesOrder = async (moduleIds: string[]) => {
+        // Không cần gọi API ở đây vì đã reorder bằng API trong ProgramModulesManager
+        // Chỉ cần reload lại modules
+        console.log('Module order saved:', moduleIds);
+        if (openModulesManager) {
+            await fetchModules(openModulesManager.programId);
+        }
     };
 
     // Module handlers
@@ -187,44 +231,69 @@ export default function ProgramsPage() {
         setOpenModuleCreate(true);
     };
 
-    const handleModuleDelete = (module: Module) => {
+    const handleModuleDelete = async (module: Module) => {
         if (window.confirm(`Bạn có chắc chắn muốn xóa module "${module.name}" không?`)) {
-            setModules((prev) => prev.filter((m) => m.id !== module.id));
+            try {
+                // Soft delete by setting isActive to false
+                await updateModule(module.moduleId, { isActive: false });
+                // Refresh modules list
+                await fetchModules();
+            } catch (error) {
+                console.error('Error deleting module:', error);
+                alert('Có lỗi xảy ra khi xóa module. Vui lòng thử lại.');
+            }
         }
     };
 
-    const handleModuleSubmit = (formData: any) => {
-        setIsSubmitting(true);
+    const handleModuleSubmit = async (formData: any) => {
+        try {
+            setIsSubmitting(true);
 
-        // Simulate API call
-        setTimeout(() => {
             if (openModuleEdit) {
                 // Update existing module
-                setModules((prev) =>
-                    prev.map((m) => (m.id === openModuleEdit.id ? { ...openModuleEdit, ...formData } : m)),
-                );
-            } else {
-                // Create new module with required values
-                const programName = programs.find((p) => p.programId === formData.programId)?.name || 'Chương trình';
-                const newModule: Module = {
-                    id: Date.now().toString(),
+                const updateData: UpdateModuleRequest = {
                     code: formData.code,
                     name: formData.name,
-                    programId: formData.programId,
-                    programName,
+                    description: formData.description,
                     credits: formData.credits,
                     durationHours: formData.durationHours,
                     level: formData.level,
-                    sequenceOrder: formData.sequenceOrder,
-                    status: 'Hoạt động',
-                    syllabus: 'Chưa có',
+                    isMandatory: formData.isMandatory ?? true,
+                    syllabusUrl: formData.syllabusUrl,
+                    hasSyllabus: formData.hasSyllabus,
+                    notes: formData.notes,
+                    isActive: formData.isActive ?? true,
                 };
-                setModules((prev) => [newModule, ...prev]);
+                await updateModule(openModuleEdit.moduleId, updateData);
+            } else {
+                // Create new module
+                const createData: CreateModuleRequest = {
+                    programId: formData.programId,
+                    code: formData.code,
+                    name: formData.name,
+                    description: formData.description,
+                    sequenceOrder: formData.sequenceOrder,
+                    credits: formData.credits,
+                    durationHours: formData.durationHours,
+                    level: formData.level,
+                    isMandatory: formData.isMandatory ?? true,
+                    syllabusUrl: formData.syllabusUrl,
+                    hasSyllabus: formData.hasSyllabus,
+                    notes: formData.notes,
+                };
+                await createModule(createData);
             }
+
+            // Refresh modules list
+            await fetchModules();
             setOpenModuleCreate(false);
             setOpenModuleEdit(null);
+        } catch (error) {
+            console.error('Error saving module:', error);
+            alert('Có lỗi xảy ra khi lưu module. Vui lòng thử lại.');
+        } finally {
             setIsSubmitting(false);
-        }, 500);
+        }
     };
 
     const handleModuleCancel = () => {
@@ -289,6 +358,9 @@ export default function ProgramsPage() {
                     currentPage={currentPage}
                     itemsPerPage={itemsPerPage}
                     onPageChange={setCurrentPage}
+                    onProgramFilterChange={(programId) => {
+                        fetchModules(programId ?? undefined);
+                    }}
                 />
             )}
 
@@ -348,7 +420,7 @@ export default function ProgramsPage() {
                     onClose={() => setOpenModulesManager(null)}
                     program={openModulesManager}
                     allModules={modules}
-                    programModules={modules.slice(0, 4)} // Mock: first 4 modules in program
+                    programModules={modules.filter((m) => m.programId === openModulesManager.programId)}
                     onSave={handleSaveModulesOrder}
                 />
             )}

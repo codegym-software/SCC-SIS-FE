@@ -1,21 +1,10 @@
 import { Clock, GraduationCap, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import ProgramActions from './components/actions';
 import type { Program as ProgramDto } from '@/shared/api/programs';
+import type { ModuleResponse } from '@/shared/types/module';
 
-type Module = {
-    id: string;
-    code: string;
-    name: string;
-    programId: number;
-    programName: string;
-    credits: number;
-    durationHours: number;
-    level: 'Beginner' | 'Intermediate' | 'Advanced';
-    sequenceOrder: number;
-    status: 'Hoạt động' | 'Tạm dừng' | 'Hoàn thành';
-    syllabus?: 'Có' | 'Chưa có';
-};
+type Module = ModuleResponse;
 
 interface ModulesListProps {
     modules: Module[];
@@ -27,6 +16,7 @@ interface ModulesListProps {
     currentPage: number;
     itemsPerPage: number;
     onPageChange: (page: number) => void;
+    onProgramFilterChange?: (programId: number | null) => void;
 }
 
 const ModulesList: React.FC<ModulesListProps> = ({
@@ -39,10 +29,36 @@ const ModulesList: React.FC<ModulesListProps> = ({
     currentPage,
     itemsPerPage,
     onPageChange,
+    onProgramFilterChange,
 }) => {
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả');
     const [programFilter, setProgramFilter] = useState('Tất cả');
+
+    // Debug: Log modules khi component nhận props mới
+    useEffect(() => {
+        console.log('[ModulesList] Received modules:', modules.length, modules);
+    }, [modules]);
+    
+    const handleProgramFilterChange = (value: string) => {
+        setProgramFilter(value);
+        // Gọi callback để fetch lại modules từ API
+        if (onProgramFilterChange) {
+            const programId = value === 'Tất cả' ? null : Number(value);
+            console.log('[ModulesList] Program filter changed:', { value, programId });
+            onProgramFilterChange(programId);
+        }
+    };
+
+    // Hàm chuyển đổi level sang tiếng Việt
+    const getLevelLabel = (level: string) => {
+        const levelMap: { [key: string]: string } = {
+            'Beginner': 'Cơ bản',
+            'Intermediate': 'Trung cấp',
+            'Advanced': 'Nâng cao'
+        };
+        return levelMap[level] || level;
+    };
 
     const filtered = useMemo(() => {
         let result = modules.filter(
@@ -53,15 +69,17 @@ const ModulesList: React.FC<ModulesListProps> = ({
         );
 
         if (statusFilter !== 'Tất cả') {
-            result = result.filter((m) => m.status === statusFilter);
+            if (statusFilter === 'Hoạt động') {
+                result = result.filter((m) => m.isActive);
+            } else if (statusFilter === 'Tạm dừng') {
+                result = result.filter((m) => !m.isActive);
+            }
         }
 
-        if (programFilter !== 'Tất cả') {
-            result = result.filter((m) => String(m.programId) === programFilter);
-        }
+        // Program filter đã được xử lý bằng API, không cần filter client-side nữa
 
         return result;
-    }, [modules, query, statusFilter, programFilter]);
+    }, [modules, query, statusFilter]);
 
     // Pagination logic
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -76,13 +94,15 @@ const ModulesList: React.FC<ModulesListProps> = ({
                 <div>
                     <div className="text-sm font-medium">Danh sách Module</div>
                     <div className="text-xs text-gray-500">
-                        Quản lý tất cả module học trong hệ thống ({modules.length} module)
+                        Quản lý tất cả module học trong hệ thống ({
+                            programs.reduce((sum, p) => sum + (p.moduleCount || 0), 0)
+                        } module)
                     </div>
                 </div>
                 <div className="ml-auto">
                     <button
                         onClick={onCreate}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 text-white text-xs px-2.5 py-1.5 hover:bg-black"
+                        className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 text-white text-sm px-3 py-2 hover:bg-black"
                     >
                         <span>Tạo module mới</span>
                     </button>
@@ -102,13 +122,17 @@ const ModulesList: React.FC<ModulesListProps> = ({
                     </div>
                     <select
                         value={programFilter}
-                        onChange={(e) => setProgramFilter(e.target.value)}
+                        onChange={(e) => {
+                            console.log('[ModulesList] Dropdown changed:', e.target.value);
+                            console.log('[ModulesList] Available programs:', programs);
+                            handleProgramFilterChange(e.target.value);
+                        }}
                         className="h-9 rounded-md border px-3 text-sm"
                     >
                         <option value="Tất cả">Tất cả chương trình</option>
                         {programs.map((p) => (
                             <option key={p.programId} value={String(p.programId)}>
-                                {p.name}
+                                {p.name} {p.moduleCount !== undefined ? `(${p.moduleCount})` : ''}
                             </option>
                         ))}
                     </select>
@@ -120,65 +144,71 @@ const ModulesList: React.FC<ModulesListProps> = ({
                         <option value="Tất cả">Tất cả trạng thái</option>
                         <option value="Hoạt động">Hoạt động</option>
                         <option value="Tạm dừng">Tạm dừng</option>
-                        <option value="Hoàn thành">Hoàn thành</option>
                     </select>
                 </div>
             </div>
 
-            {/* Header columns */}
-            <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-12 gap-3">
+            {/* Header columns - hidden on mobile, shown on desktop */}
+            <div className="hidden md:grid px-3 py-2 pr-12 border-b text-xs text-gray-500 grid-cols-12 gap-3">
                 <div className="col-span-3">Module</div>
                 <div className="col-span-3">Chương trình</div>
-                <div className="col-span-1">Thứ tự</div>
-                <div className="col-span-2">Học kỳ</div>
-                <div className="col-span-1">Tín chỉ</div>
-                <div className="col-span-1">Thời lượng</div>
-                <div className="col-span-1">Trạng thái</div>
+                <div className="col-span-1 text-center">Thứ tự</div>
+                <div className="col-span-2 text-center">Học kỳ</div>
+                <div className="col-span-1 text-center">Tín chỉ</div>
+                <div className="col-span-1 text-center">Thời lượng</div>
+                <div className="col-span-1 text-center">Trạng thái</div>
             </div>
 
             <div className="divide-y">
                 {paginatedModules.map((module) => (
                     <div
-                        key={module.id}
+                        key={module.moduleId}
                         className="px-3 py-3 pr-12 grid grid-cols-12 gap-3 items-center border-t first:border-t-0 relative"
                     >
                         <div className="col-span-12 md:col-span-3">
                             <div className="flex items-start gap-3">
                                 <div>
                                     <div className="text-sm font-medium">{module.name}</div>
-                                    <div className="text-xs text-gray-500">
-                                        Mã: {module.code} • {module.level}
+                                    <div className="text-xs text-gray-500 flex items-center gap-2">
+                                        <span>Mã: {module.code} • {getLevelLabel(module.level)}</span>
+                                        <span
+                                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                                module.isMandatory
+                                                    ? 'bg-red-100 text-red-700'
+                                                    : 'bg-blue-100 text-blue-700'
+                                            }`}
+                                        >
+                                            {module.isMandatory ? 'Bắt buộc' : 'Tự chọn'}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div className="col-span-12 md:col-span-3 text-sm">{module.programName}</div>
-                        <div className="col-span-4 md:col-span-1 text-sm">#{module.sequenceOrder}</div>
-                        <div className="col-span-4 md:col-span-2">
+                        <div className="col-span-4 md:col-span-1 text-sm text-center">{module.sequenceOrder}</div>
+                        <div className="col-span-4 md:col-span-2 flex justify-center">
                             <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-xs">
-                                Học kỳ {Math.floor((module.sequenceOrder - 1) / 6) + 1}
+                                Học kỳ {module.semester}
                             </span>
                         </div>
-                        <div className="col-span-2 md:col-span-1 text-sm flex items-center gap-1">
+                        <div className="col-span-2 md:col-span-1 text-sm flex items-center justify-center gap-1">
                             <GraduationCap size={14} className="text-gray-500" /> {module.credits}
                         </div>
-                        <div className="col-span-2 md:col-span-1">
+                        <div className="col-span-2 md:col-span-1 flex justify-center">
                             <div className="flex items-center gap-1 text-sm">
                                 <Clock size={14} className="text-gray-500" />
                                 {module.durationHours}h
                             </div>
                         </div>
-                        <div className="col-span-6 md:col-span-1">
+                        <div className="col-span-6 md:col-span-1 flex justify-center">
                             <span
                                 className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                    module.status === 'Hoạt động'
+                                    module.isActive
                                         ? 'bg-green-50 text-green-700'
-                                        : module.status === 'Tạm dừng'
-                                          ? 'bg-yellow-50 text-yellow-700'
-                                          : 'bg-gray-50 text-gray-700'
+                                        : 'bg-gray-50 text-gray-700'
                                 }`}
                             >
-                                {module.status}
+                                {module.isActive ? 'Hoạt động' : 'Tạm dừng'}
                             </span>
                         </div>
                         <div className="col-span-6 md:col-span-1">
@@ -207,7 +237,7 @@ const ModulesList: React.FC<ModulesListProps> = ({
                             disabled={currentPage === 1}
                             className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Previous
+                            Trước
                         </button>
 
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -227,7 +257,7 @@ const ModulesList: React.FC<ModulesListProps> = ({
                             disabled={currentPage === totalPages}
                             className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Next
+                            Sau
                         </button>
                     </div>
                 </div>

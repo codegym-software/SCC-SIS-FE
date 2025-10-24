@@ -32,6 +32,32 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
     const [categoryFilter, setCategoryFilter] = useState('Tất cả');
     const [statusFilter, setStatusFilter] = useState('Tất cả');
 
+    // Hàm chuyển đổi mã danh mục sang tiếng Việt
+    const getCategoryLabel = (categoryCode: string) => {
+        const categoryMap: { [key: string]: string } = {
+            'PROGRAMMING': 'Lập trình',
+            'WEB': 'Web',
+            'MOBILE': 'Di động',
+            'DATABASE': 'Cơ sở dữ liệu',
+            'DESIGN': 'Thiết kế',
+            'BUSINESS': 'Kinh doanh',
+            'TECHNICAL': 'Kỹ thuật',
+            'OTHER': 'Khác'
+        };
+        return categoryMap[categoryCode] || categoryCode;
+    };
+
+    // Hàm chuyển đổi phương thức học sang tiếng Việt
+    const getDeliveryModeLabel = (deliveryMode: string) => {
+        const modeMap: { [key: string]: string } = {
+            'ONLINE': 'Trực tuyến',
+            'OFFLINE': 'Trực tiếp',
+            'HYBRID': 'Kết hợp',
+            'BLENDED': 'Kết hợp'
+        };
+        return modeMap[deliveryMode] || deliveryMode;
+    };
+
     const filtered = useMemo(() => {
         let result = programs.filter(
             (p) =>
@@ -139,10 +165,10 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
                                     </div>
                                     <div className="flex items-center gap-2 mt-1">
                                         <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs">
-                                            {program.categoryCode}
+                                            {getCategoryLabel(program.categoryCode)}
                                         </span>
                                         <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-xs">
-                                            {program.deliveryMode}
+                                            {getDeliveryModeLabel(program.deliveryMode)}
                                         </span>
                                     </div>
                                 </div>
@@ -190,7 +216,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
                             disabled={currentPage === 1}
                             className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Previous
+                            Trước
                         </button>
 
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -210,7 +236,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
                             disabled={currentPage === totalPages}
                             className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Next
+                            Sau
                         </button>
                     </div>
                 </div>

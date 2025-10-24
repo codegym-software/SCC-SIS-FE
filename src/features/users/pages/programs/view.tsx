@@ -1,20 +1,9 @@
 import React from 'react';
 import { BookOpen, Clock, X, FolderOpen } from 'lucide-react';
 import type { Program } from '../../../../shared/api/programs';
+import type { ModuleResponse } from '../../../../shared/types/module';
 
-type Module = {
-    id: string;
-    code: string;
-    name: string;
-    programId: number;
-    programName: string;
-    credits: number;
-    durationHours: number;
-    level: 'Beginner' | 'Intermediate' | 'Advanced';
-    sequenceOrder: number;
-    status: 'Hoạt động' | 'Tạm dừng' | 'Hoàn thành';
-    syllabus?: 'Có' | 'Chưa có';
-};
+type Module = ModuleResponse;
 
 interface ProgramViewProps {
     open?: boolean;
@@ -26,7 +15,35 @@ interface ProgramViewProps {
 
 const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program, modules, onEdit }) => {
     if (!open) return null;
-    const programModules = modules.filter((m) => m.programId === program.programId);
+    const programModules = modules
+        .filter((m) => m.programId === program.programId)
+        .sort((a, b) => a.sequenceOrder - b.sequenceOrder);
+
+    // Hàm chuyển đổi danh mục sang tiếng Việt
+    const getCategoryLabel = (categoryCode: string) => {
+        const categoryMap: { [key: string]: string } = {
+            'PROGRAMMING': 'Lập trình',
+            'WEB': 'Web',
+            'MOBILE': 'Di động',
+            'DATABASE': 'Cơ sở dữ liệu',
+            'DESIGN': 'Thiết kế',
+            'BUSINESS': 'Kinh doanh',
+            'TECHNICAL': 'Kỹ thuật',
+            'OTHER': 'Khác'
+        };
+        return categoryMap[categoryCode] || categoryCode;
+    };
+
+    // Hàm chuyển đổi phương thức học sang tiếng Việt
+    const getDeliveryModeLabel = (deliveryMode: string) => {
+        const modeMap: { [key: string]: string } = {
+            'ONLINE': 'Trực tuyến',
+            'OFFLINE': 'Trực tiếp',
+            'HYBRID': 'Kết hợp',
+            'BLENDED': 'Kết hợp'
+        };
+        return modeMap[deliveryMode] || deliveryMode;
+    };
 
     return (
         <div>
@@ -70,13 +87,13 @@ const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program
                         <div>
                             <label className="block text-xs text-gray-500 mb-1">Hình thức học</label>
                             <span className="inline-flex items-center px-2 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium">
-                                {program.deliveryMode}
+                                {getDeliveryModeLabel(program.deliveryMode)}
                             </span>
                         </div>
                         <div>
                             <label className="block text-xs text-gray-500 mb-1">Danh mục</label>
                             <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
-                                {program.categoryCode}
+                                {getCategoryLabel(program.categoryCode)}
                             </span>
                         </div>
                         <div>
@@ -101,9 +118,9 @@ const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program
                     <h3 className="text-sm font-medium mb-3">Danh sách Module ({programModules.length})</h3>
                     <div className="space-y-3 max-h-60 overflow-y-auto">
                         {programModules.map((module) => (
-                            <div key={module.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                            <div key={module.moduleId} className="flex items-center gap-3 p-3 border rounded-lg">
                                 <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 grid place-items-center text-white flex-shrink-0">
-                                    <FolderOpen size={16} />
+                                    <div className="text-white font-bold text-xs">{module.sequenceOrder}</div>
                                 </div>
                                 <div className="flex-1">
                                     <div className="text-sm font-medium">{module.name}</div>
@@ -117,21 +134,19 @@ const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program
                                             {module.durationHours}h
                                         </span>
                                         <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-xs">
-                                            HK {Math.floor((module.sequenceOrder - 1) / 6) + 1}
+                                            HK {module.semester}
                                         </span>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span
                                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                            module.status === 'Hoạt động'
+                                            module.isActive
                                                 ? 'bg-green-50 text-green-700'
-                                                : module.status === 'Tạm dừng'
-                                                  ? 'bg-yellow-50 text-yellow-700'
-                                                  : 'bg-gray-50 text-gray-700'
+                                                : 'bg-gray-50 text-gray-700'
                                         }`}
                                     >
-                                        {module.status}
+                                        {module.isActive ? 'Hoạt động' : 'Tạm dừng'}
                                     </span>
                                 </div>
                             </div>
