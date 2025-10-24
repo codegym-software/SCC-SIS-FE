@@ -229,7 +229,8 @@ const TeachingInteractionPage: React.FC = () => {
                 </button>
             </div>
 
-            {/* Class Selection Card */}
+            {/* Class Selection Card - Only show for Module Progress tab */}
+            {activeTab === 'progress' && (
             <div className="bg-white border border-gray-200 rounded-2xl p-6">
                 <label className="block text-sm font-medium text-gray-900 mb-3">Lớp học đang giảng dạy</label>
                 <select
@@ -248,6 +249,7 @@ const TeachingInteractionPage: React.FC = () => {
                     ))}
                 </select>
             </div>
+            )}
 
             {/* Tab Content */}
             {activeTab === 'progress' && (
@@ -260,7 +262,11 @@ const TeachingInteractionPage: React.FC = () => {
             )}
 
             {activeTab === 'log' && (
-                <ClassLogTab selectedClass={selectedClass} />
+                <ClassLogTab 
+                    selectedClass={selectedClass} 
+                    classes={classes}
+                    onClassChange={setSelectedClass}
+                />
             )}
         </div>
     );

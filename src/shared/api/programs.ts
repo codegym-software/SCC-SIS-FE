@@ -11,8 +11,8 @@ export type Program = {
     durationHours: number;
     deliveryMode: DeliveryMode;
     categoryCode: string;
-    level: string;
     isActive: boolean;
+    moduleCount?: number; // Số lượng modules trong program (từ backend)
 };
 
 export type CreateProgramDto = {
@@ -22,7 +22,6 @@ export type CreateProgramDto = {
     durationHours: number;
     deliveryMode: DeliveryMode;
     categoryCode: string;
-    level: string;
     isActive?: boolean;
 };
 
@@ -32,7 +31,6 @@ export type UpdateProgramDto = {
     durationHours?: number;
     deliveryMode?: DeliveryMode;
     categoryCode?: string;
-    level?: string;
     isActive?: boolean;
 };
 

@@ -16,7 +16,6 @@ export type ProgramLiteDto = {
     durationHours: number;
     deliveryMode: DeliveryMode;
     categoryCode: string;
-    level: string;
     isActive: boolean;
 };
 

@@ -21,10 +21,12 @@ type Class = {
 
 interface ClassLogTabProps {
     selectedClass: Class | null;
+    classes?: Class[];
+    onClassChange?: (classItem: Class | null) => void;
     readOnly?: boolean; // View-only mode (no create/edit/delete/search/filter)
 }
 
-const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass, readOnly = false }) => {
+const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass, classes = [], onClassChange = () => {}, readOnly = false }) => {
     const { success: showSuccessToast, error: showErrorToast } = useToast();
     const { me: userProfile } = useUserProfile();
     const [logs, setLogs] = useState<JournalResponse[]>([]);
@@ -237,6 +239,23 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({ selectedClass, readOnly = fal
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full bg-[#f3f3f5] border-transparent rounded-lg pl-10 pr-4 py-2 text-sm placeholder:text-[#717182] focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     />
+                </div>
+                <div className="relative w-full sm:w-auto md:w-64">
+                    <select
+                        value={selectedClass?.classId || ''}
+                        onChange={(e) => {
+                            const classId = parseInt(e.target.value);
+                            const classItem = classes.find(c => c.classId === classId);
+                            onClassChange(classItem || null);
+                        }}
+                        className="w-full bg-[#f3f3f5] border-transparent rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    >
+                        {classes.map((classItem) => (
+                            <option key={classItem.classId} value={classItem.classId}>
+                                {classItem.name} - {classItem.programName}
+                            </option>
+                        ))}
+                    </select>
                 </div>
                 <div className="relative w-full sm:w-auto md:w-48">
                     <select
