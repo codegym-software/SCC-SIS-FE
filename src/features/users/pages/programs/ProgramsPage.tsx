@@ -24,14 +24,16 @@ type Program = ProgramDto;
 
 type Module = {
     id: string;
+    code: string; // Mã module
     name: string;
-    moduleId: string;
-    field: string;
+    programId: number; // Thuộc chương trình nào
+    programName: string; // Dùng để hiển thị nhanh
     credits: number;
-    duration: string;
-    prerequisite: string;
-    syllabus: 'Có' | 'Chưa có';
+    durationHours: number; // Số giờ (<= 20h)
+    level: 'Beginner' | 'Intermediate' | 'Advanced';
+    sequenceOrder: number; // Thứ tự trong CTĐT
     status: 'Hoạt động' | 'Tạm dừng' | 'Hoàn thành';
+    syllabus?: 'Có' | 'Chưa có';
 };
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
@@ -58,7 +60,6 @@ export default function ProgramsPage() {
     const [openModuleEdit, setOpenModuleEdit] = useState<Module | null>(null);
     const [openModulesManager, setOpenModulesManager] = useState<Program | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
@@ -69,13 +70,10 @@ export default function ProgramsPage() {
     // Fetch programs from API
     const fetchPrograms = async () => {
         try {
-            setIsLoading(true);
             const response = await getPrograms();
             setPrograms(response.data);
         } catch (error) {
             console.error('Failed to fetch programs:', error);
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -88,173 +86,7 @@ export default function ProgramsPage() {
         setCurrentPage(1);
     }, [activeTab]);
 
-    const [modules, setModules] = useState<Module[]>([
-        {
-            id: '1',
-            name: 'Lập trình Cơ bản',
-            moduleId: 'IT001',
-            field: 'Kỹ thuật',
-            credits: 3,
-            duration: '4 tháng',
-            prerequisite: 'Không',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '2',
-            name: 'Cơ sở Dữ liệu',
-            moduleId: 'IT002',
-            field: 'Kỹ thuật',
-            credits: 4,
-            duration: '5 tháng',
-            prerequisite: 'Lập trình Cơ bản',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '3',
-            name: 'Java Core',
-            moduleId: 'JAVA001',
-            field: 'Lập trình',
-            credits: 4,
-            duration: '6 tháng',
-            prerequisite: 'Lập trình Cơ bản',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '4',
-            name: 'Thiết kế UI/UX',
-            moduleId: 'DES001',
-            field: 'Thiết kế',
-            credits: 3,
-            duration: '4 tháng',
-            prerequisite: 'Không',
-            syllabus: 'Chưa có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '5',
-            name: 'React Development',
-            moduleId: 'WEB001',
-            field: 'Lập trình',
-            credits: 4,
-            duration: '5 tháng',
-            prerequisite: 'Lập trình Cơ bản',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '6',
-            name: 'Node.js Backend',
-            moduleId: 'WEB002',
-            field: 'Lập trình',
-            credits: 4,
-            duration: '6 tháng',
-            prerequisite: 'JavaScript Cơ bản',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '7',
-            name: 'Python Data Analysis',
-            moduleId: 'DATA001',
-            field: 'Kỹ thuật',
-            credits: 5,
-            duration: '7 tháng',
-            prerequisite: 'Python Cơ bản',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '8',
-            name: 'Machine Learning',
-            moduleId: 'AI001',
-            field: 'Kỹ thuật',
-            credits: 6,
-            duration: '8 tháng',
-            prerequisite: 'Python Data Analysis',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '9',
-            name: 'Digital Marketing Strategy',
-            moduleId: 'MKT001',
-            field: 'Kinh doanh',
-            credits: 3,
-            duration: '4 tháng',
-            prerequisite: 'Không',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '10',
-            name: 'SEO & Content Marketing',
-            moduleId: 'MKT002',
-            field: 'Kinh doanh',
-            credits: 3,
-            duration: '3 tháng',
-            prerequisite: 'Digital Marketing Strategy',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '11',
-            name: 'Adobe Photoshop',
-            moduleId: 'DES002',
-            field: 'Thiết kế',
-            credits: 2,
-            duration: '3 tháng',
-            prerequisite: 'Không',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '12',
-            name: 'Adobe Illustrator',
-            moduleId: 'DES003',
-            field: 'Thiết kế',
-            credits: 2,
-            duration: '3 tháng',
-            prerequisite: 'Adobe Photoshop',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '13',
-            name: 'Figma Design',
-            moduleId: 'DES004',
-            field: 'Thiết kế',
-            credits: 3,
-            duration: '4 tháng',
-            prerequisite: 'Thiết kế UI/UX',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '14',
-            name: 'Cybersecurity Fundamentals',
-            moduleId: 'SEC001',
-            field: 'Kỹ thuật',
-            credits: 4,
-            duration: '5 tháng',
-            prerequisite: 'Lập trình Cơ bản',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-        {
-            id: '15',
-            name: 'Business Intelligence',
-            moduleId: 'BI001',
-            field: 'Kinh doanh',
-            credits: 4,
-            duration: '6 tháng',
-            prerequisite: 'Python Data Analysis',
-            syllabus: 'Có',
-            status: 'Hoạt động',
-        },
-    ]);
+    const [modules, setModules] = useState<Module[]>([]);
 
     const handleSubmit = async (formData: any) => {
         try {
@@ -372,17 +204,20 @@ export default function ProgramsPage() {
                     prev.map((m) => (m.id === openModuleEdit.id ? { ...openModuleEdit, ...formData } : m)),
                 );
             } else {
-                // Create new module
+                // Create new module with required values
+                const programName = programs.find((p) => p.programId === formData.programId)?.name || 'Chương trình';
                 const newModule: Module = {
                     id: Date.now().toString(),
+                    code: formData.code,
                     name: formData.name,
-                    moduleId: formData.moduleId,
-                    field: formData.field,
+                    programId: formData.programId,
+                    programName,
                     credits: formData.credits,
-                    duration: formData.duration,
-                    prerequisite: formData.prerequisite || 'Không',
-                    syllabus: formData.syllabus || 'Chưa có',
-                    status: formData.status || 'Hoạt động',
+                    durationHours: formData.durationHours,
+                    level: formData.level,
+                    sequenceOrder: formData.sequenceOrder,
+                    status: 'Hoạt động',
+                    syllabus: 'Chưa có',
                 };
                 setModules((prev) => [newModule, ...prev]);
             }
@@ -446,6 +281,7 @@ export default function ProgramsPage() {
             {activeTab === 'modules' && (
                 <ModulesList
                     modules={modules}
+                    programs={programs}
                     onView={(module) => setOpenModuleDetail(module)}
                     onEdit={handleModuleEdit}
                     onDelete={handleModuleDelete}
@@ -501,6 +337,7 @@ export default function ProgramsPage() {
                     onSubmit={handleModuleSubmit}
                     onCancel={handleModuleCancel}
                     isSubmitting={isSubmitting}
+                    programs={programs}
                 />
             </Modal>
 

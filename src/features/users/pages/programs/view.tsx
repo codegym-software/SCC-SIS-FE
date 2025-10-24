@@ -1,17 +1,19 @@
 import React from 'react';
-import { BookOpen, Clock, GraduationCap, Calendar, X, FolderOpen } from 'lucide-react';
+import { BookOpen, Clock, X, FolderOpen } from 'lucide-react';
 import type { Program } from '../../../../shared/api/programs';
 
 type Module = {
     id: string;
+    code: string;
     name: string;
-    moduleId: string;
-    field: string;
+    programId: number;
+    programName: string;
     credits: number;
-    duration: string;
-    prerequisite: string;
-    syllabus: 'Có' | 'Chưa có';
+    durationHours: number;
+    level: 'Beginner' | 'Intermediate' | 'Advanced';
+    sequenceOrder: number;
     status: 'Hoạt động' | 'Tạm dừng' | 'Hoàn thành';
+    syllabus?: 'Có' | 'Chưa có';
 };
 
 interface ProgramViewProps {
@@ -22,15 +24,9 @@ interface ProgramViewProps {
     onEdit?: () => void;
 }
 
-const ProgramView: React.FC<ProgramViewProps> = ({ 
-    open = true, 
-    onClose, 
-    program, 
-    modules, 
-    onEdit
-}) => {
+const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program, modules, onEdit }) => {
     if (!open) return null;
-    const programModules = modules.filter((m) => m.field === program.categoryCode || m.field === 'Lập trình');
+    const programModules = modules.filter((m) => m.programId === program.programId);
 
     return (
         <div>
@@ -91,9 +87,7 @@ const ProgramView: React.FC<ProgramViewProps> = ({
                             <label className="block text-xs text-gray-500 mb-1">Trạng thái</label>
                             <span
                                 className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                    program.isActive
-                                        ? 'bg-green-50 text-green-700'
-                                        : 'bg-gray-50 text-gray-700'
+                                    program.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-700'
                                 }`}
                             >
                                 {program.isActive ? 'Đang hoạt động' : 'Tạm dừng'}
@@ -117,17 +111,17 @@ const ProgramView: React.FC<ProgramViewProps> = ({
                                 </div>
                                 <div className="flex-1">
                                     <div className="text-sm font-medium">{module.name}</div>
-                                    <div className="text-xs text-gray-500">ID: {module.moduleId}</div>
+                                    <div className="text-xs text-gray-500">Mã: {module.code}</div>
                                     <div className="flex items-center gap-2 mt-1">
-                                        <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs">
-                                            {module.field}
-                                        </span>
                                         <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">
                                             {module.credits} tín chỉ
                                         </span>
                                         <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">
                                             <Clock size={10} className="inline mr-1" />
-                                            {module.duration}
+                                            {module.durationHours}h
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-xs">
+                                            HK {Math.floor((module.sequenceOrder - 1) / 6) + 1}
                                         </span>
                                     </div>
                                 </div>
@@ -151,17 +145,11 @@ const ProgramView: React.FC<ProgramViewProps> = ({
             </div>
 
             <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
-                <button
-                    className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50"
-                    onClick={onClose}
-                >
+                <button className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={onClose}>
                     Đóng
                 </button>
                 {onEdit && (
-                    <button
-                        className="h-9 px-3 rounded-md bg-gray-900 text-white hover:bg-black"
-                        onClick={onEdit}
-                    >
+                    <button className="h-9 px-3 rounded-md bg-gray-900 text-white hover:bg-black" onClick={onEdit}>
                         Chỉnh sửa
                     </button>
                 )}
@@ -171,4 +159,3 @@ const ProgramView: React.FC<ProgramViewProps> = ({
 };
 
 export default ProgramView;
-

@@ -3,14 +3,16 @@ import { GripVertical, X, BookOpen, Search, Plus } from 'lucide-react';
 
 type Module = {
     id: string;
+    code: string;
     name: string;
-    moduleId: string;
-    field: string;
+    programId: number;
+    programName: string;
     credits: number;
-    duration: string;
-    prerequisite: string;
-    syllabus: 'Có' | 'Chưa có';
+    durationHours: number;
+    level: 'Beginner' | 'Intermediate' | 'Advanced';
+    sequenceOrder: number;
     status: 'Hoạt động' | 'Tạm dừng' | 'Hoàn thành';
+    syllabus?: 'Có' | 'Chưa có';
 };
 
 type Program = {
@@ -53,7 +55,7 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
     const filteredAvailableModules = availableModules.filter(
         (m) =>
             m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            m.moduleId.toLowerCase().includes(searchQuery.toLowerCase()),
+            m.code.toLowerCase().includes(searchQuery.toLowerCase()),
     );
 
     // Calculate summary
@@ -177,7 +179,7 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
                                                 <div className="flex-1 min-w-0">
                                                     <div className="font-medium text-sm">{module.name}</div>
                                                     <div className="text-xs text-gray-500">
-                                                        {module.moduleId} • {module.credits} tín chỉ
+                                                        {module.code} • {module.credits} tín chỉ
                                                     </div>
                                                 </div>
                                                 <button
@@ -255,7 +257,7 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
                                                 <div className="flex-1 min-w-0">
                                                     <div className="font-medium text-sm">{module.name}</div>
                                                     <div className="text-xs text-gray-500">
-                                                        {module.moduleId} • {module.credits} tín chỉ
+                                                        {module.code} • {module.credits} tín chỉ
                                                     </div>
                                                 </div>
                                                 <Plus size={16} className="text-purple-500" />

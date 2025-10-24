@@ -14,14 +14,16 @@ type SyllabusFile = {
 
 type Module = {
     id: string;
+    code: string;
     name: string;
-    moduleId: string;
-    field: string;
+    programId: number;
+    programName: string;
     credits: number;
-    duration: string;
-    prerequisite: string;
-    syllabus: 'Có' | 'Chưa có';
+    durationHours: number;
+    level: 'Beginner' | 'Intermediate' | 'Advanced';
+    sequenceOrder: number;
     status: 'Hoạt động' | 'Tạm dừng' | 'Hoàn thành';
+    syllabus?: 'Có' | 'Chưa có';
     description?: string;
 };
 
@@ -180,7 +182,7 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                             </div>
                             <div>
                                 <div className="font-semibold text-lg">{module.name}</div>
-                                <div className="text-sm text-gray-600">Mã module: {module.moduleId}</div>
+                                <div className="text-sm text-gray-600">Mã module: {module.code}</div>
                             </div>
                         </div>
                         <button
@@ -200,8 +202,8 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                             </h3>
                             <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
                                 <div>
-                                    <label className="block text-xs text-gray-500 mb-1 font-medium">Lĩnh vực</label>
-                                    <div className="text-sm">{module.field}</div>
+                                    <label className="block text-xs text-gray-500 mb-1 font-medium">Chương trình</label>
+                                    <div className="text-sm">{module.programName}</div>
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1 font-medium">Số tín chỉ</label>
@@ -209,7 +211,13 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1 font-medium">Thời lượng</label>
-                                    <div className="text-sm">{module.duration}</div>
+                                    <div className="text-sm">{module.durationHours} giờ</div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1 font-medium">Học kỳ</label>
+                                    <div className="text-sm">
+                                        Học kỳ {Math.floor((module.sequenceOrder - 1) / 6) + 1}
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1 font-medium">Trạng thái</label>
@@ -224,12 +232,6 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                                     >
                                         {module.status}
                                     </span>
-                                </div>
-                                <div className="col-span-2">
-                                    <label className="block text-xs text-gray-500 mb-1 font-medium">
-                                        Điều kiện tiên quyết
-                                    </label>
-                                    <div className="text-sm">{module.prerequisite}</div>
                                 </div>
                             </div>
                         </div>

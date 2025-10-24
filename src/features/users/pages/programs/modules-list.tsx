@@ -1,21 +1,25 @@
-import { FolderOpen, Clock, GraduationCap, FileText, Search } from 'lucide-react';
+import { Clock, GraduationCap, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ProgramActions from './components/actions';
+import type { Program as ProgramDto } from '@/shared/api/programs';
 
 type Module = {
     id: string;
+    code: string;
     name: string;
-    moduleId: string;
-    field: string;
+    programId: number;
+    programName: string;
     credits: number;
-    duration: string;
-    prerequisite: string;
-    syllabus: 'Có' | 'Chưa có';
+    durationHours: number;
+    level: 'Beginner' | 'Intermediate' | 'Advanced';
+    sequenceOrder: number;
     status: 'Hoạt động' | 'Tạm dừng' | 'Hoàn thành';
+    syllabus?: 'Có' | 'Chưa có';
 };
 
 interface ModulesListProps {
     modules: Module[];
+    programs: ProgramDto[];
     onView: (module: Module) => void;
     onEdit: (module: Module) => void;
     onDelete: (module: Module) => void;
@@ -27,6 +31,7 @@ interface ModulesListProps {
 
 const ModulesList: React.FC<ModulesListProps> = ({
     modules,
+    programs,
     onView,
     onEdit,
     onDelete,
@@ -37,26 +42,26 @@ const ModulesList: React.FC<ModulesListProps> = ({
 }) => {
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả');
-    const [fieldFilter, setFieldFilter] = useState('Tất cả');
+    const [programFilter, setProgramFilter] = useState('Tất cả');
 
     const filtered = useMemo(() => {
         let result = modules.filter(
             (m) =>
                 m.name.toLowerCase().includes(query.toLowerCase()) ||
-                m.moduleId.toLowerCase().includes(query.toLowerCase()) ||
-                m.field.toLowerCase().includes(query.toLowerCase()),
+                m.code.toLowerCase().includes(query.toLowerCase()) ||
+                m.programName.toLowerCase().includes(query.toLowerCase()),
         );
 
         if (statusFilter !== 'Tất cả') {
             result = result.filter((m) => m.status === statusFilter);
         }
 
-        if (fieldFilter !== 'Tất cả') {
-            result = result.filter((m) => m.field === fieldFilter);
+        if (programFilter !== 'Tất cả') {
+            result = result.filter((m) => String(m.programId) === programFilter);
         }
 
         return result;
-    }, [modules, query, statusFilter, fieldFilter]);
+    }, [modules, query, statusFilter, programFilter]);
 
     // Pagination logic
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -96,15 +101,16 @@ const ModulesList: React.FC<ModulesListProps> = ({
                         />
                     </div>
                     <select
-                        value={fieldFilter}
-                        onChange={(e) => setFieldFilter(e.target.value)}
+                        value={programFilter}
+                        onChange={(e) => setProgramFilter(e.target.value)}
                         className="h-9 rounded-md border px-3 text-sm"
                     >
-                        <option value="Tất cả">Tất cả lĩnh vực</option>
-                        <option value="Kỹ thuật">Kỹ thuật</option>
-                        <option value="Lập trình">Lập trình</option>
-                        <option value="Thiết kế">Thiết kế</option>
-                        <option value="Kinh doanh">Kinh doanh</option>
+                        <option value="Tất cả">Tất cả chương trình</option>
+                        {programs.map((p) => (
+                            <option key={p.programId} value={String(p.programId)}>
+                                {p.name}
+                            </option>
+                        ))}
                     </select>
                     <select
                         value={statusFilter}
@@ -121,12 +127,13 @@ const ModulesList: React.FC<ModulesListProps> = ({
 
             {/* Header columns */}
             <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-12 gap-3">
-                <div className="col-span-4">Module</div>
-                <div className="col-span-2">Danh mục</div>
-                <div className="col-span-2">Thời gian</div>
-                <div className="col-span-2">Tín chỉ</div>
+                <div className="col-span-3">Module</div>
+                <div className="col-span-3">Chương trình</div>
+                <div className="col-span-1">Thứ tự</div>
+                <div className="col-span-2">Học kỳ</div>
+                <div className="col-span-1">Tín chỉ</div>
+                <div className="col-span-1">Thời lượng</div>
                 <div className="col-span-1">Trạng thái</div>
-                <div className="col-span-1"></div>
             </div>
 
             <div className="divide-y">
@@ -135,39 +142,31 @@ const ModulesList: React.FC<ModulesListProps> = ({
                         key={module.id}
                         className="px-3 py-3 pr-12 grid grid-cols-12 gap-3 items-center border-t first:border-t-0 relative"
                     >
-                        <div className="col-span-12 md:col-span-4">
+                        <div className="col-span-12 md:col-span-3">
                             <div className="flex items-start gap-3">
                                 <div>
                                     <div className="text-sm font-medium">{module.name}</div>
-                                    <div className="text-xs text-gray-500">ID: {module.moduleId}</div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs">
-                                            {module.field}
-                                        </span>
-                                        {module.syllabus === 'Có' && (
-                                            <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs">
-                                                <FileText size={10} className="inline mr-1" />
-                                                Có giáo trình
-                                            </span>
-                                        )}
+                                    <div className="text-xs text-gray-500">
+                                        Mã: {module.code} • {module.level}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div className="col-span-12 md:col-span-2">
-                            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs">
-                                {module.field}
+                        <div className="col-span-12 md:col-span-3 text-sm">{module.programName}</div>
+                        <div className="col-span-4 md:col-span-1 text-sm">#{module.sequenceOrder}</div>
+                        <div className="col-span-4 md:col-span-2">
+                            <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-xs">
+                                Học kỳ {Math.floor((module.sequenceOrder - 1) / 6) + 1}
                             </span>
                         </div>
-                        <div className="col-span-12 md:col-span-2">
+                        <div className="col-span-2 md:col-span-1 text-sm flex items-center gap-1">
+                            <GraduationCap size={14} className="text-gray-500" /> {module.credits}
+                        </div>
+                        <div className="col-span-2 md:col-span-1">
                             <div className="flex items-center gap-1 text-sm">
                                 <Clock size={14} className="text-gray-500" />
-                                {module.duration}
+                                {module.durationHours}h
                             </div>
-                        </div>
-                        <div className="col-span-6 md:col-span-2 text-sm flex items-center gap-1">
-                            <GraduationCap size={14} className="text-gray-500" />
-                            {module.credits} tín chỉ
                         </div>
                         <div className="col-span-6 md:col-span-1">
                             <span
