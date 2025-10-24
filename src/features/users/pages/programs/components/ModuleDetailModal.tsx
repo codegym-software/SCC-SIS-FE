@@ -1,17 +1,13 @@
-import React, { useState, useRef } from 'react';
-import { X, Upload, FileText, Download, Trash2, Calendar, User, File } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Upload, FileText, Link2, Youtube, FolderOpen, ExternalLink, Trash2, Calendar, User, Download, Eye } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
-import type { ModuleResponse } from '@/shared/types/module';
+import { attachResource, removeResourceByUrl } from '@/shared/api/modules';
+import { uploadSyllabusFile } from '@/shared/api/files';
+import type { ModuleResponse, ModuleResource } from '@/shared/types/module';
+import DocumentViewer from '@/components/DocumentViewer';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
 
-type SyllabusFile = {
-    id: string;
-    fileName: string;
-    fileType: string;
-    fileSize: number;
-    uploadedBy: string;
-    uploadedAt: string;
-    downloadUrl?: string;
-};
+type ResourceType = 'upload' | 'youtube' | 'drive' | 'link';
 
 type Module = ModuleResponse;
 
@@ -24,37 +20,52 @@ interface ModuleDetailModalProps {
 const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, module }) => {
     const { success: showSuccess, error: showError } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
     const [isUploading, setIsUploading] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [showAttachForm, setShowAttachForm] = useState(false);
+    const [activeTab, setActiveTab] = useState<ResourceType>('upload');
+    const [resourceUrl, setResourceUrl] = useState('');
+    const [currentModule, setCurrentModule] = useState(module);
+    
+    // State cho DocumentViewer
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [previewFileName, setPreviewFileName] = useState<string>('');
+    
+    // State cho ConfirmDialog
+    const [deleteConfirm, setDeleteConfirm] = useState<ModuleResource | null>(null);
 
-    // Mock data - sẽ thay bằng API call thực tế
-    const [syllabusFiles, setSyllabusFiles] = useState<SyllabusFile[]>([
-        {
-            id: '1',
-            fileName: 'Giáo trình Java Cơ bản - Tuần 1-4.pdf',
-            fileType: 'PDF',
-            fileSize: 2.5 * 1024 * 1024, // 2.5 MB
-            uploadedBy: 'Nguyễn Văn A',
-            uploadedAt: '2024-12-19T10:30:00',
-        },
-        {
-            id: '2',
-            fileName: 'Bài tập thực hành OOP.docx',
-            fileType: 'DOCX',
-            fileSize: 856 * 1024, // 856 KB
-            uploadedBy: 'Trần Thị B',
-            uploadedAt: '2024-12-15T14:20:00',
-        },
-    ]);
+    // Reset khi module thay đổi
+    useEffect(() => {
+        setCurrentModule(module);
+        setShowAttachForm(false);
+        setResourceUrl('');
+        
+        // DEBUG: Log để kiểm tra
+        console.log('📦 Module data:', module);
+        console.log('📚 Resources:', module.resources);
+    }, [module]);
 
     if (!open) return null;
 
-    const formatFileSize = (bytes: number): string => {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    // Kiểm tra loại tài liệu dựa vào URL
+    const getResourceType = (url: string): { type: string; icon: JSX.Element } => {
+        if (!url) return { type: 'Chưa có', icon: <FileText size={20} className="text-gray-400" /> };
+        
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            return { type: 'YouTube', icon: <Youtube size={20} className="text-red-600" /> };
+        }
+        if (url.includes('drive.google.com')) {
+            return { type: 'Google Drive', icon: <FolderOpen size={20} className="text-blue-600" /> };
+        }
+        if (url.endsWith('.pdf') || url.endsWith('.doc') || url.endsWith('.docx')) {
+            return { type: 'File tải lên', icon: <Upload size={20} className="text-green-600" /> };
+        }
+        return { type: 'Link khác', icon: <Link2 size={20} className="text-purple-600" /> };
     };
 
-    const formatDate = (dateString: string): string => {
+    const formatDate = (dateString?: string): string => {
+        if (!dateString) return '';
         const date = new Date(dateString);
         return date.toLocaleDateString('vi-VN', {
             day: '2-digit',
@@ -65,19 +76,14 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
         });
     };
 
-    const getFileIcon = (fileType: string) => {
-        const iconMap: Record<string, string> = {
-            PDF: '📄',
-            DOCX: '📝',
-            DOC: '📝',
-            XLSX: '📊',
-            XLS: '📊',
-            PPTX: '📊',
-            PPT: '📊',
-        };
-        return iconMap[fileType.toUpperCase()] || '📎';
+    const formatFileSize = (bytes?: number): string => {
+        if (!bytes) return '';
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     };
 
+    // Upload file → Lấy URL → Gắn vào module
     const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
         if (!files || files.length === 0) return;
@@ -86,45 +92,25 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
 
         // Validate file size (max 50MB)
         if (file.size > 50 * 1024 * 1024) {
-            showError('Lỗi', 'Kích thước file không được vượt quá 50MB');
-            return;
-        }
-
-        // Validate file type
-        const allowedTypes = [
-            'application/pdf',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-powerpoint',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        ];
-
-        if (!allowedTypes.includes(file.type)) {
-            showError('Lỗi', 'Chỉ hỗ trợ file PDF, Word, Excel, PowerPoint');
+            showError('Lỗi tải file', 'Kích thước file không được vượt quá 50MB');
             return;
         }
 
         try {
             setIsUploading(true);
 
-            // Simulate upload - Replace with actual API call
-            await new Promise((resolve) => setTimeout(resolve, 1500));
+            // Bước 1: Upload file lên server
+            const uploadResponse = await uploadSyllabusFile(file);
+            const fileUrl = uploadResponse.data.url;
 
-            const newFile: SyllabusFile = {
-                id: Date.now().toString(),
-                fileName: file.name,
-                fileType: file.name.split('.').pop()?.toUpperCase() || 'FILE',
-                fileSize: file.size,
-                uploadedBy: 'Người dùng hiện tại', // Get from user profile
-                uploadedAt: new Date().toISOString(),
-            };
-
-            setSyllabusFiles([newFile, ...syllabusFiles]);
-            showSuccess('Thành công', `Đã tải lên file "${file.name}"`);
-        } catch (error) {
-            showError('Lỗi', 'Không thể tải lên file. Vui lòng thử lại.');
+            // Bước 2: Gắn URL vào module
+            const attachResponse = await attachResource(currentModule.moduleId, { resourceUrl: fileUrl });
+            setCurrentModule(attachResponse.data);
+            
+            showSuccess('Gắn tài liệu thành công', `File "${file.name}" đã được thêm vào module`);
+            setShowAttachForm(false);
+        } catch (error: any) {
+            showError('Lỗi tải file', error?.message || 'Không thể tải file lên. Vui lòng thử lại');
         } finally {
             setIsUploading(false);
             if (fileInputRef.current) {
@@ -133,29 +119,97 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
         }
     };
 
-    const handleDeleteFile = async (fileId: string, fileName: string) => {
-        if (!confirm(`Bạn có chắc chắn muốn xóa file "${fileName}"?`)) {
+    // Gắn URL (YouTube, Drive, Link khác)
+    const handleAttachUrl = async () => {
+        if (!resourceUrl.trim()) {
+            showError('Lỗi nhập liệu', 'Vui lòng nhập URL tài liệu');
+            return;
+        }
+
+        // Validate URL format
+        try {
+            new URL(resourceUrl);
+        } catch {
+            showError('Lỗi định dạng URL', 'URL không hợp lệ. Vui lòng nhập URL đầy đủ (http:// hoặc https://)');
             return;
         }
 
         try {
-            // Simulate delete - Replace with actual API call
-            await new Promise((resolve) => setTimeout(resolve, 500));
-
-            setSyllabusFiles(syllabusFiles.filter((f) => f.id !== fileId));
-            showSuccess('Thành công', `Đã xóa file "${fileName}"`);
-        } catch (error) {
-            showError('Lỗi', 'Không thể xóa file. Vui lòng thử lại.');
+            setIsUploading(true);
+            const response = await attachResource(currentModule.moduleId, { resourceUrl });
+            setCurrentModule(response.data);
+            
+            showSuccess('Gắn tài liệu thành công', 'Tài liệu đã được thêm vào module');
+            setShowAttachForm(false);
+            setResourceUrl('');
+        } catch (error: any) {
+            showError('Lỗi gắn tài liệu', error?.message || 'Không thể gắn tài liệu. Vui lòng thử lại');
+        } finally {
+            setIsUploading(false);
         }
     };
 
-    const handleDownloadFile = (file: SyllabusFile) => {
-        // Simulate download - Replace with actual download logic
-        showSuccess('Đang tải xuống', `Đang tải file "${file.fileName}"`);
-
-        // Actual implementation would be:
-        // window.open(file.downloadUrl, '_blank');
+    // Mở confirm dialog để xóa tài liệu
+    const handleDeleteResource = (resource: ModuleResource) => {
+        setDeleteConfirm(resource);
     };
+
+    // Thực hiện xóa tài liệu sau khi confirm
+    const confirmDelete = async () => {
+        if (!deleteConfirm) return;
+
+        try {
+            setIsDeleting(true);
+            const response = await removeResourceByUrl(currentModule.moduleId, deleteConfirm.url);
+            setCurrentModule(response.data);
+            
+            showSuccess('Xóa tài liệu thành công', 'Tài liệu đã được xóa khỏi module');
+            setDeleteConfirm(null);
+        } catch (error: any) {
+            showError('Lỗi xóa tài liệu', error?.message || 'Không thể xóa tài liệu. Vui lòng thử lại');
+            setDeleteConfirm(null);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    // Mở form đính kèm
+    const handleOpenAttachForm = () => {
+        setShowAttachForm(true);
+        setResourceUrl('');
+        setActiveTab('upload');
+    };
+
+    // Download file từ server
+    const handleDownloadFile = (url: string, fileName?: string) => {
+        // Tạo link download
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName || 'download';
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // Kiểm tra xem resource có phải là file đã upload không
+    const isUploadedFile = (url: string): boolean => {
+        return url.includes('/uploads/syllabus/');
+    };
+
+    // Kiểm tra file có thể preview không (PDF, DOCX, XLSX, PPTX)
+    const canPreview = (url: string): boolean => {
+        const previewableExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'];
+        return previewableExtensions.some(ext => url.toLowerCase().endsWith(ext));
+    };
+
+    // Mở DocumentViewer để preview file
+    const handlePreview = (resource: ModuleResource) => {
+        setPreviewUrl(resource.url);
+        setPreviewFileName(resource.fileName || 'Document');
+    };
+
+    const resources = currentModule.resources || [];
 
     return (
         <div className="fixed inset-0 z-50">
@@ -169,8 +223,8 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                                 <FileText size={20} />
                             </div>
                             <div>
-                                <div className="font-semibold text-lg">{module.name}</div>
-                                <div className="text-sm text-gray-600">Mã module: {module.code}</div>
+                                <div className="font-semibold text-lg">{currentModule.name}</div>
+                                <div className="text-sm text-gray-600">Mã module: {currentModule.code}</div>
                             </div>
                         </div>
                         <button
@@ -191,131 +245,341 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                             <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1 font-medium">Chương trình</label>
-                                    <div className="text-sm">{module.programName}</div>
+                                    <div className="text-sm">{currentModule.programName}</div>
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1 font-medium">Số tín chỉ</label>
-                                    <div className="text-sm">{module.credits} tín chỉ</div>
+                                    <div className="text-sm">{currentModule.credits} tín chỉ</div>
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1 font-medium">Thời lượng</label>
-                                    <div className="text-sm">{module.durationHours} giờ</div>
+                                    <div className="text-sm">{currentModule.durationHours} giờ</div>
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1 font-medium">Học kỳ</label>
-                                    <div className="text-sm">Học kỳ {module.semester}</div>
+                                    <div className="text-sm">Học kỳ {currentModule.semester}</div>
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1 font-medium">Loại môn học</label>
                                     <span
                                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                            module.isMandatory
+                                            currentModule.isMandatory
                                                 ? 'bg-red-100 text-red-700'
                                                 : 'bg-blue-100 text-blue-700'
                                         }`}
                                     >
-                                        {module.isMandatory ? 'Bắt buộc' : 'Tự chọn'}
+                                        {currentModule.isMandatory ? 'Bắt buộc' : 'Tự chọn'}
                                     </span>
                                 </div>
                                 <div>
                                     <label className="block text-xs text-gray-500 mb-1 font-medium">Trạng thái</label>
                                     <span
                                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                            module.isActive
+                                            currentModule.isActive
                                                 ? 'bg-green-100 text-green-700'
                                                 : 'bg-gray-100 text-gray-700'
                                         }`}
                                     >
-                                        {module.isActive ? 'Hoạt động' : 'Tạm dừng'}
+                                        {currentModule.isActive ? 'Hoạt động' : 'Tạm dừng'}
                                     </span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Syllabus Section */}
+                        {/* Syllabus Section - SỬA MỚI */}
                         <div>
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-base font-semibold flex items-center gap-2">
-                                    <Upload size={18} className="text-blue-600" />
-                                    Đề cương chi tiết
+                                    <FileText size={18} className="text-blue-600" />
+                                    Tài liệu học tập
+                                    {resources.length > 0 && (
+                                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                            {resources.length} tài liệu
+                                        </span>
+                                    )}
                                 </h3>
-                                <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={isUploading}
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            </div>
+
+                            {/* Danh sách tài liệu đã gắn */}
+                            {resources.length > 0 && (
+                                <div className="space-y-3 mb-4">
+                                    {resources.map((resource, index) => {
+                                        const typeInfo = getResourceType(resource.url);
+                                        const isFile = isUploadedFile(resource.url);
+                                        return (
+                                            <div
+                                                key={index}
+                                                className="flex items-start gap-4 p-4 border-2 border-blue-200 bg-blue-50/50 rounded-lg hover:bg-blue-50 transition-colors"
+                                            >
+                                                <div className="flex-shrink-0 mt-1">
+                                                    {typeInfo.icon}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-sm font-medium text-gray-700">
+                                                            {resource.fileName || typeInfo.type}
+                                                        </span>
+                                                        {resource.fileType && (
+                                                            <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded">
+                                                                {resource.fileType}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    {/* Hiển thị link hoặc thông tin file */}
+                                                    {isFile ? (
+                                                        <div className="text-sm text-gray-600 mb-2 break-all">
+                                                            📄 {resource.fileName || 'File đã tải lên'}
+                                                        </div>
+                                                    ) : (
+                                                        <a
+                                                            href={resource.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-sm text-blue-600 hover:underline break-all flex items-center gap-1 mb-2"
+                                                        >
+                                                            {resource.url}
+                                                            <ExternalLink size={14} />
+                                                        </a>
+                                                    )}
+                                                    
+                                                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                                                        {resource.fileSize && (
+                                                            <span className="flex items-center gap-1">
+                                                                📦 {formatFileSize(resource.fileSize)}
+                                                            </span>
+                                                        )}
+                                                        {resource.uploadedAt && (
+                                                            <span className="flex items-center gap-1">
+                                                                <Calendar size={12} />
+                                                                {formatDate(resource.uploadedAt)}
+                                                            </span>
+                                                        )}
+                                                        {resource.uploadedBy && (
+                                                            <span className="flex items-center gap-1">
+                                                                <User size={12} />
+                                                                ID: {resource.uploadedBy}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Các nút action */}
+                                                <div className="flex gap-2">
+                                                    {/* Nút Preview (ưu tiên cho file có thể preview) */}
+                                                    {isFile && canPreview(resource.url) && (
+                                                        <button
+                                                            onClick={() => handlePreview(resource)}
+                                                            className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
+                                                            title="Xem trước tài liệu"
+                                                        >
+                                                            <Eye size={18} />
+                                                        </button>
+                                                    )}
+                                                    
+                                                    {/* Nút Download cho file đã upload */}
+                                                    {isFile && (
+                                                        <button
+                                                            onClick={() => handleDownloadFile(resource.url, resource.fileName)}
+                                                            className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                                                            title="Tải về máy tính"
+                                                        >
+                                                            <Download size={18} />
+                                                        </button>
+                                                    )}
+                                                    
+                                                    {/* Nút Xóa */}
+                                                    <button
+                                                        onClick={() => handleDeleteResource(resource)}
+                                                        disabled={isDeleting}
+                                                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
+                                                        title="Xóa tài liệu"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Form thêm tài liệu mới */}
+                            {!showAttachForm ? (
+                                // Nút "Thêm tài liệu"
+                                <div 
+                                    onClick={handleOpenAttachForm}
+                                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all"
                                 >
-                                    <Upload size={16} />
-                                    {isUploading ? 'Đang tải lên...' : 'Tải lên đề cương'}
-                                </button>
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    className="hidden"
-                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                                    onChange={handleFileSelect}
-                                />
-                            </div>
-
-                            {/* Info Note */}
-                            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                <p className="text-sm text-blue-800">
-                                    <strong>Lưu ý:</strong> Hỗ trợ các định dạng file: PDF, Word, PowerPoint, Excel.
-                                    Kích thước tối đa: 50MB.
-                                </p>
-                            </div>
-
-                            {/* Files List */}
-                            {syllabusFiles.length === 0 ? (
-                                <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                                    <FileText size={48} className="mx-auto text-gray-400 mb-3" />
-                                    <p className="text-sm text-gray-500">
-                                        Chưa có đề cương nào được tải lên. Click "Tải lên đề cương" để thêm file.
+                                    <Upload size={32} className="mx-auto text-gray-400 mb-2" />
+                                    <p className="text-sm font-medium text-gray-700">
+                                        {resources.length > 0 ? '+ Thêm tài liệu mới' : 'Chưa có tài liệu học tập'}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        Click để gắn tài liệu (File, YouTube, Google Drive, hoặc Link khác)
                                     </p>
                                 </div>
                             ) : (
-                                <div className="space-y-3">
-                                    {syllabusFiles.map((file) => (
-                                        <div
-                                            key={file.id}
-                                            className="flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                                // Form gắn tài liệu (4 tabs)
+                                <div className="border rounded-lg overflow-hidden">
+                                    {/* Tabs */}
+                                    <div className="flex border-b bg-gray-50">
+                                        <button
+                                            onClick={() => setActiveTab('upload')}
+                                            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                                                activeTab === 'upload'
+                                                    ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                                                    : 'text-gray-600 hover:text-gray-900'
+                                            }`}
                                         >
-                                            <div className="flex-shrink-0 text-3xl">{getFileIcon(file.fileType)}</div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-medium text-sm truncate">{file.fileName}</div>
-                                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                                                    <span className="flex items-center gap-1">
-                                                        <File size={12} />
-                                                        {file.fileType}
-                                                    </span>
-                                                    <span>{formatFileSize(file.fileSize)}</span>
-                                                    <span className="flex items-center gap-1">
-                                                        <User size={12} />
-                                                        {file.uploadedBy}
-                                                    </span>
-                                                    <span className="flex items-center gap-1">
-                                                        <Calendar size={12} />
-                                                        {formatDate(file.uploadedAt)}
-                                                    </span>
+                                            <Upload size={16} />
+                                            Upload File
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('youtube')}
+                                            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                                                activeTab === 'youtube'
+                                                    ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                                                    : 'text-gray-600 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            <Youtube size={16} />
+                                            YouTube
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('drive')}
+                                            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                                                activeTab === 'drive'
+                                                    ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                                                    : 'text-gray-600 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            <FolderOpen size={16} />
+                                            Google Drive
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('link')}
+                                            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                                                activeTab === 'link'
+                                                    ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                                                    : 'text-gray-600 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            <Link2 size={16} />
+                                            Link khác
+                                        </button>
+                                    </div>
+
+                                    {/* Tab Content */}
+                                    <div className="p-6 bg-white">
+                                        {activeTab === 'upload' && (
+                                            <div className="space-y-4">
+                                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                                    <p className="text-sm text-blue-800">
+                                                        <strong>Hỗ trợ:</strong> PDF, Word, PowerPoint, Excel. Kích thước tối đa: 50MB.
+                                                    </p>
                                                 </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
                                                 <button
-                                                    onClick={() => handleDownloadFile(file)}
-                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    title="Tải xuống"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    disabled={isUploading}
+                                                    className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                                                 >
-                                                    <Download size={18} />
+                                                    <Upload size={18} />
+                                                    {isUploading ? 'Đang tải lên...' : 'Chọn file từ máy tính'}
                                                 </button>
+                                                <input
+                                                    ref={fileInputRef}
+                                                    type="file"
+                                                    className="hidden"
+                                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                                                    onChange={handleFileSelect}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {activeTab === 'youtube' && (
+                                            <div className="space-y-4">
+                                                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                                                    <p className="text-sm text-red-800">
+                                                        <strong>Ví dụ:</strong> https://www.youtube.com/watch?v=xxxxx hoặc https://youtu.be/xxxxx
+                                                    </p>
+                                                </div>
+                                                <input
+                                                    type="url"
+                                                    value={resourceUrl}
+                                                    onChange={(e) => setResourceUrl(e.target.value)}
+                                                    placeholder="Dán URL video YouTube vào đây"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                />
                                                 <button
-                                                    onClick={() => handleDeleteFile(file.id, file.fileName)}
-                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Xóa"
+                                                    onClick={handleAttachUrl}
+                                                    disabled={isUploading || !resourceUrl.trim()}
+                                                    className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                                 >
-                                                    <Trash2 size={18} />
+                                                    {isUploading ? 'Đang xử lý...' : 'Gắn video YouTube'}
                                                 </button>
                                             </div>
-                                        </div>
-                                    ))}
+                                        )}
+
+                                        {activeTab === 'drive' && (
+                                            <div className="space-y-4">
+                                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                                    <p className="text-sm text-blue-800">
+                                                        <strong>Ví dụ:</strong> https://drive.google.com/file/d/xxxxx/view
+                                                    </p>
+                                                </div>
+                                                <input
+                                                    type="url"
+                                                    value={resourceUrl}
+                                                    onChange={(e) => setResourceUrl(e.target.value)}
+                                                    placeholder="Dán URL Google Drive vào đây"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                />
+                                                <button
+                                                    onClick={handleAttachUrl}
+                                                    disabled={isUploading || !resourceUrl.trim()}
+                                                    className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                    {isUploading ? 'Đang xử lý...' : 'Gắn file Google Drive'}
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {activeTab === 'link' && (
+                                            <div className="space-y-4">
+                                                <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                                                    <p className="text-sm text-purple-800">
+                                                        <strong>Lưu ý:</strong> URL phải bắt đầu bằng http:// hoặc https://
+                                                    </p>
+                                                </div>
+                                                <input
+                                                    type="url"
+                                                    value={resourceUrl}
+                                                    onChange={(e) => setResourceUrl(e.target.value)}
+                                                    placeholder="Dán URL tài liệu vào đây"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                />
+                                                <button
+                                                    onClick={handleAttachUrl}
+                                                    disabled={isUploading || !resourceUrl.trim()}
+                                                    className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                    {isUploading ? 'Đang xử lý...' : 'Gắn tài liệu'}
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Nút hủy */}
+                                        <button
+                                            onClick={() => {
+                                                setShowAttachForm(false);
+                                                setResourceUrl('');
+                                            }}
+                                            className="w-full mt-3 px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                        >
+                                            Hủy
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -332,6 +596,27 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                     </div>
                 </div>
             </div>
+            
+            {/* DocumentViewer Modal */}
+            {previewUrl && (
+                <DocumentViewer
+                    documentUrl={previewUrl}
+                    fileName={previewFileName}
+                    onClose={() => setPreviewUrl(null)}
+                />
+            )}
+            
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                open={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                onConfirm={confirmDelete}
+                title="Xác nhận xóa tài liệu"
+                description={`Bạn có chắc chắn muốn xóa tài liệu "${deleteConfirm?.fileName || 'này'}"? Hành động này không thể hoàn tác.`}
+                confirmText="Xóa"
+                cancelText="Hủy"
+                variant="danger"
+            />
         </div>
     );
 };

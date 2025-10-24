@@ -5,6 +5,7 @@ import type {
     CreateModuleRequest,
     UpdateModuleRequest,
     ReorderModuleRequest,
+    AttachResourceRequest,
     ModuleQueryParams,
 } from '../types/module';
 
@@ -47,5 +48,28 @@ export const reorderModule = (
 ) =>
     api.patch<ModuleResponse[]>('/api/modules/reorder', payload, {
         params: { programId, sequenceOrder },
+    });
+
+/**
+ * Gắn tài liệu học tập vào module
+ * PUT /api/modules/{moduleId}/resource
+ */
+export const attachResource = (moduleId: number, payload: AttachResourceRequest) =>
+    api.put<ModuleResponse>(`/api/modules/${moduleId}/resource`, payload);
+
+/**
+ * Xóa tài liệu học tập khỏi module
+ * DELETE /api/modules/{moduleId}/resource
+ */
+export const removeResource = (moduleId: number) =>
+    api.delete<ModuleResponse>(`/api/modules/${moduleId}/resource`);
+
+/**
+ * Xóa MỘT tài liệu cụ thể khỏi module (theo URL)
+ * DELETE /api/modules/{moduleId}/resource?url={resourceUrl}
+ */
+export const removeResourceByUrl = (moduleId: number, resourceUrl: string) =>
+    api.delete<ModuleResponse>(`/api/modules/${moduleId}/resource`, {
+        params: { url: resourceUrl }
     });
 

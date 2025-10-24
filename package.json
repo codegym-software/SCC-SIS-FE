@@ -12,6 +12,7 @@
     "dependencies": {
         "@base-ui-components/react": "^1.0.0-beta.4",
         "@hookform/resolvers": "^5.2.2",
+        "@pdftron/webviewer": "^11.8.0",
         "@radix-ui/react-direction": "^1.1.1",
         "@radix-ui/react-slot": "^1.2.3",
         "@react-keycloak/web": "^3.4.0",

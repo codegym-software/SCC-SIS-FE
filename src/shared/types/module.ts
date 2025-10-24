@@ -2,6 +2,15 @@
 
 export type ModuleLevel = 'Beginner' | 'Intermediate' | 'Advanced';
 
+export interface ModuleResource {
+    url: string;
+    fileName?: string;
+    fileType?: string; // PDF, DOCX, YOUTUBE, GOOGLE_DRIVE, EXTERNAL_LINK
+    fileSize?: number; // bytes
+    uploadedAt?: string;
+    uploadedBy?: number;
+}
+
 export interface ModuleResponse {
     moduleId: number;
     programId: number;
@@ -16,7 +25,13 @@ export interface ModuleResponse {
     durationHours: number;
     level: ModuleLevel;
     isMandatory: boolean;
+    
+    /** @deprecated Giữ để backward compatibility */
     syllabusUrl?: string;
+    
+    // NEW: Danh sách tài liệu học tập
+    resources?: ModuleResource[];
+    
     hasSyllabus: boolean;
     notes?: string;
     isActive: boolean;
@@ -59,6 +74,10 @@ export interface UpdateModuleRequest {
 
 export interface ReorderModuleRequest {
     newSequenceOrder: number;
+}
+
+export interface AttachResourceRequest {
+    resourceUrl: string;
 }
 
 export interface ModuleQueryParams {
