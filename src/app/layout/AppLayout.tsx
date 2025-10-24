@@ -1,5 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Building2, Users2, Shield, BookOpen, GraduationCap, User, Settings, LogOut, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import {
+    Home,
+    Building2,
+    Users2,
+    Shield,
+    BookOpen,
+    GraduationCap,
+    User,
+    Settings,
+    LogOut,
+    ChevronLeft,
+    ChevronRight,
+    FileText,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { keycloak } from '../../keycloak';
 import { NavLink } from 'react-router-dom';
@@ -78,6 +91,13 @@ function AppLayout({ children }: AppLayoutProps) {
     const { me, loading } = useUserProfile();
     const mainRole = me?.roles?.[0];
 
+    // Check if user has SUPER_ADMIN or LECTURER role
+    const hasTeachingAccess =
+        me?.roles?.some((role) => role.code === 'SUPER_ADMIN' || role.code === 'LECTURER') ?? false;
+
+    // Check if user is STUDENT
+    const isStudent = me?.roles?.some((role) => role.code === 'STUDENT') ?? false;
+
     // Menu configuration - easily extensible
     const menuGroups: MenuGroup[] = [
         {
@@ -126,12 +146,28 @@ function AppLayout({ children }: AppLayoutProps) {
                     path: '/students',
                     icon: User,
                 },
-                {
-                    id: 'teaching-interaction',
-                    label: 'Giảng dạy & Tương tác',
-                    path: '/teaching-interaction',
-                    icon: FileText,
-                },
+                // Menu cho Học viên
+                ...(isStudent
+                    ? [
+                          {
+                              id: 'my-classes',
+                              label: 'Lớp học của tôi',
+                              path: '/my-classes',
+                              icon: GraduationCap,
+                          },
+                      ]
+                    : []),
+                // Chỉ hiển thị cho SUPERADMIN và LECTURER
+                ...(hasTeachingAccess
+                    ? [
+                          {
+                              id: 'teaching-interaction',
+                              label: 'Giảng dạy & Tương tác',
+                              path: '/teaching-interaction',
+                              icon: FileText,
+                          },
+                      ]
+                    : []),
             ],
         },
         // Có thể thêm group khác như:
@@ -158,7 +194,9 @@ function AppLayout({ children }: AppLayoutProps) {
         <div className="min-h-screen bg-white text-gray-900 m-0 p-0">
             <div className="flex min-h-screen m-0 p-0">
                 {/* Sidebar */}
-                <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r bg-white hidden md:flex md:flex-col sticky top-0 h-screen overflow-y-auto z-10 transition-all duration-300 relative`}>
+                <aside
+                    className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r bg-white hidden md:flex md:flex-col sticky top-0 h-screen overflow-y-auto z-10 transition-all duration-300 relative`}
+                >
                     <div className="px-4 py-5 border-b">
                         {!sidebarCollapsed && (
                             <>
@@ -180,14 +218,14 @@ function AppLayout({ children }: AppLayoutProps) {
                                             {loading ? 'Đang tải...' : (me?.fullName ?? me?.keycloak?.username ?? '—')}
                                         </div>
                                         <div className="text-xs text-gray-500">
-                                            {loading ? '...' : (mainRole ? roleDisplay(mainRole) : '—')}
+                                            {loading ? '...' : mainRole ? roleDisplay(mainRole) : '—'}
                                         </div>
                                     </div>
                                 </div>
                             </>
                         )}
-                        {sidebarCollapsed && (
-                            userAvatar ? (
+                        {sidebarCollapsed &&
+                            (userAvatar ? (
                                 <img
                                     src={userAvatar}
                                     alt="User Avatar"
@@ -197,8 +235,7 @@ function AppLayout({ children }: AppLayoutProps) {
                                 <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium mx-auto">
                                     NV
                                 </div>
-                            )
-                        )}
+                            ))}
                     </div>
 
                     {/* Toggle button - positioned inside sidebar */}
@@ -206,11 +243,7 @@ function AppLayout({ children }: AppLayoutProps) {
                         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                         className="absolute top-1/2 right-2 w-6 h-6 rounded-full bg-white border border-gray-200 shadow-md hover:bg-gray-50 flex items-center justify-center transition-colors z-20 transform -translate-y-1/2"
                     >
-                        {sidebarCollapsed ? (
-                            <ChevronRight size={14} />
-                        ) : (
-                            <ChevronLeft size={14} />
-                        )}
+                        {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
                     </button>
 
                     <nav className="flex-1 px-2 py-3 space-y-1">

@@ -1,23 +1,25 @@
-import { FolderOpen, Clock, GraduationCap, FileText } from 'lucide-react';
-import { useMemo } from 'react';
+import { Clock, GraduationCap, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import ProgramActions from './components/actions';
+import type { Program as ProgramDto } from '@/shared/api/programs';
 
 type Module = {
     id: string;
+    code: string;
     name: string;
-    moduleId: string;
-    field: string;
+    programId: number;
+    programName: string;
     credits: number;
-    duration: string;
-    prerequisite: string;
-    syllabus: 'Có' | 'Chưa có';
+    durationHours: number;
+    level: 'Beginner' | 'Intermediate' | 'Advanced';
+    sequenceOrder: number;
     status: 'Hoạt động' | 'Tạm dừng' | 'Hoàn thành';
+    syllabus?: 'Có' | 'Chưa có';
 };
 
 interface ModulesListProps {
     modules: Module[];
-    query: string;
-    statusFilter: string;
+    programs: ProgramDto[];
     onView: (module: Module) => void;
     onEdit: (module: Module) => void;
     onDelete: (module: Module) => void;
@@ -27,32 +29,39 @@ interface ModulesListProps {
     onPageChange: (page: number) => void;
 }
 
-const ModulesList: React.FC<ModulesListProps> = ({ 
-    modules, 
-    query, 
-    statusFilter, 
-    onView, 
-    onEdit, 
-    onDelete, 
+const ModulesList: React.FC<ModulesListProps> = ({
+    modules,
+    programs,
+    onView,
+    onEdit,
+    onDelete,
     onCreate,
     currentPage,
     itemsPerPage,
-    onPageChange
+    onPageChange,
 }) => {
+    const [query, setQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('Tất cả');
+    const [programFilter, setProgramFilter] = useState('Tất cả');
+
     const filtered = useMemo(() => {
         let result = modules.filter(
             (m) =>
                 m.name.toLowerCase().includes(query.toLowerCase()) ||
-                m.moduleId.toLowerCase().includes(query.toLowerCase()) ||
-                m.field.toLowerCase().includes(query.toLowerCase()),
+                m.code.toLowerCase().includes(query.toLowerCase()) ||
+                m.programName.toLowerCase().includes(query.toLowerCase()),
         );
 
         if (statusFilter !== 'Tất cả') {
             result = result.filter((m) => m.status === statusFilter);
         }
 
+        if (programFilter !== 'Tất cả') {
+            result = result.filter((m) => String(m.programId) === programFilter);
+        }
+
         return result;
-    }, [modules, query, statusFilter]);
+    }, [modules, query, statusFilter, programFilter]);
 
     // Pagination logic
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -82,39 +91,49 @@ const ModulesList: React.FC<ModulesListProps> = ({
 
             <div className="px-3 py-2 border-b flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div className="flex gap-2 w-full md:max-w-xl">
-                    <input
-                        value={query}
-                        onChange={(e) => {
-                            // This will be handled by parent component
-                        }}
-                        className="flex-1 h-8 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
-                        placeholder="Tìm kiếm module..."
-                        readOnly
-                    />
+                    <div className="flex-1 relative">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            className="w-full h-9 pl-10 pr-3 rounded-md border text-sm outline-none focus:ring-2 focus:ring-gray-200"
+                            placeholder="Tìm kiếm module..."
+                        />
+                    </div>
+                    <select
+                        value={programFilter}
+                        onChange={(e) => setProgramFilter(e.target.value)}
+                        className="h-9 rounded-md border px-3 text-sm"
+                    >
+                        <option value="Tất cả">Tất cả chương trình</option>
+                        {programs.map((p) => (
+                            <option key={p.programId} value={String(p.programId)}>
+                                {p.name}
+                            </option>
+                        ))}
+                    </select>
                     <select
                         value={statusFilter}
-                        onChange={(e) => {
-                            // This will be handled by parent component
-                        }}
-                        className="h-8 rounded-md border px-2 text-sm"
-                        disabled
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="h-9 rounded-md border px-3 text-sm"
                     >
-                        <option>Tất cả</option>
-                        <option>Hoạt động</option>
-                        <option>Tạm dừng</option>
-                        <option>Hoàn thành</option>
+                        <option value="Tất cả">Tất cả trạng thái</option>
+                        <option value="Hoạt động">Hoạt động</option>
+                        <option value="Tạm dừng">Tạm dừng</option>
+                        <option value="Hoàn thành">Hoàn thành</option>
                     </select>
                 </div>
             </div>
 
             {/* Header columns */}
             <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-12 gap-3">
-                <div className="col-span-4">Module</div>
-                <div className="col-span-2">Danh mục</div>
-                <div className="col-span-2">Thời gian</div>
-                <div className="col-span-2">Tín chỉ</div>
+                <div className="col-span-3">Module</div>
+                <div className="col-span-3">Chương trình</div>
+                <div className="col-span-1">Thứ tự</div>
+                <div className="col-span-2">Học kỳ</div>
+                <div className="col-span-1">Tín chỉ</div>
+                <div className="col-span-1">Thời lượng</div>
                 <div className="col-span-1">Trạng thái</div>
-                <div className="col-span-1"></div>
             </div>
 
             <div className="divide-y">
@@ -123,39 +142,31 @@ const ModulesList: React.FC<ModulesListProps> = ({
                         key={module.id}
                         className="px-3 py-3 pr-12 grid grid-cols-12 gap-3 items-center border-t first:border-t-0 relative"
                     >
-                        <div className="col-span-12 md:col-span-4">
+                        <div className="col-span-12 md:col-span-3">
                             <div className="flex items-start gap-3">
                                 <div>
                                     <div className="text-sm font-medium">{module.name}</div>
-                                    <div className="text-xs text-gray-500">ID: {module.moduleId}</div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs">
-                                            {module.field}
-                                        </span>
-                                        {module.syllabus === 'Có' && (
-                                            <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs">
-                                                <FileText size={10} className="inline mr-1" />
-                                                Có giáo trình
-                                            </span>
-                                        )}
+                                    <div className="text-xs text-gray-500">
+                                        Mã: {module.code} • {module.level}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div className="col-span-12 md:col-span-2">
-                            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs">
-                                {module.field}
+                        <div className="col-span-12 md:col-span-3 text-sm">{module.programName}</div>
+                        <div className="col-span-4 md:col-span-1 text-sm">#{module.sequenceOrder}</div>
+                        <div className="col-span-4 md:col-span-2">
+                            <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-xs">
+                                Học kỳ {Math.floor((module.sequenceOrder - 1) / 6) + 1}
                             </span>
                         </div>
-                        <div className="col-span-12 md:col-span-2">
+                        <div className="col-span-2 md:col-span-1 text-sm flex items-center gap-1">
+                            <GraduationCap size={14} className="text-gray-500" /> {module.credits}
+                        </div>
+                        <div className="col-span-2 md:col-span-1">
                             <div className="flex items-center gap-1 text-sm">
                                 <Clock size={14} className="text-gray-500" />
-                                {module.duration}
+                                {module.durationHours}h
                             </div>
-                        </div>
-                        <div className="col-span-6 md:col-span-2 text-sm flex items-center gap-1">
-                            <GraduationCap size={14} className="text-gray-500" />
-                            {module.credits} tín chỉ
                         </div>
                         <div className="col-span-6 md:col-span-1">
                             <span
@@ -187,32 +198,31 @@ const ModulesList: React.FC<ModulesListProps> = ({
             {totalPages > 1 && (
                 <div className="px-3 py-3 border-t flex items-center justify-between text-sm text-gray-500">
                     <div>
-                        Hiển thị {startIndex + 1} - {Math.min(endIndex, filtered.length)} trong số {filtered.length} kết quả
+                        Hiển thị {startIndex + 1} - {Math.min(endIndex, filtered.length)} trong số {filtered.length} kết
+                        quả
                     </div>
                     <div className="flex items-center gap-2">
-                        <button 
+                        <button
                             onClick={() => onPageChange(currentPage - 1)}
                             disabled={currentPage === 1}
                             className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Previous
                         </button>
-                        
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                             <button
                                 key={page}
                                 onClick={() => onPageChange(page)}
                                 className={`h-8 px-3 rounded-md text-sm ${
-                                    currentPage === page 
-                                        ? 'bg-gray-900 text-white' 
-                                        : 'border bg-white hover:bg-gray-50'
+                                    currentPage === page ? 'bg-gray-900 text-white' : 'border bg-white hover:bg-gray-50'
                                 }`}
                             >
                                 {page}
                             </button>
                         ))}
-                        
-                        <button 
+
+                        <button
                             onClick={() => onPageChange(currentPage + 1)}
                             disabled={currentPage === totalPages}
                             className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
@@ -227,4 +237,3 @@ const ModulesList: React.FC<ModulesListProps> = ({
 };
 
 export default ModulesList;
-
