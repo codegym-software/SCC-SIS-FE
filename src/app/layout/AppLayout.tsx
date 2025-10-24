@@ -95,6 +95,9 @@ function AppLayout({ children }: AppLayoutProps) {
     const hasTeachingAccess =
         me?.roles?.some((role) => role.code === 'SUPER_ADMIN' || role.code === 'LECTURER') ?? false;
 
+    // Check if user is STUDENT
+    const isStudent = me?.roles?.some((role) => role.code === 'STUDENT') ?? false;
+
     // Menu configuration - easily extensible
     const menuGroups: MenuGroup[] = [
         {
@@ -143,6 +146,17 @@ function AppLayout({ children }: AppLayoutProps) {
                     path: '/students',
                     icon: User,
                 },
+                // Menu cho Học viên
+                ...(isStudent
+                    ? [
+                          {
+                              id: 'my-classes',
+                              label: 'Lớp học của tôi',
+                              path: '/my-classes',
+                              icon: GraduationCap,
+                          },
+                      ]
+                    : []),
                 // Chỉ hiển thị cho SUPERADMIN và LECTURER
                 ...(hasTeachingAccess
                     ? [

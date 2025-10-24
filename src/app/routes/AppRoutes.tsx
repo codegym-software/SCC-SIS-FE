@@ -8,6 +8,7 @@ import ClassesPage from '../../features/users/pages/classes/ClassesPage.tsx';
 import TeachingInteractionPage from '../../features/users/pages/teaching-interaction/TeachingInteractionPage';
 import StudentProfilePage from '../../features/users/pages/students/StudentProfilePage';
 import SettingsPage from '../../features/users/pages/settings/SettingsPage';
+import MyClassesPage from '../../features/students/pages/my-classes/MyClassesPage';
 import ProtectedRoute from './ProtectedRoute';
 
 export default function AppRoutes() {
@@ -28,6 +29,14 @@ export default function AppRoutes() {
                 }
             />
             <Route path="/students" element={<StudentProfilePage />} />
+            <Route
+                path="/my-classes"
+                element={
+                    <ProtectedRoute allowedRoles={['STUDENT']}>
+                        <MyClassesPage />
+                    </ProtectedRoute>
+                }
+            />
             <Route path="/settings" element={<SettingsPage />} />
             {/* Chỉ redirect khi thực sự không tìm thấy route */}
             <Route path="*" element={<Navigate to="/" replace />} />
