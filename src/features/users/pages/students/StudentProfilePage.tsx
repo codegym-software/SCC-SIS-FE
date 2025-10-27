@@ -7,11 +7,12 @@ import CreateStudentModal from './create';
 import ChangeStatusModal from './components/ChangeStatusModal';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
 import ImportStudentsModal from './components/ImportStudentsModal';
-import { listStudents, getStudentById, updateStudent, deleteStudent, searchStudents, exportStudents } from '@/shared/api/students';
+import { listStudents, getStudentById, updateStudent, deleteStudent, searchStudents } from '@/shared/api/students';
 import { listClasses, getClassStudents } from '@/shared/api/classes';
 import { getPrograms } from '@/shared/api/programs';
 import type { StudentDto, UpdateStudentDto } from '@/shared/types/student';
 import { useToast } from '@/shared/hooks/useToast';
+import * as XLSX from 'xlsx';
 
 type Student = {
     id: string;
@@ -270,17 +271,13 @@ export default function StudentProfilePage() {
 
     const confirmExport = async () => {
         try {
-            const response = await exportStudents();
-            const blob = new Blob([response.data], { 
-                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-            });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'students.xlsx';
-            a.click();
-            URL.revokeObjectURL(url);
-            toast.success('Xuất file thành công', 'Dữ liệu học viên đã được tải về dưới dạng file Excel');
+            // Export filtered students thay vì tất cả học viên
+            exportFilteredStudentsToExcel(filteredStudents);
+            
+            toast.success(
+                'Xuất file thành công', 
+                `Đã xuất ${filteredStudents.length} học viên ra file Excel (theo bộ lọc hiện tại)`
+            );
             setExportConfirm(false);
         } catch (err) {
             toast.error('Lỗi xuất file', 'Không thể tải file Excel');
@@ -335,6 +332,59 @@ export default function StudentProfilePage() {
         // Reload all data to get updated status
         await reloadAllData();
         setOpenChangeStatus(null);
+    };
+
+    // Export filtered students to Excel
+    const exportFilteredStudentsToExcel = (studentsToExport: Student[]) => {
+        try {
+            // Tạo data cho Excel từ danh sách học viên
+            const excelData = studentsToExport.map(student => ({
+                'Mã học viên': student.studentId,
+                'Họ tên': student.name,
+                'Email': student.email,
+                'Số điện thoại': student.phone,
+                'Ngày sinh': student.dob || '',
+                'Giới tính': student.gender || '',
+                'Địa chỉ': student.address || '',
+                'Lớp học': student.class,
+                'Chương trình': student.program,
+                'Ngày đăng ký': student.registrationDate,
+                'Trạng thái': student.status,
+            }));
+
+            // Tạo workbook mới
+            const wb = XLSX.utils.book_new();
+            
+            // Chuyển đổi data thành worksheet
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            
+            // Thêm worksheet vào workbook
+            XLSX.utils.book_append_sheet(wb, ws, 'Học viên');
+            
+            // Tự động điều chỉnh độ rộng cột
+            const colWidths = [
+                { wch: 12 },  // Mã học viên
+                { wch: 25 },  // Họ tên
+                { wch: 30 },  // Email
+                { wch: 15 },  // Số điện thoại
+                { wch: 12 },  // Ngày sinh
+                { wch: 10 },  // Giới tính
+                { wch: 40 },  // Địa chỉ
+                { wch: 20 },  // Lớp học
+                { wch: 25 },  // Chương trình
+                { wch: 15 },  // Ngày đăng ký
+                { wch: 12 },  // Trạng thái
+            ];
+            ws['!cols'] = colWidths;
+            
+            // Xuất file Excel
+            XLSX.writeFile(wb, `hoc_vien_${new Date().toISOString().split('T')[0]}.xlsx`);
+            
+            return true;
+        } catch (error) {
+            console.error('Error exporting Excel:', error);
+            throw error;
+        }
     };
 
     // Filter students client-side (chỉ filter theo status và program, query đã filter từ BE)
@@ -476,7 +526,7 @@ export default function StudentProfilePage() {
                 onClose={() => setExportConfirm(false)}
                 onConfirm={confirmExport}
                 title="Xác nhận xuất danh sách"
-                description="Bạn có muốn tải xuống danh sách tất cả học viên ra file Excel? File sẽ chứa đầy đủ thông tin của các học viên hiện tại."
+                description={`Bạn có muốn tải xuống danh sách học viên (${filteredStudents.length} kết quả) ra file Excel? File sẽ chứa đầy đủ thông tin của các học viên theo bộ lọc hiện tại.`}
                 confirmText="Xuất file"
                 cancelText="Hủy"
                 variant="primary"

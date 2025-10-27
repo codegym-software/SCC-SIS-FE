@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Upload } from 'lucide-react';
-import { importStudentsFromExcel } from '@/shared/api/students';
+import { X, Upload, Download } from 'lucide-react';
+import { importStudentsFromExcel, downloadImportTemplate } from '@/shared/api/students';
 import { useToast } from '@/shared/hooks/useToast';
 
 type Props = { open: boolean; onClose: () => void; onSuccess: () => void; };
@@ -9,6 +9,28 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
     const { success, error, info } = useToast();
     const [file, setFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
+    const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+
+    const handleDownloadTemplate = async () => {
+        setDownloadingTemplate(true);
+        try {
+            const response = await downloadImportTemplate();
+            const blob = new Blob([response.data], { 
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'student_import_template.xlsx';
+            a.click();
+            URL.revokeObjectURL(url);
+            success('Tải template thành công', 'File template đã được tải về');
+            setDownloadingTemplate(false);
+        } catch (err) {
+            setDownloadingTemplate(false);
+            error('Lỗi tải template', 'Không thể tải file template');
+        }
+    };
 
     const handleImport = async () => {
         if (!file) {
@@ -56,9 +78,9 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                             <h3 className="text-sm font-medium text-blue-900 mb-2">📋 Hướng dẫn</h3>
                             <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-                                <li>Sử dụng nút "Export Excel" ở trang chính để tải danh sách hiện tại làm mẫu</li>
+                                <li>Nhấn nút "Tải template" để tải file mẫu Excel với định dạng chuẩn</li>
                                 <li>Điền thông tin học viên vào file (các cột bắt buộc: Họ tên, Email, SĐT)</li>
-                                <li>Chọn file đã điền và bấm "Import"</li>
+                                <li>Chọn file đã điền và bấm "Import ngay"</li>
                                 <li>Hệ thống sẽ tự động tạo hồ sơ và bỏ qua các dòng lỗi</li>
                             </ol>
                         </div>
@@ -66,6 +88,14 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
                         {/* Actions */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
+                                <button
+                                    onClick={handleDownloadTemplate}
+                                    disabled={downloadingTemplate || importing}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    {downloadingTemplate ? 'Đang tải...' : 'Tải template'}
+                                </button>
                                 <label className="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
                                     <Upload className="w-4 h-4" />
                                     {file ? file.name : 'Chọn file Excel'}

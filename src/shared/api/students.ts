@@ -61,6 +61,17 @@ export const exportStudents = () =>
     });
 
 /**
+ * Download import template Excel (.xlsx) file with headers only
+ * GET /api/students/template
+ * Returns: Blob (Excel file)
+ */
+export const downloadImportTemplate = () => 
+    api.get('/api/students/template', { 
+        responseType: 'blob',
+        headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+    });
+
+/**
  * Import học viên từ file Excel (.xlsx)
  * POST /api/students/import
  * Returns: Array of created StudentDto
