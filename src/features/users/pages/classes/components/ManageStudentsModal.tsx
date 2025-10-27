@@ -104,7 +104,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
         setOpenAddStudent(false);
     };
 
-    const handleViewDetails = (student: Student) => {
+    const handleViewDetails = (student: StudentEnrollment) => {
         setSelectedStudent(student);
     };
 
@@ -196,7 +196,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                         Xem và quản lý danh sách học viên của lớp học
                     </p>
                 </div>
-                <button 
+                <button
                     className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
                     onClick={() => {
                         console.log('Close button clicked');
@@ -226,13 +226,6 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                         <option value="DROPPED">Đã nghỉ</option>
                     </select>
                 </div>
-                <button
-                    onClick={handleAddStudent}
-                    className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
-                >
-                    <Plus size={16} />
-                    Thêm học viên
-                </button>
             </div>
 
             {/* Students List */}
@@ -260,11 +253,6 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                                 <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-sm font-medium">
                                     {student.initial}
                                 </div>
-                                <div>
-                                    <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                                    <div className="text-xs text-gray-500">{student.email}</div>
-                                </div>
-                            </div>
 
                             {/* Status */}
                             <div className="col-span-4">
@@ -335,26 +323,27 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                                 )}
                             </div>
 
-                            {/* Actions */}
-                            <div className="col-span-3">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger className="h-8 w-8 rounded hover:bg-gray-100 flex items-center justify-center">
-                                        <span className="text-gray-400">⋯</span>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="w-48">
-                                        <DropdownMenuItem onClick={() => handleViewDetails(student)}>
-                                            <Eye size={14} className="mr-2" />
-                                            Xem chi tiết
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem 
-                                            onClick={() => handleRemoveFromClass(student)}
-                                            className="text-red-600"
-                                        >
-                                            <UserMinus size={14} className="mr-2" />
-                                            Xóa khỏi lớp
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                {/* Actions */}
+                                <div className="col-span-3">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger className="h-8 w-8 rounded hover:bg-gray-100 flex items-center justify-center">
+                                            <span className="text-gray-400">⋯</span>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent className="w-48">
+                                            <DropdownMenuItem onClick={() => handleViewDetails(student)}>
+                                                <Eye size={14} className="mr-2" />
+                                                Xem chi tiết
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={() => handleRemoveFromClass(student)}
+                                                className="text-red-600"
+                                            >
+                                                <UserMinus size={14} className="mr-2" />
+                                                Xóa khỏi lớp
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
                             </div>
                             </div>
                         ))}
