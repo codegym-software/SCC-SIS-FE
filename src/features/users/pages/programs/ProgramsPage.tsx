@@ -64,7 +64,6 @@ export default function ProgramsPage() {
 
     const [programs, setPrograms] = useState<Program[]>([]);
     const [modules, setModules] = useState<Module[]>([]);
-    const [selectedProgramIdForModules, setSelectedProgramIdForModules] = useState<number | null>(null);
 
     // Fetch programs from API
     const fetchPrograms = async () => {
@@ -87,7 +86,6 @@ export default function ProgramsPage() {
                 const response = await getModulesByProgram({ programId });
                 console.log('[ProgramsPage] Fetched modules:', response.data.length);
                 setModules(response.data);
-                setSelectedProgramIdForModules(programId);
             } else {
                 // Fetch modules for ALL programs
                 if (programs.length === 0) {
@@ -106,7 +104,6 @@ export default function ProgramsPage() {
                 
                 console.log('[ProgramsPage] Total modules fetched:', allModules.length);
                 setModules(allModules);
-                setSelectedProgramIdForModules(null); // null = showing all programs
             }
         } catch (error) {
             console.error('Failed to fetch modules:', error);
@@ -142,7 +139,6 @@ export default function ProgramsPage() {
                     durationHours: formData.durationHours,
                     deliveryMode: formData.deliveryMode,
                     categoryCode: formData.categoryCode,
-                    level: formData.level,
                     isActive: formData.isActive ?? true,
                 };
                 await updateProgram(openEdit.programId, updateData);
@@ -155,7 +151,6 @@ export default function ProgramsPage() {
                     durationHours: formData.durationHours,
                     deliveryMode: formData.deliveryMode,
                     categoryCode: formData.categoryCode,
-                    level: formData.level,
                     isActive: formData.isActive ?? true,
                 };
                 await createProgram(createData);

@@ -44,7 +44,6 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
         }
     }, [student.id]);
 
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(student.avatar || null);
 
     const [errors, setErrors] = useState<{
@@ -93,8 +92,6 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                 return;
             }
 
-            setSelectedFile(file);
-            
             // Convert file to base64 and save to localStorage
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -114,7 +111,6 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
     };
 
     const removeImage = () => {
-        setSelectedFile(null);
         setPreviewUrl(null);
         // Remove from localStorage
         localStorage.removeItem(`student_avatar_${student.id}`);
@@ -159,7 +155,7 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                 email: formData.email,
                 phone: formData.phone,
                 address: formData.address,
-                dateOfBirth: formData.dateOfBirth,
+                dob: formData.dateOfBirth,
                 avatar: previewUrl || student.avatar
             };
             
