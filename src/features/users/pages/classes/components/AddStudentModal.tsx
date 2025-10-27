@@ -54,7 +54,6 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 }) => {
     const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [query, setQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [allStudents, setAllStudents] = useState<Student[]>([]);
@@ -181,7 +180,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         return { hasConflict: false };
     };
 
-    // Filter students based on search and status
+    // Filter students based on search
     const filteredStudents = allStudents
         .filter(student => {
             const matchesQuery = 
@@ -189,9 +188,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                 student.email.toLowerCase().includes(query.toLowerCase()) ||
                 student.studentId.toString().includes(query.toLowerCase());
             
-            const matchesStatus = statusFilter === 'Tất cả trạng thái' || student.overallStatus === statusFilter;
-            
-            return matchesQuery && matchesStatus;
+            return matchesQuery;
         })
         .sort((a, b) => {
             // Sort students: those without conflicts first, then those with conflicts
@@ -211,22 +208,18 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     };
 
     const handleSelectAll = () => {
-<<<<<<< HEAD
-        // Lọc ra những học viên KHÔNG có trùng lịch (hợp lệ)
+        // Filter out students WITH conflicts (keep only valid ones)
         const validStudents = filteredStudents.filter(student => {
             const conflict = checkScheduleConflict(student);
             return !conflict.hasConflict;
         });
 
-        // Nếu đã chọn hết học viên hợp lệ → bỏ chọn tất cả
-        // Ngược lại → chọn tất cả học viên hợp lệ
+        // If all valid students are selected, deselect all
+        // Otherwise, select all valid students
         const validStudentIds = validStudents.map(s => s.studentId);
         const allValidSelected = validStudentIds.every(id => selectedStudents.includes(id));
 
         if (allValidSelected && selectedStudents.length > 0) {
-=======
-        if (selectedStudents.length === (candidates ?? []).length) {
->>>>>>> 3eee838d740a99f924cf29da55d5db37c5ffa3e0
             setSelectedStudents([]);
         } else {
             setSelectedStudents(validStudentIds);
@@ -308,22 +301,17 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                                     onClick={handleSelectAll}
                                     className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                                 >
-<<<<<<< HEAD
                                     {(() => {
                                         const allValidSelected = filteredStudents
                                             .filter(s => !checkScheduleConflict(s).hasConflict)
                                             .every(s => selectedStudents.includes(s.studentId));
                                         return allValidSelected && selectedStudents.length > 0 ? 'Bỏ chọn tất cả' : 'Chọn tất cả';
                                     })()}
-=======
-                                    {selectedStudents.length === (candidates ?? []).length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
->>>>>>> 3eee838d740a99f924cf29da55d5db37c5ffa3e0
                                 </button>
                                 <span className="text-sm text-gray-500">
                                     ({selectedStudents.length} học viên đã chọn)
                                 </span>
                             </div>
-<<<<<<< HEAD
                             <div className="text-sm text-gray-500">
                                 {(() => {
                                     const validCount = filteredStudents.filter(s => !checkScheduleConflict(s).hasConflict).length;
@@ -341,14 +329,6 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                                     );
                                 })()}
                             </div>
-=======
-                            {loading && (
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                    <Loader2 size={14} className="animate-spin" />
-                                    Đang tải...
-                                </div>
-                            )}
->>>>>>> 3eee838d740a99f924cf29da55d5db37c5ffa3e0
                         </div>
                     </div>
 
@@ -482,4 +462,3 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 };
 
 export default AddStudentModal;
-

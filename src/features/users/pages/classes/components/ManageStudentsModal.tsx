@@ -70,13 +70,34 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
     const loadStudents = async () => {
         try {
             setIsLoading(true);
+            console.log('[ManageStudentsModal] Loading students for class:', classItem.id);
+            
             // Load ALL students, not just ACTIVE
             const response = await getClassStudents(parseInt(classItem.id), {
                 page: 0,
                 size: 1000
             });
             
-            const enrollments: EnrollmentResponse[] = response.data.content || response.data;
+            console.log('[ManageStudentsModal] API Response:', response);
+            console.log('[ManageStudentsModal] Response data:', response.data);
+            
+            // Handle Spring Page response structure
+            let enrollments: EnrollmentResponse[] = [];
+            if (response.data) {
+                if (Array.isArray(response.data)) {
+                    // If it's already an array
+                    enrollments = response.data;
+                } else if (response.data.content && Array.isArray(response.data.content)) {
+                    // If it's a Spring Page object with content property
+                    enrollments = response.data.content;
+                } else {
+                    console.warn('[ManageStudentsModal] Unexpected response structure:', response.data);
+                }
+            }
+            
+            console.log('[ManageStudentsModal] Enrollments:', enrollments);
+            console.log('[ManageStudentsModal] Enrollments length:', enrollments.length);
+            
             const formattedStudents: Student[] = enrollments.map(enrollment => ({
                 enrollmentId: enrollment.enrollmentId,
                 studentId: enrollment.studentId,
@@ -89,9 +110,11 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                 note: enrollment.note
             }));
             
+            console.log('[ManageStudentsModal] Formatted students:', formattedStudents);
             setStudents(formattedStudents);
         } catch (error: any) {
-            console.error('Error loading students:', error);
+            console.error('[ManageStudentsModal] Error loading students:', error);
+            console.error('[ManageStudentsModal] Error response:', error?.response);
             showErrorToast(error?.response?.data?.message || 'Không thể tải danh sách học viên');
         } finally {
             setIsLoading(false);
@@ -104,7 +127,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
         setOpenAddStudent(false);
     };
 
-    const handleViewDetails = (student: StudentEnrollment) => {
+    const handleViewDetails = (student: Student) => {
         setSelectedStudent(student);
     };
 
@@ -226,6 +249,13 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                         <option value="DROPPED">Đã nghỉ</option>
                     </select>
                 </div>
+                <button
+                    onClick={handleAddStudent}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                >
+                    <Plus size={16} />
+                    Thêm học viên
+                </button>
             </div>
 
             {/* Students List */}
@@ -248,13 +278,18 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                     <div className="divide-y">
                         {filteredStudents.map((student) => (
                             <div key={student.enrollmentId} className="px-4 py-3 grid grid-cols-12 gap-4 items-center">
-                            {/* Student Info */}
-                            <div className="col-span-5 flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-sm font-medium">
-                                    {student.initial}
+                                {/* Student Info */}
+                                <div className="col-span-5 flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-sm font-medium">
+                                        {student.initial}
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                                        <div className="text-xs text-gray-500">{student.email}</div>
+                                    </div>
                                 </div>
 
-                            {/* Status */}
+                                {/* Status */}
                             <div className="col-span-4">
                                 {editingStatus === student.enrollmentId ? (
                                     <div className="space-y-2">
@@ -321,7 +356,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                                         )}
                                     </div>
                                 )}
-                            </div>
+                                </div>
 
                                 {/* Actions */}
                                 <div className="col-span-3">
@@ -344,7 +379,6 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </div>
-                            </div>
                             </div>
                         ))}
                     </div>
