@@ -268,19 +268,42 @@ export default function StudentProfilePage() {
         setExportConfirm(true);
     };
 
+    // Helper: Convert frontend status to backend status
+    const mapStatusToBackend = (frontendStatus: string): string | undefined => {
+        switch (frontendStatus) {
+            case 'Đang học': return 'ACTIVE';
+            case 'Tốt nghiệp': return 'GRADUATED';
+            case 'Bảo lưu': return 'SUSPENDED';
+            case 'Tạm dừng': return 'INACTIVE';
+            case 'Tất cả trạng thái': return undefined;
+            default: return undefined;
+        }
+    };
+
     const confirmExport = async () => {
         try {
-            const response = await exportStudents();
+            // Lấy backend status từ filter
+            const backendStatus = mapStatusToBackend(statusFilter);
+            
+            const response = await exportStudents(backendStatus);
             const blob = new Blob([response.data], { 
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
             });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'students.xlsx';
+            
+            // Đặt tên file theo status filter
+            const fileName = backendStatus 
+                ? `students_${backendStatus.toLowerCase()}.xlsx`
+                : 'students_all.xlsx';
+            a.download = fileName;
+            
             a.click();
             URL.revokeObjectURL(url);
-            toast.success('Xuất file thành công', 'Dữ liệu học viên đã được tải về dưới dạng file Excel');
+            
+            const statusText = statusFilter === 'Tất cả trạng thái' ? 'tất cả' : statusFilter.toLowerCase();
+            toast.success('Xuất file thành công', `Đã tải danh sách học viên ${statusText} dưới dạng file Excel`);
             setExportConfirm(false);
         } catch (err) {
             toast.error('Lỗi xuất file', 'Không thể tải file Excel');
@@ -476,7 +499,11 @@ export default function StudentProfilePage() {
                 onClose={() => setExportConfirm(false)}
                 onConfirm={confirmExport}
                 title="Xác nhận xuất danh sách"
-                description="Bạn có muốn tải xuống danh sách tất cả học viên ra file Excel? File sẽ chứa đầy đủ thông tin của các học viên hiện tại."
+                description={
+                    statusFilter === 'Tất cả trạng thái'
+                        ? 'Bạn có muốn tải xuống danh sách TẤT CẢ học viên ra file Excel? File sẽ chứa đầy đủ thông tin của các học viên hiện tại.'
+                        : `Bạn có muốn tải xuống danh sách học viên đang ở trạng thái "${statusFilter}" ra file Excel? Chỉ những học viên có trạng thái này sẽ được xuất.`
+                }
                 confirmText="Xuất file"
                 cancelText="Hủy"
                 variant="primary"

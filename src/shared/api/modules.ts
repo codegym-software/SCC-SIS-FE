@@ -9,6 +9,16 @@ import type {
     ModuleQueryParams,
 } from '../types/module';
 
+// Re-export types for external use
+export type {
+    ModuleResponse,
+    CreateModuleRequest,
+    UpdateModuleRequest,
+    ReorderModuleRequest,
+    AttachResourceRequest,
+    ModuleQueryParams,
+};
+
 /**
  * Tạo module mới
  * POST /api/modules
