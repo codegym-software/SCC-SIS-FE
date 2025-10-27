@@ -11,6 +11,7 @@ type Student = {
     initial: string;
     class: string;
     program: string;
+    classes: Array<{ className: string; programName: string }>; // Multiple classes
     registrationDate: string;
     status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
     avatar?: string;
@@ -130,10 +131,28 @@ const StudentList: React.FC<StudentListProps> = ({
                             </div>
                         </div>
 
-                        {/* Class Info */}
+                        {/* Class Info - Show multiple classes vertically */}
                         <div className="col-span-2">
-                            <div className="text-sm font-medium">{student.class}</div>
-                            <div className="text-xs text-gray-500">{student.program}</div>
+                            {student.classes && student.classes.length > 0 ? (
+                                <div className="flex flex-col gap-1.5">
+                                    {student.classes.slice(0, 2).map((cls, idx) => (
+                                        <div key={idx} className="flex flex-col">
+                                            <span className="text-xs font-medium text-gray-900">{cls.className}</span>
+                                            <span className="text-[10px] text-gray-500">{cls.programName}</span>
+                                        </div>
+                                    ))}
+                                    {student.classes.length > 2 && (
+                                        <span className="text-xs text-[#717182]">
+                                            +{student.classes.length - 2} lớp nữa
+                                        </span>
+                                    )}
+                                </div>
+                            ) : (
+                                <div>
+                                    <div className="text-sm font-medium">{student.class}</div>
+                                    <div className="text-xs text-gray-500">{student.program}</div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Registration Date */}

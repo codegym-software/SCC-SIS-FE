@@ -24,7 +24,7 @@ api.interceptors.request.use(async (config) => {
 // ========== RESPONSE INTERCEPTOR ==========
 api.interceptors.response.use(
     (res) => res,
-    async (err: AxiosError) => {
+    async (err: AxiosError<any>) => {
         const status = err.response?.status;
 
         if (status === 401) {
@@ -32,6 +32,14 @@ api.interceptors.response.use(
                 await keycloak.login();
             } catch (loginError) {
                 console.error('Login redirect failed:', loginError);
+            }
+        }
+
+        // Format error message from backend
+        if (err.response?.data) {
+            const backendMessage = err.response.data.message || err.response.data.error;
+            if (backendMessage) {
+                err.message = backendMessage;
             }
         }
 

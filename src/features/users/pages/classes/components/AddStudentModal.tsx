@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, User, Mail, Phone, Check, Loader2 } from 'lucide-react';
-import { getStudentsByCenter } from '@/api/user-views';
-import { getClassStudents, enrollStudent } from '@/api/class-students';
+import { X, Search, Mail, Phone, Check, AlertTriangle, Clock, Calendar } from 'lucide-react';
+import { enrollStudent, listClasses, getClassStudents } from '@/shared/api/classes';
+import { listStudents } from '@/shared/api/students';
 import { useToast } from '@/shared/hooks/useToast';
-import type { UserView } from '@/api/user-views';
+import type { StudentDto } from '@/shared/types/student';
+import type { ClassResponse } from '@/shared/types/classes';
 
-type StudentCandidate = UserView & {
+type StudentEnrolledClass = {
+    className: string;
+    programName: string;
+    studyDays?: string[];
+    studyTime?: string;
+};
+
+type Student = {
+    studentId: number;
+    fullName: string;
+    email: string;
+    phone: string;
     initial: string;
+    overallStatus?: string;
+    enrolledClasses?: StudentEnrolledClass[];
 };
 
 type Class = {
@@ -21,6 +35,8 @@ type Class = {
     maxStudents: number;
     instructors: any[];
     status: 'Chuẩn bị' | 'Đang học' | 'Hoàn thành' | 'Tạm dừng';
+    studyDays?: string[];
+    studyTime?: string;
 };
 
 interface AddStudentModalProps {
@@ -36,64 +52,159 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     classItem,
     onAddStudents
 }) => {
+    const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [query, setQuery] = useState('');
-    const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+    const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
+    const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [candidates, setCandidates] = useState<StudentCandidate[]>([]);
-    const [activeStudentIds, setActiveStudentIds] = useState<number[]>([]);
-    const { success, error } = useToast();
+    const [allStudents, setAllStudents] = useState<Student[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Load candidates and active students when modal opens
+    // Load students from API
     useEffect(() => {
         if (open) {
-            loadData();
+            loadStudents();
         }
-    }, [open, classItem.id]);
+    }, [open]);
 
-    const loadData = async () => {
+    const loadStudents = async () => {
         try {
-            setLoading(true);
-
-            // 1) active trong lớp để loại trừ
-            const active = await getClassStudents(Number(classItem.id), { status: 'ACTIVE', page: 0, size: 200 });
-            const activeIds = new Set((active.items ?? []).map(x => x.studentId));
-
-            // 2) candidates theo center
-            const candidates = await getStudentsByCenter(Number(classItem.id), query); // LIST
-            const filtered = (candidates ?? []).filter(u => !activeIds.has(u.userId));
-
-            const candidatesWithInitials = filtered.map(candidate => ({
-                ...candidate,
-                initial: candidate.fullName.charAt(0).toUpperCase()
+            setIsLoading(true);
+            
+            // Load students
+            const response = await listStudents();
+            const students: StudentDto[] = response.data;
+            
+            // Load all classes to get enrollments
+            const classesResponse = await listClasses();
+            const allClasses: ClassResponse[] = classesResponse.data;
+            
+            // Map to store each student's enrolled classes
+            const studentClassesMap = new Map<number, StudentEnrolledClass[]>();
+            
+            // Load enrollments for each class
+            for (const classItem of allClasses) {
+                try {
+                    const enrollmentsResponse = await getClassStudents(classItem.classId, {
+                        status: 'ACTIVE',
+                        page: 0,
+                        size: 1000
+                    });
+                    const enrollments = enrollmentsResponse.data.content || enrollmentsResponse.data;
+                    
+                    // For each enrollment, add class info to student's map
+                    enrollments.forEach((enrollment: any) => {
+                        if (!studentClassesMap.has(enrollment.studentId)) {
+                            studentClassesMap.set(enrollment.studentId, []);
+                        }
+                        studentClassesMap.get(enrollment.studentId)!.push({
+                            className: classItem.name,
+                            programName: classItem.programName,
+                            studyDays: classItem.studyDays,
+                            studyTime: classItem.studyTime
+                        });
+                    });
+                } catch (error) {
+                    // Skip if can't access this class
+                    console.log(`Cannot access class ${classItem.classId}`);
+                }
+            }
+            
+            // Format students with enrolled classes
+            const formattedStudents: Student[] = students.map(student => ({
+                studentId: student.studentId,
+                fullName: student.fullName,
+                email: student.email,
+                phone: student.phone,
+                initial: student.fullName.charAt(0).toUpperCase(),
+                overallStatus: student.overallStatus,
+                enrolledClasses: studentClassesMap.get(student.studentId) || []
             }));
-            setCandidates(candidatesWithInitials);
-
-        } catch (error) {
-            console.error('Error loading data:', error);
-            error('Không thể tải danh sách học viên');
+            
+            setAllStudents(formattedStudents);
+        } catch (error: any) {
+            console.error('Error loading students:', error);
+            showErrorToast(error?.response?.data?.message || 'Không thể tải danh sách học viên');
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
-    // Filter candidates to exclude active students in current class
-    const availableCandidates = candidates.filter(candidate =>
-        !activeStudentIds.includes(candidate.userId)
-    );
+    // Helper function to format study days
+    const formatStudyDays = (days?: string[]) => {
+        if (!days || days.length === 0) return 'Chưa có';
+        const dayMap: { [key: string]: string } = {
+            'MONDAY': 'T2',
+            'TUESDAY': 'T3',
+            'WEDNESDAY': 'T4',
+            'THURSDAY': 'T5',
+            'FRIDAY': 'T6',
+            'SATURDAY': 'T7',
+            'SUNDAY': 'CN'
+        };
+        return days.map(d => dayMap[d] || d).join(', ');
+    };
 
-    // Filter based on search query
-    const filteredStudents = availableCandidates.filter(candidate => {
-        const matchesQuery = query === '' ||
-            candidate.fullName.toLowerCase().includes(query.toLowerCase()) ||
-            candidate.email.toLowerCase().includes(query.toLowerCase());
+    // Helper function to format study time
+    const formatStudyTime = (time?: string) => {
+        if (!time) return 'Chưa có';
+        const timeMap: { [key: string]: string } = {
+            'MORNING': 'Sáng (8:00-11:00)',
+            'AFTERNOON': 'Chiều (14:00-17:00)',
+            'EVENING': 'Tối (18:00-21:00)'
+        };
+        return timeMap[time] || time;
+    };
 
-        return matchesQuery;
-    });
+    // Check if there's a schedule conflict
+    const checkScheduleConflict = (student: Student): { hasConflict: boolean; conflictMessage?: string } => {
+        if (!classItem.studyDays || !classItem.studyTime || !student.enrolledClasses || student.enrolledClasses.length === 0) {
+            return { hasConflict: false };
+        }
 
-    const handleStudentSelect = (studentId: string) => {
-        setSelectedStudents(prev =>
-            prev.includes(studentId)
+        for (const enrolledClass of student.enrolledClasses) {
+            if (!enrolledClass.studyDays || !enrolledClass.studyTime) continue;
+
+            // Check if any day overlaps
+            const hasOverlappingDay = classItem.studyDays.some(day => 
+                enrolledClass.studyDays?.includes(day)
+            );
+
+            if (hasOverlappingDay && classItem.studyTime === enrolledClass.studyTime) {
+                return {
+                    hasConflict: true,
+                    conflictMessage: `Trùng lịch với lớp "${enrolledClass.className}" (${formatStudyDays(enrolledClass.studyDays)} - ${formatStudyTime(enrolledClass.studyTime)})`
+                };
+            }
+        }
+
+        return { hasConflict: false };
+    };
+
+    // Filter students based on search and status
+    const filteredStudents = allStudents
+        .filter(student => {
+            const matchesQuery = 
+                student.fullName.toLowerCase().includes(query.toLowerCase()) ||
+                student.email.toLowerCase().includes(query.toLowerCase()) ||
+                student.studentId.toString().includes(query.toLowerCase());
+            
+            const matchesStatus = statusFilter === 'Tất cả trạng thái' || student.overallStatus === statusFilter;
+            
+            return matchesQuery && matchesStatus;
+        })
+        .sort((a, b) => {
+            // Sort students: those without conflicts first, then those with conflicts
+            const conflictA = checkScheduleConflict(a).hasConflict;
+            const conflictB = checkScheduleConflict(b).hasConflict;
+            
+            if (conflictA === conflictB) return 0;
+            return conflictA ? 1 : -1; // Students without conflict come first
+        });
+
+    const handleStudentSelect = (studentId: number) => {
+        setSelectedStudents(prev => 
+            prev.includes(studentId) 
                 ? prev.filter(id => id !== studentId)
                 : [...prev, studentId]
         );
@@ -103,7 +214,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         if (selectedStudents.length === (candidates ?? []).length) {
             setSelectedStudents([]);
         } else {
-            setSelectedStudents((candidates ?? []).map(s => s.userId.toString()));
+            setSelectedStudents(filteredStudents.map(s => s.studentId));
         }
     };
 
@@ -113,26 +224,23 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         setIsSubmitting(true);
 
         try {
-            const today = new Date().toISOString().slice(0, 10);
-            const tasks = selectedStudents.map(id => enrollStudent(Number(classItem.id), {
-                studentId: Number(id),
-                enrolledAt: today,
-                note: null
-            }).catch(err => err));                 // nuốt lỗi để tiếp tục
+            // Call API to enroll each selected student
+            const enrollmentPromises = selectedStudents.map(studentId => {
+                return enrollStudent(parseInt(classItem.id), {
+                    studentId: studentId,
+                    enrolledAt: new Date().toISOString().split('T')[0],
+                    note: ''
+                });
+            });
 
-            const results = await Promise.all(tasks);
-            const created = results.filter(r => !(r instanceof Error)).length;
-            const skipped = results.length - created;
-
-            success(`Đã thêm ${created} học viên${skipped ? `, bỏ qua ${skipped}` : ''}`);
-
-            // Close modal and reload parent
-            onAddStudents(selectedStudents);
-            onClose();
-
-        } catch (error) {
-            console.error('Error enrolling students:', error);
-            error('Có lỗi xảy ra khi thêm học viên');
+            await Promise.all(enrollmentPromises);
+            
+            showSuccessToast(`Đã thêm ${selectedStudents.length} học viên vào lớp thành công!`);
+            onAddStudents([]);
+            handleClose();
+        } catch (error: any) {
+            console.error('Error adding students:', error);
+            showErrorToast(error?.response?.data?.message || 'Có lỗi xảy ra khi thêm học viên');
         } finally {
             setIsSubmitting(false);
         }
@@ -202,53 +310,108 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
                     {/* Student List */}
                     <div className="px-6 py-4 max-h-96 overflow-y-auto">
-                        <div className="space-y-2">
-                            {(candidates ?? []).map((student) => (
-                                <div
-                                    key={student.userId}
-                                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedStudents.includes(student.userId.toString())
-                                        ? 'border-blue-500 bg-blue-50'
-                                        : 'border-gray-200 hover:border-gray-300'
-                                        }`}
-                                    onClick={() => handleStudentSelect(student.userId.toString())}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${selectedStudents.includes(student.userId.toString())
-                                            ? 'bg-gray-900 text-white'
-                                            : 'bg-gray-100 text-gray-700'
-                                            }`}>
-                                            {selectedStudents.includes(student.userId.toString()) ? (
-                                                <Check size={16} />
-                                            ) : (
-                                                student.initial
-                                            )}
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="font-medium">{student.fullName}</h3>
-                                                <span className="text-xs text-gray-500">(ID: {student.userId})</span>
-                                            </div>
-                                            <div className="flex items-center gap-4 text-sm text-gray-500">
-                                                <div className="flex items-center gap-1">
-                                                    <Mail size={12} />
-                                                    {student.email}
+                        {isLoading ? (
+                            <div className="text-center py-8 text-gray-500">
+                                Đang tải danh sách học viên...
+                            </div>
+                        ) : (
+                            <>
+                                <div className="space-y-2">
+                                    {filteredStudents.map((student) => {
+                                        const conflict = checkScheduleConflict(student);
+                                        return (
+                                            <div
+                                                key={student.studentId}
+                                                className={`p-3 rounded-lg border transition-colors ${
+                                                    conflict.hasConflict
+                                                        ? 'border-orange-300 bg-orange-50 cursor-not-allowed'
+                                                        : selectedStudents.includes(student.studentId)
+                                                        ? 'border-blue-500 bg-blue-50 cursor-pointer'
+                                                        : 'border-gray-200 hover:border-gray-300 cursor-pointer'
+                                                }`}
+                                                onClick={() => !conflict.hasConflict && handleStudentSelect(student.studentId)}
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${
+                                                        conflict.hasConflict
+                                                            ? 'bg-orange-200 text-orange-700'
+                                                            : selectedStudents.includes(student.studentId)
+                                                            ? 'bg-gray-900 text-white'
+                                                            : 'bg-gray-100 text-gray-700'
+                                                    }`}>
+                                                        {selectedStudents.includes(student.studentId) ? (
+                                                            <Check size={16} />
+                                                        ) : (
+                                                            student.initial
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <h3 className="font-medium">{student.fullName}</h3>
+                                                            <span className="text-xs text-gray-500">(ID: {student.studentId})</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                                                            <div className="flex items-center gap-1">
+                                                                <Mail size={12} />
+                                                                <span className="truncate">{student.email}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <Phone size={12} />
+                                                                {student.phone}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Display enrolled classes */}
+                                                        {student.enrolledClasses && student.enrolledClasses.length > 0 && (
+                                                            <div className="mt-2 space-y-1">
+                                                                <div className="text-xs font-medium text-gray-600">Các lớp đang học:</div>
+                                                                <div className="flex flex-col gap-1">
+                                                                    {student.enrolledClasses.map((cls, idx) => (
+                                                                        <div key={idx} className="flex items-center gap-2 text-xs bg-white rounded px-2 py-1 border border-gray-200">
+                                                                            <span className="font-medium text-gray-900">{cls.className}</span>
+                                                                            <span className="text-gray-500">•</span>
+                                                                            <div className="flex items-center gap-1 text-gray-600">
+                                                                                <Calendar size={10} />
+                                                                                <span>{formatStudyDays(cls.studyDays)}</span>
+                                                                            </div>
+                                                                            <span className="text-gray-500">•</span>
+                                                                            <div className="flex items-center gap-1 text-gray-600">
+                                                                                <Clock size={10} />
+                                                                                <span>{formatStudyTime(cls.studyTime)}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Display conflict warning */}
+                                                        {conflict.hasConflict && (
+                                                            <div className="mt-2 flex items-center gap-2 text-xs text-orange-700 bg-orange-100 p-2 rounded">
+                                                                <AlertTriangle size={14} className="flex-shrink-0" />
+                                                                <span>{conflict.conflictMessage}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {student.overallStatus && (
+                                                        <div className="text-right flex-shrink-0">
+                                                            <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
+                                                                {student.overallStatus}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
-                                                Chưa trong lớp
-                                            </span>
-                                        </div>
-                                    </div>
+                                        );
+                                    })}
                                 </div>
-                            ))}
-                        </div>
-
-                        {(candidates ?? []).length === 0 && !loading && (
-                            <div className="text-center py-8 text-gray-500">
-                                {query ? 'Không tìm thấy học viên nào' : 'Không có học viên nào khả dụng'}
-                            </div>
+                                
+                                {filteredStudents.length === 0 && !isLoading && (
+                                    <div className="text-center py-8 text-gray-500">
+                                        Không tìm thấy học viên nào
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
 

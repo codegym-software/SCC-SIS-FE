@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { User, Plus, Search, Filter, Upload } from 'lucide-react';
 import StudentSearch from './search';
 import StudentList from './list';
 import StudentView from './view';
 import StudentEdit from './edit';
+import CreateStudentModal from './create';
 import ChangeStatusModal from './components/ChangeStatusModal';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
+import ImportStudentsModal from './components/ImportStudentsModal';
+import { listStudents, getStudentById, updateStudent, deleteStudent, searchStudents, exportStudents } from '@/shared/api/students';
+import { listClasses, getClassStudents } from '@/shared/api/classes';
+import { getPrograms } from '@/shared/api/programs';
+import type { StudentDto, UpdateStudentDto } from '@/shared/types/student';
+import { useToast } from '@/shared/hooks/useToast';
 
 type Student = {
     id: string;
@@ -16,9 +22,14 @@ type Student = {
     initial: string;
     class: string;
     program: string;
+    classes: Array<{ className: string; programName: string }>; // Multiple classes support
     registrationDate: string;
     status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
     avatar?: string;
+    dob?: string | null;
+    address?: string | null;
+    gender?: string | null;
+    nationalIdNo?: string | null;
 };
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
@@ -50,6 +61,7 @@ function StatusModal({ open, onClose, children }: { open: boolean; onClose: () =
 }
 
 export default function StudentProfilePage() {
+    const toast = useToast();
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [programFilter, setProgramFilter] = useState('Tất cả chương trình');
@@ -62,159 +74,185 @@ export default function StudentProfilePage() {
     const [currentPage, setCurrentPage] = useState(1);
     const studentsPerPage = 8;
 
-    // Generate additional students
-    const generateAdditionalStudents = (): Student[] => {
-        const firstNames = [
-            'Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Phan', 'Vũ', 'Võ', 'Đặng', 'Bùi',
-            'Đỗ', 'Hồ', 'Ngô', 'Dương', 'Lý', 'Đinh', 'Đào', 'Mai', 'Lâm', 'Thái',
-            'Cao', 'Đinh', 'Lương', 'Tôn', 'Vương', 'Đinh', 'Lê', 'Phan', 'Võ', 'Bùi'
-        ];
-        
-        const lastNames = [
-            'Minh', 'Văn', 'Thị', 'Quốc', 'Đức', 'Hùng', 'Mai', 'Lan', 'Hương', 'Thu',
-            'Anh', 'Tuấn', 'Nam', 'Hải', 'Long', 'Phong', 'Khang', 'Bảo', 'Đức', 'Thành',
-            'Huy', 'Duy', 'Khoa', 'Linh', 'Nga', 'Hoa', 'Ly', 'My', 'Vy', 'Uyên'
-        ];
-        
-        const classes = [
-            'Lập trình Java Cơ bản - K15', 'Web Development - K08', 'Data Science - K01',
-            'Python Programming - K12', 'Digital Marketing - K05', 'UI/UX Design - K03',
-            'Mobile App Development - K07', 'Cloud Computing - K09', 'AI/ML - K11', 'Cybersecurity - K13'
-        ];
-        
-        const programs = ['Công nghệ Thông tin', 'Digital Marketing', 'Thiết kế', 'Kinh doanh'];
-        const statuses: Student['status'][] = ['Đang học', 'Bảo lưu', 'Tốt nghiệp', 'Tạm dừng'];
-        
-        return Array.from({ length: 50 }, (_, index) => {
-            const studentNumber = index + 6; // Start from SV006
-            const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-            const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-            const fullName = `${firstName} ${lastName}`;
-            const initial = fullName.split(' ').map(n => n[0]).join('');
+    const [students, setStudents] = useState<Student[]>([]);
+    const [openImport, setOpenImport] = useState(false);
+    const [exportConfirm, setExportConfirm] = useState(false);
+    const [enrollmentMap, setEnrollmentMap] = useState<Map<number, any>>(new Map());
+    const [isLoading, setIsLoading] = useState(true);
+    const [programs, setPrograms] = useState<Array<{ programId: number; name: string }>>([]);
+
+    // Load tất cả enrollments một lần để tối ưu
+    const loadAllEnrollments = async () => {
+        try {
+            const classesResponse = await listClasses();
+            const classes = classesResponse.data;
+            const map = new Map<number, Array<{ className: string; programName: string }>>();
             
-            const randomClass = classes[Math.floor(Math.random() * classes.length)];
-            const randomProgram = programs[Math.floor(Math.random() * programs.length)];
-            const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+            // Load enrollments của tất cả classes
+            for (const classItem of classes) {
+                try {
+                    const enrollmentsResponse = await getClassStudents(classItem.classId, {
+                        status: 'ACTIVE',
+                        page: 0,
+                        size: 1000
+                    });
+                    const enrollments = enrollmentsResponse.data.content || enrollmentsResponse.data;
+                    
+                    // Map student ID -> array of classes
+                    enrollments.forEach((enrollment: any) => {
+                        if (!map.has(enrollment.studentId)) {
+                            map.set(enrollment.studentId, []);
+                        }
+                        map.get(enrollment.studentId)!.push({
+                            className: classItem.name,
+                            programName: classItem.programName
+                        });
+                    });
+                } catch (error) {
+                    // Skip if can't access this class
+                }
+            }
             
-            // Generate random date between 2023-2025
-            const year = 2023 + Math.floor(Math.random() * 3);
-            const month = Math.floor(Math.random() * 12) + 1;
-            const day = Math.floor(Math.random() * 28) + 1;
-            const registrationDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            
-            // Generate random phone number
-            const phoneNumber = `09${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`;
-            
-            return {
-                id: `student-${studentNumber}`,
-                studentId: `SV${String(studentNumber).padStart(3, '0')}`,
-                name: fullName,
-                email: `${fullName.toLowerCase().replace(/\s+/g, '.')}@student.edu`,
-                phone: phoneNumber,
-                initial,
-                class: randomClass,
-                program: randomProgram,
-                registrationDate,
-                status: randomStatus,
-                avatar: loadStudentAvatar(`student-${studentNumber}`)
-            };
-        });
+            setEnrollmentMap(map);
+        } catch (error) {
+            console.error('Error loading enrollments:', error);
+        }
     };
+
+    // Helper function: Convert StudentDto từ BE sang Student type của FE
+    const mapStudentDtoToStudent = (dto: StudentDto): Student => {
+        // Lấy thông tin lớp học từ enrollment map
+        const enrollmentInfo = enrollmentMap.get(dto.studentId) || [];
+        const className = enrollmentInfo.length > 0 ? enrollmentInfo[0].className : 'Chưa có lớp';
+        const programName = enrollmentInfo.length > 0 ? enrollmentInfo[0].programName : 'Chưa đăng ký';
+        
+        return {
+            id: dto.studentId.toString(),
+            studentId: `SV${String(dto.studentId).padStart(3, '0')}`,
+            name: dto.fullName,
+            email: dto.email,
+            phone: dto.phone,
+            initial: dto.fullName.split(' ').map(n => n[0]).join(''),
+            class: className,
+            program: programName,
+            classes: enrollmentInfo, // All classes
+            registrationDate: dto.createdAt.split('T')[0],
+            status: (dto.overallStatus === 'ACTIVE' ? 'Đang học' : 
+                     dto.overallStatus === 'INACTIVE' ? 'Tạm dừng' : 
+                     dto.overallStatus === 'GRADUATED' ? 'Tốt nghiệp' : 
+                     'Bảo lưu') as Student['status'],
+            avatar: loadStudentAvatar(dto.studentId.toString()),
+            dob: dto.dob || null,
+            address: dto.addressLine || null,
+            gender: dto.gender || null,
+            nationalIdNo: dto.nationalIdNo || null
+        };
+    };
+
+    // Load students from API (hoặc search nếu có keyword)
+    const fetchStudents = async (keyword?: string) => {
+        try {
+            let response;
+            if (keyword && keyword.trim()) {
+                // Nếu có keyword → gọi API search
+                response = await searchStudents(keyword.trim());
+            } else {
+                // Nếu không có keyword → load all
+                response = await listStudents();
+            }
+            // Map students với enrollment info
+            const studentsData = response.data.map(dto => mapStudentDtoToStudent(dto));
+            setStudents(studentsData);
+        } catch (error) {
+            console.error('Error fetching students:', error);
+        }
+    };
+
+    // Load programs
+    const loadPrograms = async () => {
+        try {
+            const response = await getPrograms();
+            const programList = response.data.map(p => ({
+                programId: p.programId,
+                name: p.name
+            }));
+            setPrograms(programList);
+        } catch (error) {
+            console.error('Error loading programs:', error);
+        }
+    };
+
+    // Load enrollments và students on mount
+    useEffect(() => {
+        const initData = async () => {
+            setIsLoading(true);
+            await Promise.all([
+                loadPrograms(), // Load programs
+                loadAllEnrollments(), // Load enrollments
+            ]);
+            await fetchStudents(); // Load students sau
+            setIsLoading(false);
+        };
+        initData();
+    }, []);
+
+
+    // Tự động tìm kiếm khi thay đổi query (debounce)
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            if (enrollmentMap.size > 0) {
+                fetchStudents(query);
+                setCurrentPage(1);
+            }
+        }, 500);
+        return () => clearTimeout(handler);
+    }, [query, enrollmentMap]);
 
     // Function to load avatar from localStorage
     const loadStudentAvatar = (studentId: string) => {
         return localStorage.getItem(`student_avatar_${studentId}`) || '';
     };
 
-    // Mock data for students
-    const [students, setStudents] = useState<Student[]>([
-        {
-            id: '1',
-            studentId: 'SV001',
-            name: 'Pham Minh Đức',
-            email: 'duc.pham@student.edu',
-            phone: '0911111111',
-            initial: 'P',
-            class: 'Lập trình Java Cơ bản - K15',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-01-15',
-            status: 'Đang học',
-            avatar: loadStudentAvatar('1') || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'
-        },
-        {
-            id: '2',
-            studentId: 'SV002',
-            name: 'Hoàng Thị Mai',
-            email: 'mai.hoang@student.edu',
-            phone: '0922222222',
-            initial: 'H',
-            class: 'Lập trình Java Cơ bản - K15',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-01-15',
-            status: 'Đang học',
-            avatar: loadStudentAvatar('2')
-        },
-        {
-            id: '3',
-            studentId: 'SV003',
-            name: 'Vũ Đình Nam',
-            email: 'nam.vu@student.edu',
-            phone: '0933333333',
-            initial: 'V',
-            class: 'Lập trình Java Cơ bản - K15',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-01-15',
-            status: 'Bảo lưu',
-            avatar: loadStudentAvatar('3')
-        },
-        {
-            id: '4',
-            studentId: 'SV004',
-            name: 'Nguyễn Thu Hằng',
-            email: 'hang.nguyen@student.edu',
-            phone: '0944444444',
-            initial: 'N',
-            class: 'Web Development - K08',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2024-02-01',
-            status: 'Đang học',
-            avatar: loadStudentAvatar('4')
-        },
-        {
-            id: '5',
-            studentId: 'SV005',
-            name: 'Trần Quốc Thành',
-            email: 'thanh.tran@student.edu',
-            phone: '0955555555',
-            initial: 'T',
-            class: 'Data Science - K01',
-            program: 'Công nghệ Thông tin',
-            registrationDate: '2023-09-01',
-            status: 'Tốt nghiệp',
-            avatar: loadStudentAvatar('5')
-        },
-        ...generateAdditionalStudents()
-    ]);
-
-    const handleView = (student: Student) => {
-        setOpenView(student);
+    const handleView = async (student: Student) => {
+        try {
+            // Load full student details from API
+            const response = await getStudentById(parseInt(student.id));
+            const fullStudent = mapStudentDtoToStudent(response.data);
+            setOpenView(fullStudent);
+        } catch (error) {
+            console.error('Error fetching student details:', error);
+            // Fallback to showing current student data
+            setOpenView(student);
+        }
     };
 
     const handleEdit = (student: Student) => {
         setOpenEdit(student);
     };
 
-    const handleSaveEdit = (updatedStudent: Student) => {
-        setStudents(prev => 
-            prev.map(s => s.id === updatedStudent.id ? updatedStudent : s)
-        );
-        
-        // Update avatar in localStorage if it exists
-        const savedAvatar = localStorage.getItem(`student_avatar_${updatedStudent.id}`);
-        if (savedAvatar) {
-            setStudents(prev => 
-                prev.map(s => s.id === updatedStudent.id ? { ...s, avatar: savedAvatar } : s)
-            );
+    const handleSaveEdit = async (updatedStudent: Student) => {
+        try {
+            // Prepare update payload (only 5 fields allowed)
+            const updatePayload: UpdateStudentDto = {
+                fullName: updatedStudent.name,
+                email: updatedStudent.email,
+                phone: updatedStudent.phone,
+                dob: updatedStudent.dob || null,
+                addressLine: updatedStudent.address || null
+            };
+
+            // Call API to update
+            await updateStudent(parseInt(updatedStudent.id), updatePayload);
+
+            toast.success('Cập nhật thành công!', `Thông tin học viên ${updatedStudent.name} đã được cập nhật`);
+            
+            // Reload all data
+            await reloadAllData();
+            setOpenEdit(null);
+        } catch (error: any) {
+            console.error('Error updating student:', error);
+            const errorMessage = error?.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin học viên';
+            toast.error('Cập nhật thất bại', errorMessage);
         }
     };
 
@@ -223,8 +261,31 @@ export default function StudentProfilePage() {
     };
 
     const handleImport = () => {
-        console.log('Import Excel');
-        // TODO: Implement Excel import
+        setOpenImport(true);
+    };
+
+    const handleExport = () => {
+        setExportConfirm(true);
+    };
+
+    const confirmExport = async () => {
+        try {
+            const response = await exportStudents();
+            const blob = new Blob([response.data], { 
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'students.xlsx';
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success('Xuất file thành công', 'Dữ liệu học viên đã được tải về dưới dạng file Excel');
+            setExportConfirm(false);
+        } catch (err) {
+            toast.error('Lỗi xuất file', 'Không thể tải file Excel');
+            setExportConfirm(false);
+        }
     };
 
     const handleMenuToggle = (id: string) => {
@@ -235,10 +296,29 @@ export default function StudentProfilePage() {
         setDeleteConfirm(student);
     };
 
-    const confirmDeleteStudent = () => {
-        if (deleteConfirm) {
-            setStudents(prev => prev.filter(s => s.id !== deleteConfirm.id));
+    const reloadAllData = async () => {
+        setIsLoading(true);
+        await loadAllEnrollments();
+        await fetchStudents();
+        setIsLoading(false);
+    };
+
+    const confirmDeleteStudent = async () => {
+        if (!deleteConfirm) return;
+
+        try {
+            // Call API to soft delete student (sẽ tự động đổi status sang INACTIVE)
+            await deleteStudent(parseInt(deleteConfirm.id));
+            
+            toast.success('Xóa thành công!', `Học viên ${deleteConfirm.name} đã được xóa khỏi hệ thống`);
+            
+            // Reload all data
+            await reloadAllData();
             setDeleteConfirm(null);
+        } catch (error: any) {
+            console.error('Error deleting student:', error);
+            const errorMessage = error?.response?.data?.message || 'Có lỗi xảy ra khi xóa học viên';
+            toast.error('Xóa thất bại', errorMessage);
         }
     };
 
@@ -246,24 +326,23 @@ export default function StudentProfilePage() {
         setOpenChangeStatus(student);
     };
 
-    const handleSaveStatusChange = (studentId: string, newStatus: Student['status']) => {
-        setStudents(prev => 
-            prev.map(s => s.id === studentId ? { ...s, status: newStatus } : s)
-        );
+    const handleSaveStatusChange = async (studentId: string, newStatus: Student['status']) => {
+        const student = students.find(s => s.id === studentId);
+        if (student) {
+            toast.success('Cập nhật trạng thái thành công!', `Trạng thái học viên ${student.name} đã được đổi sang ${newStatus}`);
+        }
+        
+        // Reload all data to get updated status
+        await reloadAllData();
         setOpenChangeStatus(null);
     };
 
-    // Filter students based on query and filters
+    // Filter students client-side (chỉ filter theo status và program, query đã filter từ BE)
     const filteredStudents = students.filter(student => {
-        const matchesQuery = !query || 
-            student.name.toLowerCase().includes(query.toLowerCase()) ||
-            student.email.toLowerCase().includes(query.toLowerCase()) ||
-            student.studentId.toLowerCase().includes(query.toLowerCase());
-        
         const matchesStatus = statusFilter === 'Tất cả trạng thái' || student.status === statusFilter;
         const matchesProgram = programFilter === 'Tất cả chương trình' || student.program === programFilter;
         
-        return matchesQuery && matchesStatus && matchesProgram;
+        return matchesStatus && matchesProgram;
     });
 
     // Pagination logic
@@ -272,10 +351,10 @@ export default function StudentProfilePage() {
     const endIndex = startIndex + studentsPerPage;
     const currentStudents = filteredStudents.slice(startIndex, endIndex);
 
-    // Reset to first page when filters change
+    // Reset to first page when status/program filters change
     React.useEffect(() => {
         setCurrentPage(1);
-    }, [query, statusFilter, programFilter]);
+    }, [statusFilter, programFilter]);
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
@@ -301,24 +380,32 @@ export default function StudentProfilePage() {
                 onStatusFilterChange={setStatusFilter}
                 programFilter={programFilter}
                 onProgramFilterChange={setProgramFilter}
+                programs={programs}
                 onCreate={handleCreate}
                 onImport={handleImport}
+                onExport={handleExport}
             />
 
             {/* Students List */}
-            <StudentList
-                students={currentStudents}
-                totalStudents={filteredStudents.length}
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onView={handleView}
-                onEdit={handleEdit}
-                onChangeStatus={handleChangeStatus}
-                onDelete={handleDeleteStudent}
-                openMenuId={openMenuId}
-                onMenuToggle={handleMenuToggle}
-                onPageChange={handlePageChange}
-            />
+            {isLoading ? (
+                <div className="bg-white rounded-lg border p-8 text-center">
+                    <div className="text-gray-500">Đang tải danh sách học viên...</div>
+                </div>
+            ) : (
+                <StudentList
+                    students={currentStudents}
+                    totalStudents={filteredStudents.length}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onView={handleView}
+                    onEdit={handleEdit}
+                    onChangeStatus={handleChangeStatus}
+                    onDelete={handleDeleteStudent}
+                    openMenuId={openMenuId}
+                    onMenuToggle={handleMenuToggle}
+                    onPageChange={handlePageChange}
+                />
+            )}
 
             {/* View Modal */}
             <Modal open={!!openView} onClose={() => setOpenView(null)}>
@@ -341,21 +428,24 @@ export default function StudentProfilePage() {
                 )}
             </Modal>
 
-            {/* Create Modal - TODO: Implement */}
-            <Modal open={openCreate} onClose={() => setOpenCreate(false)}>
-                <div className="p-6">
-                    <h2 className="text-lg font-semibold mb-4">Thêm Học viên mới</h2>
-                    <p className="text-gray-500">Chức năng đang được phát triển...</p>
-                    <div className="mt-4 flex justify-end">
-                        <button
-                            onClick={() => setOpenCreate(false)}
-                            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-                        >
-                            Đóng
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+            {/* Create Modal */}
+            <CreateStudentModal
+                open={openCreate}
+                onClose={() => setOpenCreate(false)}
+                onSuccess={async () => {
+                    await fetchStudents();
+                }}
+            />
+
+            {/* Import Students Modal */}
+            <ImportStudentsModal
+                open={openImport}
+                onClose={() => setOpenImport(false)}
+                onSuccess={async () => {
+                    setOpenImport(false);
+                    await fetchStudents();
+                }}
+            />
 
             {/* Change Status Modal */}
             <StatusModal open={!!openChangeStatus} onClose={() => setOpenChangeStatus(null)}>
@@ -378,6 +468,18 @@ export default function StudentProfilePage() {
                 confirmText="Xóa"
                 cancelText="Hủy"
                 variant="danger"
+            />
+
+            {/* Export Confirmation Dialog */}
+            <ConfirmDialog
+                open={exportConfirm}
+                onClose={() => setExportConfirm(false)}
+                onConfirm={confirmExport}
+                title="Xác nhận xuất danh sách"
+                description="Bạn có muốn tải xuống danh sách tất cả học viên ra file Excel? File sẽ chứa đầy đủ thông tin của các học viên hiện tại."
+                confirmText="Xuất file"
+                cancelText="Hủy"
+                variant="primary"
             />
         </div>
     );

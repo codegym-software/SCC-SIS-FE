@@ -8,6 +8,8 @@ import type { UserViewDto, UserAssignment } from '../../../shared/types/userView
 import type { RoleDto } from '../../../shared/types/role'
 import type { CenterLiteDto } from '../../../shared/types/centers'
 
+const ALL_CENTERS_VALUE = "__ALL__" as const
+
 interface AssignRoleModalProps {
   userId: number
   onClose: () => void
@@ -26,7 +28,7 @@ interface ExistingAssignment {
 
 interface DraftAssignment {
   roleId?: number
-  centerId?: number | null
+  centerId?: number | null | '__ALL__'
   scope?: 'GLOBAL' | 'CENTER'
 }
 
@@ -109,6 +111,17 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
     if (userId) loadData()
   }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Helper: check if role is global (SUPER_ADMIN or TRAINING_MANAGER)
+  const isGlobalRole = (roleId?: number) => {
+    if (!roleId) return false
+    const role = roles.find(r => r.roleId === roleId)
+    // Check by code first (more reliable), fallback to scope
+    if (role?.code === 'SUPER_ADMIN' || role?.code === 'TRAINING_MANAGER') {
+      return true
+    }
+    return role?.scope === 'GLOBAL'
+  }
+
   // ✅ sửa: toggle theo assignmentId
   const toggleRemoval = (assignmentId: number) => {
     setMarked(prev => {
@@ -131,18 +144,18 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
   }
 
   // Cập nhật hàng mới
-  const updateDraft = (index: number, field: 'roleId' | 'centerId', value: number | null) => {
+  const updateDraft = (index: number, field: 'roleId' | 'centerId', value: number | null | '__ALL__') => {
     setDrafts(prev => prev.map((draft, i) => {
       if (i !== index) return draft
 
       if (field === 'roleId') {
-        const selectedRole = roles.find(r => r.roleId === value)
-        // Nếu RoleDto có scope thì nên dùng r.scope === 'GLOBAL', tạm xác định theo code
-        const isGlobal = selectedRole && (selectedRole.code === 'SA' || selectedRole.code === 'QLT')
+        const roleId = value as number
+        const isGlobal = isGlobalRole(roleId)
 
         return {
           ...draft,
-          roleId: value ?? undefined,
+          roleId: roleId ?? undefined,
+          // Auto-set to "All Centers" if global role
           centerId: isGlobal ? null : draft.centerId,
           scope: isGlobal ? 'GLOBAL' : 'CENTER'
         }
@@ -165,9 +178,9 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
       if (!draft.roleId) {
         newErrors.drafts![idx] = 'Vui lòng chọn vai trò'
       } else {
-        const role = roles.find(r => r.roleId === draft.roleId)
-        const isGlobal = role && (role.code === 'SA' || role.code === 'QLT')
-        if (!isGlobal && !draft.centerId) {
+        const isGlobal = isGlobalRole(draft.roleId)
+        // ✅ CENTER role: phải có centerId (có thể là số hoặc '__ALL__')
+        if (!isGlobal && !draft.centerId && draft.centerId !== ALL_CENTERS_VALUE) {
           newErrors.drafts![idx] = 'Vui lòng chọn trung tâm'
         }
       }
@@ -209,10 +222,29 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
         }
       }
 
-      // Assign
+      // Assign - expand "All Centers" to multiple assignments
       const toCreate = drafts
         .filter(d => d.roleId)
-        .map(({ roleId, centerId }) => ({ roleId: roleId!, centerId: centerId ?? null }))
+        .flatMap(({ roleId, centerId, scope }) => {
+          // ✅ GLOBAL role: không gửi centerId
+          if (scope === 'GLOBAL') {
+            return [{ roleId: roleId! }]
+          }
+          
+          // ✅ CENTER role với "Tất cả trung tâm": tạo một assignment cho mỗi trung tâm
+          if (centerId === ALL_CENTERS_VALUE) {
+            return centers.map(center => ({
+              roleId: roleId!,
+              centerId: center.centerId
+            }))
+          }
+          
+          // ✅ CENTER role với trung tâm cụ thể
+          return [{ 
+            roleId: roleId!, 
+            centerId: centerId ?? null 
+          }]
+        })
 
       if (toCreate.length > 0) {
         const response = await assignRolesBatch(userId, toCreate)
@@ -391,8 +423,8 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
                     ) : (
                       <div className="space-y-3">
                         {drafts.map((draft, idx) => {
-                          const selectedRole = roles.find(r => r.roleId === draft.roleId)
-                          const isGlobal = selectedRole && (selectedRole.code === 'SA' || selectedRole.code === 'QLT')
+                          const isGlobal = isGlobalRole(draft.roleId)
+                          const isCenter = !isGlobal && draft.roleId !== undefined
 
                           return (
                             <div key={idx} className="border rounded-lg p-4">
@@ -407,42 +439,47 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
                                       }`}
                                   >
                                     <option value="">-- Chọn vai trò --</option>
-                                    <optgroup label="GLOBAL">
-                                      {roles.filter(r => r.code === 'SA' || r.code === 'QLT').map(role => (
-                                        <option key={role.roleId} value={role.roleId}>
-                                          {role.name}
-                                        </option>
-                                      ))}
-                                    </optgroup>
-                                    <optgroup label="CENTER">
-                                      {roles.filter(r => r.code !== 'SA' && r.code !== 'QLT').map(role => (
-                                        <option key={role.roleId} value={role.roleId}>
-                                          {role.name}
-                                        </option>
-                                      ))}
-                                    </optgroup>
+                                    {roles.map(role => (
+                                      <option key={role.roleId} value={role.roleId}>
+                                        {role.name}
+                                      </option>
+                                    ))}
                                   </select>
                                 </div>
 
                                 {/* Center select */}
                                 <div className="flex-1">
                                   <label className="block text-xs text-gray-600 mb-1">Trung tâm {!isGlobal && '*'}</label>
-                                  <select
-                                    value={draft.centerId === null ? '' : draft.centerId}
-                                    onChange={(e) => updateDraft(idx, 'centerId', e.target.value ? Number(e.target.value) : null)}
-                                    disabled={isGlobal}
-                                    className={`w-full h-10 rounded-lg border px-3 text-sm ${isGlobal ? 'bg-gray-100 cursor-not-allowed text-blue-600' : ''
-                                      } ${errors.drafts?.[idx] ? 'border-red-500' : 'border-gray-300'}`}
-                                  >
-                                    <option value="">
-                                      {isGlobal ? 'Tất cả trung tâm' : '-- Chọn trung tâm --'}
-                                    </option>
-                                    {!isGlobal && centers.map(center => (
-                                      <option key={center.centerId} value={center.centerId}>
-                                        {center.name}
-                                      </option>
-                                    ))}
-                                  </select>
+                                  {isGlobal ? (
+                                    <div className="w-full h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm flex items-center text-gray-900 font-medium">
+                                      Tất cả trung tâm
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <select
+                                        value={draft.centerId === null ? '' : draft.centerId}
+                                        onChange={(e) => {
+                                          const val = e.target.value
+                                          updateDraft(idx, 'centerId', val === ALL_CENTERS_VALUE ? ALL_CENTERS_VALUE : (val ? Number(val) : null))
+                                        }}
+                                        className={`w-full h-10 rounded-lg border px-3 text-sm ${errors.drafts?.[idx] ? 'border-red-500' : 'border-gray-300'
+                                          }`}
+                                      >
+                                        <option value="">-- Chọn trung tâm --</option>
+                                        {isCenter && <option value={ALL_CENTERS_VALUE}>Tất cả trung tâm ({centers.length})</option>}
+                                        {centers.map(center => (
+                                          <option key={center.centerId} value={center.centerId}>
+                                            {center.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      {draft.centerId === ALL_CENTERS_VALUE && (
+                                        <div className="mt-1 text-xs text-gray-600">
+                                          Vai trò này sẽ được gán cho {centers.length} trung tâm
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
                                 </div>
 
                                 {/* Remove button */}
@@ -491,7 +528,7 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
                 <button
                   type="submit"
                   disabled={loading || !hasChanges()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-white bg-[#030213] rounded-lg hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cập nhật vai trò
                 </button>

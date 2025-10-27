@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Eye, UserMinus, Settings, ChevronDown } from 'lucide-react';
+import { X, Plus, Eye, UserMinus, Edit2 } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -8,19 +8,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import StudentDetailsModal from './StudentDetailsModal';
 import AddStudentModal from './AddStudentModal';
-import {
-    getClassStudents,
-    enrollStudent,
-    updateEnrollment,
-    revokeEnrollment
-} from '@/api/class-students';
-import type { EnrollmentResponse } from '@/shared/types/classes';
+import { getClassStudents, removeStudentFromClass, updateEnrollment } from '@/shared/api/classes';
 import { useToast } from '@/shared/hooks/useToast';
-import {
-    ENROLLMENT_STATUS_LABEL,
-    ENROLLMENT_STATUS_CLASS,
-    ENROLLMENT_STATUS_API
-} from '@/shared/constants/enrollment-status';
+import type { EnrollmentResponse } from '@/shared/types/classes';
 
 type Instructor = {
     id: string;
@@ -43,8 +33,17 @@ type Class = {
     status: 'Chuẩn bị' | 'Đang học' | 'Hoàn thành' | 'Tạm dừng';
 };
 
-type StudentEnrollment = EnrollmentResponse & {
+type Student = {
+    enrollmentId: number;
+    studentId: number;
+    name: string;
+    email: string;
+    phone?: string;
     initial: string;
+    status: string;
+    enrolledAt: string;
+    leftAt?: string;
+    note?: string;
 };
 
 interface ManageStudentsModalProps {
@@ -53,80 +52,137 @@ interface ManageStudentsModalProps {
 }
 
 const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, onClose }) => {
-    const [selectedStudent, setSelectedStudent] = useState<StudentEnrollment | null>(null);
+    const { success: showSuccessToast, error: showErrorToast } = useToast();
+    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [openAddStudent, setOpenAddStudent] = useState(false);
-    const [rows, setRows] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
-    const { success, error } = useToast();
+    const [students, setStudents] = useState<Student[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [editingStatus, setEditingStatus] = useState<number | null>(null);
+    const [newStatus, setNewStatus] = useState<string>('');
+    const [newNote, setNewNote] = useState<string>('');
+    const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
-    // Load students when modal opens or filter changes
+    // Load students from API
     useEffect(() => {
         loadStudents();
-    }, [classItem.id, statusFilter]);
+    }, [classItem.id]);
 
     const loadStudents = async () => {
         try {
-            setLoading(true);
-            const statusParam = ENROLLMENT_STATUS_API[statusFilter] || '';
-            const res = await getClassStudents(Number(classItem.id), {
-                status: statusParam,
+            setIsLoading(true);
+            // Load ALL students, not just ACTIVE
+            const response = await getClassStudents(parseInt(classItem.id), {
                 page: 0,
-                size: 50,
-                sort: 'student.fullName,asc'
+                size: 1000
             });
-            setRows(res.items ?? []);            // ✅ luôn có mảng
-        } catch (e) {
-            console.error('Error loading students:', e);
-            setRows([]);                         // ✅ fallback rỗng
+            
+            const enrollments: EnrollmentResponse[] = response.data.content || response.data;
+            const formattedStudents: Student[] = enrollments.map(enrollment => ({
+                enrollmentId: enrollment.enrollmentId,
+                studentId: enrollment.studentId,
+                name: enrollment.studentName,
+                email: enrollment.studentEmail,
+                initial: enrollment.studentName.charAt(0).toUpperCase(),
+                status: enrollment.status,
+                enrolledAt: enrollment.enrolledAt,
+                leftAt: enrollment.leftAt,
+                note: enrollment.note
+            }));
+            
+            setStudents(formattedStudents);
+        } catch (error: any) {
+            console.error('Error loading students:', error);
+            showErrorToast(error?.response?.data?.message || 'Không thể tải danh sách học viên');
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
-    const handleAddStudents = async (studentIds: string[]) => {
-        try {
-            // Enroll each selected student
-            const enrollPromises = studentIds.map(studentId =>
-                enrollStudent(Number(classItem.id), {
-                    studentId: Number(studentId),
-                    enrolledAt: new Date().toISOString().split('T')[0],
-                    note: "Ghi danh từ giao diện quản lý"
-                })
-            );
-
-            await Promise.all(enrollPromises);
-
-            success(`Đã thêm ${studentIds.length} học viên vào lớp`);
-
-            // Reload students list
-            await loadStudents();
-            setOpenAddStudent(false);
-        } catch (error) {
-            console.error('Error enrolling students:', error);
-            error("Không thể thêm học viên vào lớp");
-        }
+    const handleAddStudents = () => {
+        // Reload the student list after adding
+        loadStudents();
+        setOpenAddStudent(false);
     };
 
     const handleViewDetails = (student: StudentEnrollment) => {
         setSelectedStudent(student);
     };
 
-    const handleRemoveFromClass = async (student: StudentEnrollment) => {
+    const handleRemoveFromClass = async (student: Student) => {
         try {
-            await revokeEnrollment(Number(classItem.id), student.enrollmentId);
-            success(`Đã xóa học viên ${student.studentName} khỏi lớp`);
-            // Reload students list
-            await loadStudents();
-        } catch (error) {
+            await removeStudentFromClass(
+                parseInt(classItem.id), 
+                student.enrollmentId,
+                'Xóa bởi giáo viên/quản trị'
+            );
+            
+            showSuccessToast(`Đã xóa học viên ${student.name} khỏi lớp`);
+            // Reload the student list
+            loadStudents();
+        } catch (error: any) {
             console.error('Error removing student:', error);
-            error("Không thể xóa học viên khỏi lớp");
+            showErrorToast(error?.response?.data?.message || 'Có lỗi xảy ra khi xóa học viên');
         }
     };
 
     const handleAddStudent = () => {
         setOpenAddStudent(true);
     };
+
+    const handleChangeStatus = async (student: Student) => {
+        if (!newStatus) return;
+        
+        try {
+            const payload: any = {
+                status: newStatus
+            };
+            
+            // Add note if changed or provided
+            if (newNote.trim()) {
+                payload.note = newNote.trim();
+            }
+            
+            await updateEnrollment(parseInt(classItem.id), student.enrollmentId, payload);
+            
+            const statusText = newStatus === 'ACTIVE' ? 'Đang học' :
+                             newStatus === 'SUSPENDED' ? 'Bảo lưu' :
+                             newStatus === 'COMPLETED' ? 'Hoàn thành' :
+                             newStatus === 'DROPPED' ? 'Đã nghỉ' : newStatus;
+            
+            showSuccessToast(`Đã cập nhật trạng thái thành ${statusText}`);
+            setEditingStatus(null);
+            setNewNote('');
+            loadStudents();
+        } catch (error: any) {
+            console.error('Error updating status:', error);
+            showErrorToast(error?.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái');
+        }
+    };
+
+    const getStatusText = (status: string) => {
+        switch(status) {
+            case 'ACTIVE': return 'Đang học';
+            case 'SUSPENDED': return 'Bảo lưu';
+            case 'COMPLETED': return 'Hoàn thành';
+            case 'DROPPED': return 'Đã nghỉ';
+            default: return status;
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch(status) {
+            case 'ACTIVE': return 'bg-green-100 text-green-700';
+            case 'SUSPENDED': return 'bg-orange-100 text-orange-700';
+            case 'COMPLETED': return 'bg-blue-100 text-blue-700';
+            case 'DROPPED': return 'bg-gray-100 text-gray-700';
+            default: return 'bg-gray-100 text-gray-700';
+        }
+    };
+
+    // Filter students based on status filter
+    const filteredStudents = statusFilter === 'ALL' 
+        ? students 
+        : students.filter(s => s.status === statusFilter);
 
     return (
         <div className="bg-white rounded-lg">
@@ -151,70 +207,121 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                 </button>
             </div>
 
-            {/* Filter and Actions */}
-            <div className="px-4 py-3 border-b space-y-3">
-                <div className="flex items-center justify-between">
+            {/* Student Count and Add Button */}
+            <div className="px-4 py-3 border-b flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
                     <div className="text-sm text-gray-600">
-                        Sĩ số: {rows.length}/{classItem.maxStudents} học viên
+                        Sĩ số: {students.filter(s => s.status === 'ACTIVE').length}/{classItem.maxStudents} học viên
+                        <span className="text-gray-400 ml-2">(Tổng: {students.length})</span>
                     </div>
-                    <button
-                        onClick={handleAddStudent}
-                        className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="text-sm border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-200"
                     >
-                        <Plus size={16} />
-                        Thêm học viên
-                    </button>
-                </div>
-
-                {/* Status Filter Dropdown */}
-                <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600">Lọc theo trạng thái:</label>
-                    <div className="relative">
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="h-9 rounded-md border px-3 text-sm bg-white pr-8 appearance-none focus:ring-2 focus:ring-blue-200"
-                        >
-                            <option>Tất cả trạng thái</option>
-                            <option>Đang học</option>
-                            <option>Bảo lưu</option>
-                            <option>Đã thôi học</option>
-                        </select>
-                        <ChevronDown size={16} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    </div>
+                        <option value="ALL">Tất cả trạng thái</option>
+                        <option value="ACTIVE">Đang học</option>
+                        <option value="SUSPENDED">Bảo lưu</option>
+                        <option value="COMPLETED">Hoàn thành</option>
+                        <option value="DROPPED">Đã nghỉ</option>
+                    </select>
                 </div>
             </div>
 
             {/* Students List */}
             <div className="max-h-96 overflow-y-auto">
                 <div className="px-4 py-2 border-b bg-gray-50 text-xs text-gray-500 grid grid-cols-12 gap-4">
-                    <div className="col-span-6">Học viên</div>
-                    <div className="col-span-3">Trạng thái</div>
+                    <div className="col-span-5">Học viên</div>
+                    <div className="col-span-4">Trạng thái</div>
                     <div className="col-span-3">Thao tác</div>
                 </div>
 
-                <div className="divide-y">
-                    {(rows ?? []).map((student) => {
-                        const initial = student.studentName?.charAt(0)?.toUpperCase() || '?';
-                        return (
+                {isLoading ? (
+                    <div className="px-4 py-8 text-center text-gray-500">
+                        Đang tải danh sách học viên...
+                    </div>
+                ) : filteredStudents.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-gray-500">
+                        {statusFilter === 'ALL' ? 'Chưa có học viên nào trong lớp' : `Không có học viên ${getStatusText(statusFilter)}`}
+                    </div>
+                ) : (
+                    <div className="divide-y">
+                        {filteredStudents.map((student) => (
                             <div key={student.enrollmentId} className="px-4 py-3 grid grid-cols-12 gap-4 items-center">
-                                {/* Student Info */}
-                                <div className="col-span-6 flex items-center gap-3">
-                                    <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-sm font-medium">
-                                        {initial}
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-medium text-gray-900">{student.studentName}</div>
-                                        <div className="text-xs text-gray-500">{student.studentEmail}</div>
-                                    </div>
+                            {/* Student Info */}
+                            <div className="col-span-5 flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-sm font-medium">
+                                    {student.initial}
                                 </div>
 
-                                {/* Status */}
-                                <div className="col-span-3">
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${ENROLLMENT_STATUS_CLASS[student.status] || 'bg-gray-50 text-gray-700'}`}>
-                                        {ENROLLMENT_STATUS_LABEL[student.status] || student.status}
-                                    </span>
-                                </div>
+                            {/* Status */}
+                            <div className="col-span-4">
+                                {editingStatus === student.enrollmentId ? (
+                                    <div className="space-y-2">
+                                        <select
+                                            value={newStatus}
+                                            onChange={(e) => setNewStatus(e.target.value)}
+                                            className="w-full text-xs border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-200"
+                                            autoFocus
+                                        >
+                                            <option value="">Chọn trạng thái</option>
+                                            <option value="ACTIVE">Đang học</option>
+                                            <option value="SUSPENDED">Bảo lưu</option>
+                                            <option value="COMPLETED">Hoàn thành</option>
+                                            <option value="DROPPED">Đã nghỉ</option>
+                                        </select>
+                                        <textarea
+                                            value={newNote}
+                                            onChange={(e) => setNewNote(e.target.value)}
+                                            placeholder="Ghi chú (tùy chọn)"
+                                            className="w-full text-xs border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+                                            rows={2}
+                                        />
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleChangeStatus(student)}
+                                                disabled={!newStatus || newStatus === student.status}
+                                                className="flex-1 text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                            >
+                                                Lưu
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setEditingStatus(null);
+                                                    setNewNote('');
+                                                }}
+                                                className="flex-1 text-xs px-2 py-1 border rounded hover:bg-gray-50"
+                                            >
+                                                Hủy
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${getStatusColor(student.status)}`}>
+                                                {getStatusText(student.status)}
+                                            </span>
+                                            <button
+                                                onClick={() => {
+                                                    setEditingStatus(student.enrollmentId);
+                                                    setNewStatus(student.status);
+                                                    setNewNote(student.note || '');
+                                                }}
+                                                className="text-gray-400 hover:text-blue-600"
+                                                title="Đổi trạng thái"
+                                            >
+                                                <Edit2 size={14} />
+                                            </button>
+                                        </div>
+                                        {student.note && (
+                                            <div className="text-xs text-gray-500 italic">
+                                                Note: {student.note}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
 
                                 {/* Actions */}
                                 <div className="col-span-3">
@@ -238,9 +345,10 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                                     </DropdownMenu>
                                 </div>
                             </div>
-                        );
-                    })}
-                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Modal Footer */}
@@ -261,7 +369,9 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
                     <StudentDetailsModal
                         student={selectedStudent}
+                        classId={parseInt(classItem.id)}
                         onClose={() => setSelectedStudent(null)}
+                        onStatusUpdated={loadStudents}
                     />
                 </div>
             )}
