@@ -211,7 +211,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     };
 
     const handleSelectAll = () => {
-        if (selectedStudents.length === filteredStudents.length) {
+        if (selectedStudents.length === (candidates ?? []).length) {
             setSelectedStudents([]);
         } else {
             setSelectedStudents(filteredStudents.map(s => s.studentId));
@@ -220,8 +220,9 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
     const handleSubmit = async () => {
         if (selectedStudents.length === 0) return;
-        
+
         setIsSubmitting(true);
+
         try {
             // Call API to enroll each selected student
             const enrollmentPromises = selectedStudents.map(studentId => {
@@ -248,7 +249,6 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     const handleClose = () => {
         setSelectedStudents([]);
         setQuery('');
-        setStatusFilter('Tất cả trạng thái');
         onClose();
     };
 
@@ -273,7 +273,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                         </button>
                     </div>
 
-                    {/* Search and Filter */}
+                    {/* Search */}
                     <div className="px-6 py-4 border-b space-y-4">
                         <div className="flex gap-4">
                             <div className="flex-1 relative">
@@ -282,34 +282,29 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
                                     className="w-full h-9 pl-10 pr-3 rounded-md border text-sm outline-none focus:ring-2 focus:ring-blue-200"
-                                    placeholder="Tìm kiếm theo tên, email, mã SV..."
+                                    placeholder="Tìm kiếm theo tên, email, mã học viên..."
                                 />
                             </div>
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="h-9 rounded-md border px-3 text-sm"
-                            >
-                                <option>Tất cả trạng thái</option>
-                                <option>Đang học</option>
-                                <option>Bảo lưu</option>
-                                <option>Tốt nghiệp</option>
-                                <option>Tạm dừng</option>
-                            </select>
                         </div>
-                        
+
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={handleSelectAll}
                                     className="text-sm text-blue-600 hover:text-blue-700"
                                 >
-                                    {selectedStudents.length === filteredStudents.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                                    {selectedStudents.length === (candidates ?? []).length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
                                 </button>
                                 <span className="text-sm text-gray-500">
                                     ({selectedStudents.length} học viên đã chọn)
                                 </span>
                             </div>
+                            {loading && (
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                    <Loader2 size={14} className="animate-spin" />
+                                    Đang tải...
+                                </div>
+                            )}
                         </div>
                     </div>
 

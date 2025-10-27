@@ -88,7 +88,7 @@ const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ student, clas
                         <p className="text-sm text-gray-500">Thông tin chi tiết của học viên</p>
                     </div>
                 </div>
-                <button 
+                <button
                     className="text-gray-400 hover:text-gray-600"
                     onClick={onClose}
                 >
@@ -196,7 +196,7 @@ const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ student, clas
                         </div>
                         <div>
                             <div className="text-xs text-gray-500">Email</div>
-                            <div className="text-sm font-medium text-gray-900">{student.email}</div>
+                            <div className="text-sm font-medium text-gray-900">{student.studentEmail}</div>
                         </div>
                     </div>
 
