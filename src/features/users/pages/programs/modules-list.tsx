@@ -154,8 +154,8 @@ const ModulesList: React.FC<ModulesListProps> = ({
                 <div className="col-span-3">Chương trình</div>
                 <div className="col-span-1 text-center">Thứ tự</div>
                 <div className="col-span-2 text-center">Học kỳ</div>
-                <div className="col-span-1 text-center">Tín chỉ</div>
-                <div className="col-span-1 text-center">Thời lượng</div>
+                <div className="col-span-1 text-center pl-3">Tín chỉ</div>
+                <div className="col-span-1 text-center pl-1">Thời lượng</div>
                 <div className="col-span-1 text-center">Trạng thái</div>
             </div>
 
@@ -191,14 +191,13 @@ const ModulesList: React.FC<ModulesListProps> = ({
                                 Học kỳ {module.semester}
                             </span>
                         </div>
-                        <div className="col-span-2 md:col-span-1 text-sm flex items-center justify-center gap-1">
-                            <GraduationCap size={14} className="text-gray-500" /> {module.credits}
+                        <div className="col-span-2 md:col-span-1 text-sm text-center pl-3">
+                            <GraduationCap size={14} className="inline text-gray-500 mr-1" />
+                            {module.credits}
                         </div>
-                        <div className="col-span-2 md:col-span-1 flex justify-center">
-                            <div className="flex items-center gap-1 text-sm">
-                                <Clock size={14} className="text-gray-500" />
-                                {module.durationHours}h
-                            </div>
+                        <div className="col-span-2 md:col-span-1 text-sm text-center pl-1">
+                            <Clock size={14} className="inline text-gray-500 mr-1" />
+                            {module.durationHours}h
                         </div>
                         <div className="col-span-6 md:col-span-1 flex justify-center">
                             <span

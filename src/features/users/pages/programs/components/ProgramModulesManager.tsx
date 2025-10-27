@@ -3,6 +3,7 @@ import { GripVertical, X, BookOpen, Search, Plus } from 'lucide-react';
 import type { ModuleResponse } from '@/shared/types/module';
 import type { Program as ProgramType } from '@/shared/api/programs';
 import { reorderModule } from '@/shared/api/modules';
+import { useToast } from '@/shared/hooks/useToast';
 
 type Module = ModuleResponse;
 type Program = ProgramType;
@@ -24,6 +25,7 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
     programModules: initialProgramModules,
     onSave,
 }) => {
+    const toast = useToast();
     const [programModules, setProgramModules] = useState<Module[]>(initialProgramModules);
     const [searchQuery, setSearchQuery] = useState('');
     const [draggedItem, setDraggedItem] = useState<Module | null>(null);
@@ -88,11 +90,9 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
         // Kiểm tra xem module có cùng học kỳ không
         const targetModule = sortedModules[dropIndex];
         if (draggedItem.semester !== targetModule.semester) {
-            setErrorMessage('Không thể đổi module khác học kỳ');
+            toast.error('Không thể sắp xếp', 'Không thể đổi module khác học kỳ');
             setDraggedItem(null);
             setDragOverIndex(null);
-            // Tự động ẩn error sau 3 giây
-            setTimeout(() => setErrorMessage(''), 3000);
             return;
         }
 
@@ -112,10 +112,12 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
 
             // Cập nhật lại danh sách modules từ response
             setProgramModules(response.data);
+            
+            // Hiển thị thông báo thành công
+            toast.success('Sắp xếp thành công!', `Module "${draggedItem.name}" đã được di chuyển`);
         } catch (error) {
             console.error('Failed to reorder module:', error);
-            setErrorMessage('Có lỗi xảy ra khi sắp xếp module');
-            setTimeout(() => setErrorMessage(''), 3000);
+            toast.error('Lỗi sắp xếp', 'Có lỗi xảy ra khi sắp xếp module. Vui lòng thử lại!');
         } finally {
             setIsReordering(false);
             setDraggedItem(null);
@@ -136,12 +138,6 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
     // Remove module from program
     const handleRemoveModule = (moduleId: number) => {
         setProgramModules(programModules.filter((m) => m.moduleId !== moduleId));
-    };
-
-    const handleSave = () => {
-        const moduleIds = programModules.map((m) => String(m.moduleId));
-        onSave(moduleIds);
-        onClose();
     };
 
     return (
@@ -305,19 +301,6 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
                                 )}
                             </div>
                         </div>
-                    </div>
-
-                    {/* Footer */}
-                    <div className="px-6 py-4 border-t flex items-center justify-end gap-3">
-                        <button onClick={onClose} className="px-4 py-2 text-sm rounded-md border hover:bg-gray-50">
-                            Hủy
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            className="px-4 py-2 text-sm rounded-md bg-gray-900 text-white hover:bg-black"
-                        >
-                            Lưu thay đổi
-                        </button>
                     </div>
                 </div>
             </div>

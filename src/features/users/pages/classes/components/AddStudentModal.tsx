@@ -4,7 +4,7 @@ import { enrollStudent, listClasses, getClassStudents } from '@/shared/api/class
 import { listStudents } from '@/shared/api/students';
 import { useToast } from '@/shared/hooks/useToast';
 import type { StudentDto } from '@/shared/types/student';
-import type { ClassResponse } from '@/shared/types/classes';
+import type { ClassDto } from '@/shared/api/classes';
 
 type StudentEnrolledClass = {
     className: string;
@@ -77,7 +77,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
             
             // Load all classes to get enrollments
             const classesResponse = await listClasses();
-            const allClasses: ClassResponse[] = classesResponse.data;
+            const allClasses: ClassDto[] = classesResponse.data;
             
             // Map to store each student's enrolled classes
             const studentClassesMap = new Map<number, StudentEnrolledClass[]>();
@@ -211,10 +211,21 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     };
 
     const handleSelectAll = () => {
-        if (selectedStudents.length === filteredStudents.length) {
+        // Lọc ra những học viên KHÔNG có trùng lịch (hợp lệ)
+        const validStudents = filteredStudents.filter(student => {
+            const conflict = checkScheduleConflict(student);
+            return !conflict.hasConflict;
+        });
+
+        // Nếu đã chọn hết học viên hợp lệ → bỏ chọn tất cả
+        // Ngược lại → chọn tất cả học viên hợp lệ
+        const validStudentIds = validStudents.map(s => s.studentId);
+        const allValidSelected = validStudentIds.every(id => selectedStudents.includes(id));
+
+        if (allValidSelected && selectedStudents.length > 0) {
             setSelectedStudents([]);
         } else {
-            setSelectedStudents(filteredStudents.map(s => s.studentId));
+            setSelectedStudents(validStudentIds);
         }
     };
 
@@ -302,13 +313,35 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={handleSelectAll}
-                                    className="text-sm text-blue-600 hover:text-blue-700"
+                                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                                 >
-                                    {selectedStudents.length === filteredStudents.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                                    {(() => {
+                                        const allValidSelected = filteredStudents
+                                            .filter(s => !checkScheduleConflict(s).hasConflict)
+                                            .every(s => selectedStudents.includes(s.studentId));
+                                        return allValidSelected && selectedStudents.length > 0 ? 'Bỏ chọn tất cả' : 'Chọn tất cả';
+                                    })()}
                                 </button>
                                 <span className="text-sm text-gray-500">
                                     ({selectedStudents.length} học viên đã chọn)
                                 </span>
+                            </div>
+                            <div className="text-sm text-gray-500">
+                                {(() => {
+                                    const validCount = filteredStudents.filter(s => !checkScheduleConflict(s).hasConflict).length;
+                                    const conflictCount = filteredStudents.filter(s => checkScheduleConflict(s).hasConflict).length;
+                                    return (
+                                        <>
+                                            <span className="text-green-600 font-medium">{validCount} hợp lệ</span>
+                                            {conflictCount > 0 && (
+                                                <>
+                                                    <span className="mx-2">•</span>
+                                                    <span className="text-orange-600 font-medium">{conflictCount} trùng lịch</span>
+                                                </>
+                                            )}
+                                        </>
+                                    );
+                                })()}
                             </div>
                         </div>
                     </div>
