@@ -366,6 +366,63 @@ export default function ClassesPage() {
                     const centersRes = await getCentersLite();
                     setCenters(centersRes.data);
                 }
+
+                // Fetch student counts and instructors for all classes in parallel
+                const studentCountPromises = mappedClasses.map(async (cls) => {
+                    try {
+                        const res = await getClassStudents(parseInt(cls.id, 10), { status: 'ACTIVE', page: 0, size: 1 });
+                        let activeCount = 0;
+                        const data: any = res.data;
+                        if (data && typeof data.totalElements === 'number') {
+                            activeCount = data.totalElements;
+                        } else if (data && Array.isArray(data)) {
+                            activeCount = data.filter((e: any) => e.status === 'ACTIVE').length;
+                        } else if (data && Array.isArray(data.content) && typeof data.totalElements === 'number') {
+                            activeCount = data.totalElements;
+                        }
+                        return { classId: cls.id, studentCount: activeCount };
+                    } catch (e) {
+                        console.error(`Failed to load student count for class ${cls.id}`, e);
+                        return { classId: cls.id, studentCount: 0 };
+                    }
+                });
+
+                const instructorPromises = mappedClasses.map(async (cls) => {
+                    try {
+                        const res = await http.get(`/api/classes/${cls.id}/lecturers`);
+                        const apiData: any[] = res.data.items || [];
+                        const instructors: Instructor[] = apiData
+                            .filter((item) => item.active)
+                            .map((item) => ({
+                                id: item.assignmentId.toString(),
+                                name: item.lecturer.fullName,
+                                initial: item.lecturer.fullName.charAt(0).toUpperCase(),
+                                avatar: item.lecturer.avatarUrl || undefined,
+                            }));
+                        return { classId: cls.id, instructors };
+                    } catch (e) {
+                        console.error(`Failed to load instructors for class ${cls.id}`, e);
+                        return { classId: cls.id, instructors: [] };
+                    }
+                });
+
+                const [studentCounts, instructorData] = await Promise.all([
+                    Promise.all(studentCountPromises),
+                    Promise.all(instructorPromises),
+                ]);
+
+                // Update classes with student counts and instructors
+                setClasses((prev) =>
+                    prev.map((cls) => {
+                        const countData = studentCounts.find((sc) => sc.classId === cls.id);
+                        const instructorInfo = instructorData.find((id) => id.classId === cls.id);
+                        return {
+                            ...cls,
+                            students: countData ? countData.studentCount : cls.students,
+                            instructors: instructorInfo ? instructorInfo.instructors : cls.instructors,
+                        };
+                    }),
+                );
             } catch (error) {
                 console.error('Failed to fetch data:', error);
                 toast.error('Lỗi tải dữ liệu', 'Không thể tải danh sách lớp học');
@@ -1255,7 +1312,7 @@ export default function ClassesPage() {
                 </div>
                 <button
                     onClick={() => setOpenCreate(true)}
-                    className="inline-flex items-center gap-2 rounded-md bg-emerald-600 text-white text-sm px-4 py-2 hover:bg-emerald-700 transition-all duration-300"
+                    className="inline-flex items-center gap-2 rounded-md bg-black text-white text-sm px-4 py-2 hover:bg-gray-800 transition-all duration-300"
                 >
                     + Thêm Mới
                 </button>
@@ -1381,13 +1438,21 @@ export default function ClassesPage() {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="w-40">
                                                     <DropdownMenuItem
-                                                        onClick={() => setOpenEdit(classItem)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setOpenEdit(classItem);
+                                                        }}
                                                         className="flex items-center gap-2 cursor-pointer"
                                                     >
                                                         <Edit size={14} />
                                                         <span>Chỉnh sửa</span>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-red-600">
+                                                    <DropdownMenuItem 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                        }}
+                                                        className="flex items-center gap-2 cursor-pointer text-red-600"
+                                                    >
                                                         <Trash2 size={14} />
                                                         <span>Xóa</span>
                                                     </DropdownMenuItem>
@@ -1447,32 +1512,12 @@ export default function ClassesPage() {
                                             <div className="flex items-center gap-2 text-xs text-gray-600">
                                                 <Users size={12} className="text-gray-400" />
                                                 <span>
-                                                    {classItem.students} / {classItem.maxStudents} học viên
+                                                    {classItem.instructors?.length || 0} giảng viên
                                                 </span>
                                             </div>
                                         </div>
 
                                         {/* Instructors */}
-                                        {classItem.instructors && classItem.instructors.length > 0 && (
-                                            <div className="flex items-center gap-2 pt-2">
-                                                <div className="flex -space-x-2">
-                                                    {classItem.instructors.slice(0, 3).map((instructor, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 border-2 border-white flex items-center justify-center text-xs text-white font-medium"
-                                                            title={instructor.name}
-                                                        >
-                                                            {instructor.name.charAt(0).toUpperCase()}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                {classItem.instructors.length > 3 && (
-                                                    <span className="text-xs text-gray-500">
-                                                        +{classItem.instructors.length - 3}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             );

@@ -167,3 +167,14 @@ export const removeStudentFromClass = (classId: number, enrollmentId: number, re
     api.delete(`/api/classes/${classId}/students/${enrollmentId}`, { 
         params: reason ? { reason } : undefined 
     });
+
+// ===== STUDENT CLASSES APIs =====
+/**
+ * Lấy danh sách lớp học của một học viên
+ * GET /api/students/{studentId}/classes
+ */
+export const getStudentClasses = (studentId: number) =>
+    api.get<ClassDto[]>(`/api/students/${studentId}/classes`);
+
+export const getMyClasses = () =>
+    api.get<ClassDto[]>('/api/students/my-classes');

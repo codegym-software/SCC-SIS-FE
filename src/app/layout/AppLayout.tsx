@@ -97,62 +97,62 @@ function AppLayout({ children }: AppLayoutProps) {
     const menuGroups: MenuGroup[] = [
         {
             id: 'main',
-            items: [
-                {
-                    id: 'dashboard',
-                    label: 'Tổng quan',
-                    path: '/',
-                    icon: Home,
-                    end: true,
-                },
-                {
-                    id: 'users',
-                    label: 'Quản lý Người dùng',
-                    path: '/users',
-                    icon: Users2,
-                },
-                {
-                    id: 'centers',
-                    label: 'Quản lý Trung tâm',
-                    path: '/centers',
-                    icon: Building2,
-                },
-                {
-                    id: 'roles',
-                    label: 'Vai trò & Phân quyền',
-                    path: '/roles',
-                    icon: Shield,
-                },
-                {
-                    id: 'programs',
-                    label: 'Chương trình & Module',
-                    path: '/programs',
-                    icon: BookOpen,
-                },
-                {
-                    id: 'classes',
-                    label: 'Quản lý Lớp học',
-                    path: '/classes',
-                    icon: GraduationCap,
-                },
-                {
-                    id: 'students',
-                    label: 'Hồ sơ Học viên',
-                    path: '/students',
-                    icon: User,
-                },
-                // Menu cho Học viên
-                ...(isStudent
-                    ? [
-                          {
-                              id: 'my-classes',
-                              label: 'Lớp học của tôi',
-                              path: '/my-classes',
-                              icon: GraduationCap,
-                          },
-                      ]
-                    : []),
-            ],
+            items: isStudent
+                ? [
+                      // Menu cho Học viên - chỉ hiển thị Lớp học của tôi
+                      {
+                          id: 'my-classes',
+                          label: 'Lớp học của tôi',
+                          path: '/my-classes',
+                          icon: GraduationCap,
+                      },
+                  ]
+                : [
+                      // Menu cho Admin/Staff
+                      {
+                          id: 'dashboard',
+                          label: 'Tổng quan',
+                          path: '/',
+                          icon: Home,
+                          end: true,
+                      },
+                      {
+                          id: 'users',
+                          label: 'Quản lý Người dùng',
+                          path: '/users',
+                          icon: Users2,
+                      },
+                      {
+                          id: 'centers',
+                          label: 'Quản lý Trung tâm',
+                          path: '/centers',
+                          icon: Building2,
+                      },
+                      {
+                          id: 'roles',
+                          label: 'Vai trò & Phân quyền',
+                          path: '/roles',
+                          icon: Shield,
+                      },
+                      {
+                          id: 'programs',
+                          label: 'Chương trình & Module',
+                          path: '/programs',
+                          icon: BookOpen,
+                      },
+                      {
+                          id: 'classes',
+                          label: 'Quản lý Lớp học',
+                          path: '/classes',
+                          icon: GraduationCap,
+                      },
+                      {
+                          id: 'students',
+                          label: 'Hồ sơ Học viên',
+                          path: '/students',
+                          icon: User,
+                      },
+                  ],
         },
         // Có thể thêm group khác như:
         // {
