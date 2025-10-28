@@ -11,7 +11,6 @@ import {
     LogOut,
     ChevronLeft,
     ChevronRight,
-    FileText,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { keycloak } from '../../keycloak';
@@ -91,10 +90,6 @@ function AppLayout({ children }: AppLayoutProps) {
     const { me, loading } = useUserProfile();
     const mainRole = me?.roles?.[0];
 
-    // Check if user has SUPER_ADMIN or LECTURER role
-    const hasTeachingAccess =
-        me?.roles?.some((role) => role.code === 'SUPER_ADMIN' || role.code === 'LECTURER') ?? false;
-
     // Check if user is STUDENT
     const isStudent = me?.roles?.some((role) => role.code === 'STUDENT') ?? false;
 
@@ -154,17 +149,6 @@ function AppLayout({ children }: AppLayoutProps) {
                               label: 'Lớp học của tôi',
                               path: '/my-classes',
                               icon: GraduationCap,
-                          },
-                      ]
-                    : []),
-                // Chỉ hiển thị cho SUPERADMIN và LECTURER
-                ...(hasTeachingAccess
-                    ? [
-                          {
-                              id: 'teaching-interaction',
-                              label: 'Giảng dạy & Tương tác',
-                              path: '/teaching-interaction',
-                              icon: FileText,
                           },
                       ]
                     : []),

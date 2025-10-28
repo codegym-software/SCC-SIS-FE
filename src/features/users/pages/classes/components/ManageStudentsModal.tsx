@@ -49,9 +49,16 @@ type Student = {
 interface ManageStudentsModalProps {
     classItem: Class;
     onClose?: () => void;
+    inlineMode?: boolean; // when true, render as inline panel (no close/footer)
+    onStudentsChanged?: () => void; // callback when students list changes (add/remove/status)
 }
 
-const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, onClose }) => {
+const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
+    classItem,
+    onClose,
+    inlineMode = false,
+    onStudentsChanged,
+}) => {
     const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [openAddStudent, setOpenAddStudent] = useState(false);
@@ -71,16 +78,16 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
         try {
             setIsLoading(true);
             console.log('[ManageStudentsModal] Loading students for class:', classItem.id);
-            
+
             // Load ALL students, not just ACTIVE
             const response = await getClassStudents(parseInt(classItem.id), {
                 page: 0,
-                size: 1000
+                size: 1000,
             });
-            
+
             console.log('[ManageStudentsModal] API Response:', response);
             console.log('[ManageStudentsModal] Response data:', response.data);
-            
+
             // Handle Spring Page response structure
             let enrollments: EnrollmentResponse[] = [];
             if (response.data) {
@@ -94,11 +101,11 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                     console.warn('[ManageStudentsModal] Unexpected response structure:', response.data);
                 }
             }
-            
+
             console.log('[ManageStudentsModal] Enrollments:', enrollments);
             console.log('[ManageStudentsModal] Enrollments length:', enrollments.length);
-            
-            const formattedStudents: Student[] = enrollments.map(enrollment => ({
+
+            const formattedStudents: Student[] = enrollments.map((enrollment) => ({
                 enrollmentId: enrollment.enrollmentId,
                 studentId: enrollment.studentId,
                 name: enrollment.studentName,
@@ -107,9 +114,9 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                 status: enrollment.status,
                 enrolledAt: enrollment.enrolledAt,
                 leftAt: enrollment.leftAt,
-                note: enrollment.note
+                note: enrollment.note,
             }));
-            
+
             console.log('[ManageStudentsModal] Formatted students:', formattedStudents);
             setStudents(formattedStudents);
         } catch (error: any) {
@@ -125,6 +132,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
         // Reload the student list after adding
         loadStudents();
         setOpenAddStudent(false);
+        onStudentsChanged?.(); // notify parent
     };
 
     const handleViewDetails = (student: Student) => {
@@ -133,15 +141,12 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
 
     const handleRemoveFromClass = async (student: Student) => {
         try {
-            await removeStudentFromClass(
-                parseInt(classItem.id), 
-                student.enrollmentId,
-                'Xóa bởi giáo viên/quản trị'
-            );
-            
+            await removeStudentFromClass(parseInt(classItem.id), student.enrollmentId, 'Xóa bởi giáo viên/quản trị');
+
             showSuccessToast(`Đã xóa học viên ${student.name} khỏi lớp`);
             // Reload the student list
             loadStudents();
+            onStudentsChanged?.(); // notify parent
         } catch (error: any) {
             console.error('Error removing student:', error);
             showErrorToast(error?.response?.data?.message || 'Có lỗi xảy ra khi xóa học viên');
@@ -154,28 +159,35 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
 
     const handleChangeStatus = async (student: Student) => {
         if (!newStatus) return;
-        
+
         try {
             const payload: any = {
-                status: newStatus
+                status: newStatus,
             };
-            
+
             // Add note if changed or provided
             if (newNote.trim()) {
                 payload.note = newNote.trim();
             }
-            
+
             await updateEnrollment(parseInt(classItem.id), student.enrollmentId, payload);
-            
-            const statusText = newStatus === 'ACTIVE' ? 'Đang học' :
-                             newStatus === 'SUSPENDED' ? 'Bảo lưu' :
-                             newStatus === 'COMPLETED' ? 'Hoàn thành' :
-                             newStatus === 'DROPPED' ? 'Đã nghỉ' : newStatus;
-            
+
+            const statusText =
+                newStatus === 'ACTIVE'
+                    ? 'Đang học'
+                    : newStatus === 'SUSPENDED'
+                      ? 'Bảo lưu'
+                      : newStatus === 'COMPLETED'
+                        ? 'Hoàn thành'
+                        : newStatus === 'DROPPED'
+                          ? 'Đã nghỉ'
+                          : newStatus;
+
             showSuccessToast(`Đã cập nhật trạng thái thành ${statusText}`);
             setEditingStatus(null);
             setNewNote('');
             loadStudents();
+            onStudentsChanged?.(); // notify parent
         } catch (error: any) {
             console.error('Error updating status:', error);
             showErrorToast(error?.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái');
@@ -183,58 +195,69 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
     };
 
     const getStatusText = (status: string) => {
-        switch(status) {
-            case 'ACTIVE': return 'Đang học';
-            case 'SUSPENDED': return 'Bảo lưu';
-            case 'COMPLETED': return 'Hoàn thành';
-            case 'DROPPED': return 'Đã nghỉ';
-            default: return status;
+        switch (status) {
+            case 'ACTIVE':
+                return 'Đang học';
+            case 'SUSPENDED':
+                return 'Bảo lưu';
+            case 'COMPLETED':
+                return 'Hoàn thành';
+            case 'DROPPED':
+                return 'Đã nghỉ';
+            default:
+                return status;
         }
     };
 
     const getStatusColor = (status: string) => {
-        switch(status) {
-            case 'ACTIVE': return 'bg-green-100 text-green-700';
-            case 'SUSPENDED': return 'bg-orange-100 text-orange-700';
-            case 'COMPLETED': return 'bg-blue-100 text-blue-700';
-            case 'DROPPED': return 'bg-gray-100 text-gray-700';
-            default: return 'bg-gray-100 text-gray-700';
+        switch (status) {
+            case 'ACTIVE':
+                return 'bg-green-100 text-green-700';
+            case 'SUSPENDED':
+                return 'bg-orange-100 text-orange-700';
+            case 'COMPLETED':
+                return 'bg-blue-100 text-blue-700';
+            case 'DROPPED':
+                return 'bg-gray-100 text-gray-700';
+            default:
+                return 'bg-gray-100 text-gray-700';
         }
     };
 
     // Filter students based on status filter
-    const filteredStudents = statusFilter === 'ALL' 
-        ? students 
-        : students.filter(s => s.status === statusFilter);
+    const filteredStudents = statusFilter === 'ALL' ? students : students.filter((s) => s.status === statusFilter);
 
     return (
         <div className="bg-white rounded-lg">
-            {/* Modal Header */}
+            {/* Header */}
             <div className="px-4 py-3 border-b flex items-center justify-between">
                 <div>
                     <h2 className="text-lg font-semibold text-gray-900">
-                        Quản lý Học viên - {classItem.name}
+                        {inlineMode ? 'Danh sách học viên' : `Quản lý Học viên - ${classItem.name}`}
                     </h2>
                     <p className="text-sm text-gray-500 mt-1">
-                        Xem và quản lý danh sách học viên của lớp học
+                        {inlineMode
+                            ? 'Danh sách học viên của lớp học và thêm mới'
+                            : 'Xem và quản lý danh sách học viên của lớp học'}
                     </p>
                 </div>
-                <button
-                    className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
-                    onClick={() => {
-                        console.log('Close button clicked');
-                        onClose?.();
-                    }}
-                >
-                    <X size={20} />
-                </button>
+                {!inlineMode && (
+                    <button
+                        className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
+                        onClick={() => {
+                            onClose?.();
+                        }}
+                    >
+                        <X size={20} />
+                    </button>
+                )}
             </div>
 
             {/* Student Count and Add Button */}
             <div className="px-4 py-3 border-b flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <div className="text-sm text-gray-600">
-                        Sĩ số: {students.filter(s => s.status === 'ACTIVE').length}/{classItem.maxStudents} học viên
+                        Sĩ số: {students.filter((s) => s.status === 'ACTIVE').length}/{classItem.maxStudents} học viên
                         <span className="text-gray-400 ml-2">(Tổng: {students.length})</span>
                     </div>
                     <select
@@ -267,12 +290,12 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                 </div>
 
                 {isLoading ? (
-                    <div className="px-4 py-8 text-center text-gray-500">
-                        Đang tải danh sách học viên...
-                    </div>
+                    <div className="px-4 py-8 text-center text-gray-500">Đang tải danh sách học viên...</div>
                 ) : filteredStudents.length === 0 ? (
                     <div className="px-4 py-8 text-center text-gray-500">
-                        {statusFilter === 'ALL' ? 'Chưa có học viên nào trong lớp' : `Không có học viên ${getStatusText(statusFilter)}`}
+                        {statusFilter === 'ALL'
+                            ? 'Chưa có học viên nào trong lớp'
+                            : `Không có học viên ${getStatusText(statusFilter)}`}
                     </div>
                 ) : (
                     <div className="divide-y">
@@ -290,72 +313,72 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                                 </div>
 
                                 {/* Status */}
-                            <div className="col-span-4">
-                                {editingStatus === student.enrollmentId ? (
-                                    <div className="space-y-2">
-                                        <select
-                                            value={newStatus}
-                                            onChange={(e) => setNewStatus(e.target.value)}
-                                            className="w-full text-xs border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-200"
-                                            autoFocus
-                                        >
-                                            <option value="">Chọn trạng thái</option>
-                                            <option value="ACTIVE">Đang học</option>
-                                            <option value="SUSPENDED">Bảo lưu</option>
-                                            <option value="COMPLETED">Hoàn thành</option>
-                                            <option value="DROPPED">Đã nghỉ</option>
-                                        </select>
-                                        <textarea
-                                            value={newNote}
-                                            onChange={(e) => setNewNote(e.target.value)}
-                                            placeholder="Ghi chú (tùy chọn)"
-                                            className="w-full text-xs border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-200 resize-none"
-                                            rows={2}
-                                        />
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleChangeStatus(student)}
-                                                disabled={!newStatus || newStatus === student.status}
-                                                className="flex-1 text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                <div className="col-span-4">
+                                    {editingStatus === student.enrollmentId ? (
+                                        <div className="space-y-2">
+                                            <select
+                                                value={newStatus}
+                                                onChange={(e) => setNewStatus(e.target.value)}
+                                                className="w-full text-xs border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-200"
+                                                autoFocus
                                             >
-                                                Lưu
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setEditingStatus(null);
-                                                    setNewNote('');
-                                                }}
-                                                className="flex-1 text-xs px-2 py-1 border rounded hover:bg-gray-50"
-                                            >
-                                                Hủy
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${getStatusColor(student.status)}`}>
-                                                {getStatusText(student.status)}
-                                            </span>
-                                            <button
-                                                onClick={() => {
-                                                    setEditingStatus(student.enrollmentId);
-                                                    setNewStatus(student.status);
-                                                    setNewNote(student.note || '');
-                                                }}
-                                                className="text-gray-400 hover:text-blue-600"
-                                                title="Đổi trạng thái"
-                                            >
-                                                <Edit2 size={14} />
-                                            </button>
-                                        </div>
-                                        {student.note && (
-                                            <div className="text-xs text-gray-500 italic">
-                                                Note: {student.note}
+                                                <option value="">Chọn trạng thái</option>
+                                                <option value="ACTIVE">Đang học</option>
+                                                <option value="SUSPENDED">Bảo lưu</option>
+                                                <option value="COMPLETED">Hoàn thành</option>
+                                                <option value="DROPPED">Đã nghỉ</option>
+                                            </select>
+                                            <textarea
+                                                value={newNote}
+                                                onChange={(e) => setNewNote(e.target.value)}
+                                                placeholder="Ghi chú (tùy chọn)"
+                                                className="w-full text-xs border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+                                                rows={2}
+                                            />
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleChangeStatus(student)}
+                                                    disabled={!newStatus || newStatus === student.status}
+                                                    className="flex-1 text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                                >
+                                                    Lưu
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingStatus(null);
+                                                        setNewNote('');
+                                                    }}
+                                                    className="flex-1 text-xs px-2 py-1 border rounded hover:bg-gray-50"
+                                                >
+                                                    Hủy
+                                                </button>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span
+                                                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${getStatusColor(student.status)}`}
+                                                >
+                                                    {getStatusText(student.status)}
+                                                </span>
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingStatus(student.enrollmentId);
+                                                        setNewStatus(student.status);
+                                                        setNewNote(student.note || '');
+                                                    }}
+                                                    className="text-gray-400 hover:text-blue-600"
+                                                    title="Đổi trạng thái"
+                                                >
+                                                    <Edit2 size={14} />
+                                                </button>
+                                            </div>
+                                            {student.note && (
+                                                <div className="text-xs text-gray-500 italic">Note: {student.note}</div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Actions */}
@@ -385,18 +408,19 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({ classItem, on
                 )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="px-4 py-3 border-t flex justify-end">
-                <button
-                    onClick={() => {
-                        console.log('Close footer button clicked');
-                        onClose?.();
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                >
-                    Đóng
-                </button>
-            </div>
+            {/* Footer */}
+            {!inlineMode && (
+                <div className="px-4 py-3 border-t flex justify-end">
+                    <button
+                        onClick={() => {
+                            onClose?.();
+                        }}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                    >
+                        Đóng
+                    </button>
+                </div>
+            )}
 
             {/* Student Details Modal */}
             {selectedStudent && (
