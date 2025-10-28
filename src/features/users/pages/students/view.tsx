@@ -1,9 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Mail, Phone, Calendar, GraduationCap, Clock, CheckCircle, BookOpen, MapPin, Users, BarChart3, FileText } from 'lucide-react';
+import {
+    X,
+    User,
+    Mail,
+    Phone,
+    Calendar,
+    GraduationCap,
+    Clock,
+    CheckCircle,
+    BookOpen,
+    MapPin,
+    Users,
+    BarChart3,
+    FileText,
+} from 'lucide-react';
 import { listClasses } from '@/shared/api/classes';
 import { getClassStudents } from '@/shared/api/classes';
 import { useToast } from '@/shared/hooks/useToast';
-import ClassLogTab from '@/features/users/pages/teaching-interaction/components/ClassLogTab';
+import ClassLogTab from '@/features/users/pages/classes/components/journals/ClassLogTab';
 import type { EnrollmentResponse } from '@/shared/types/classes';
 
 type Student = {
@@ -41,33 +55,32 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
         loadEnrollments(); // Load ngay khi mount để có activeEnrollment
     }, [student.id]);
 
-
     const loadEnrollments = async () => {
         try {
             setIsLoadingEnrollments(true);
             // Get all classes
             const classesResponse = await listClasses();
             const classes = classesResponse.data;
-            
+
             // For each class, get enrollments and find this student
             const studentEnrollments: any[] = [];
-            
+
             for (const classItem of classes) {
                 try {
                     const response = await getClassStudents(classItem.classId, {
                         page: 0,
-                        size: 1000
+                        size: 1000,
                     });
                     const enrollmentsData: EnrollmentResponse[] = response.data.content || response.data;
-                    
+
                     // Find this student's enrollment in this class
-                    const studentEnrollment = enrollmentsData.find(e => e.studentId === parseInt(student.id));
+                    const studentEnrollment = enrollmentsData.find((e) => e.studentId === parseInt(student.id));
                     if (studentEnrollment) {
                         const enrollment = {
                             ...studentEnrollment,
                             className: classItem.name,
                             classId: classItem.classId,
-                            programName: classItem.programName
+                            programName: classItem.programName,
                         };
                         studentEnrollments.push(enrollment);
                     }
@@ -76,7 +89,7 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                     console.log(`Cannot access class ${classItem.classId}`);
                 }
             }
-            
+
             setEnrollments(studentEnrollments);
             // Auto-select first class if available
             if (studentEnrollments.length > 0 && !selectedClass) {
@@ -85,12 +98,15 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                     name: studentEnrollments[0].className,
                     programName: studentEnrollments[0].programName,
                     centerName: '',
-                    status: 'ACTIVE'
+                    status: 'ACTIVE',
                 });
             }
         } catch (error: any) {
             console.error('Error loading enrollments:', error);
-            showErrorToast('Lỗi tải danh sách lớp học', error?.response?.data?.message || 'Không thể tải danh sách lớp học');
+            showErrorToast(
+                'Lỗi tải danh sách lớp học',
+                error?.response?.data?.message || 'Không thể tải danh sách lớp học',
+            );
         } finally {
             setIsLoadingEnrollments(false);
         }
@@ -167,11 +183,14 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                                     <div className="flex items-center gap-3">
                                         <User size={16} className="text-gray-500" />
                                         <span className="text-sm">
-                                            Giới tính: {
-                                                student.gender === 'MALE' ? 'Nam' :
-                                                student.gender === 'FEMALE' ? 'Nữ' :
-                                                student.gender === 'OTHER' ? 'Khác' : student.gender
-                                            }
+                                            Giới tính:{' '}
+                                            {student.gender === 'MALE'
+                                                ? 'Nam'
+                                                : student.gender === 'FEMALE'
+                                                  ? 'Nữ'
+                                                  : student.gender === 'OTHER'
+                                                    ? 'Khác'
+                                                    : student.gender}
                                         </span>
                                     </div>
                                 )}
@@ -202,13 +221,14 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <CheckCircle size={16} className="text-green-500" />
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(student.status)}`}>
+                                    <span
+                                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(student.status)}`}
+                                    >
                                         {student.status}
                                     </span>
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 );
 
@@ -216,7 +236,7 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                 return (
                     <div className="space-y-4">
                         <h4 className="text-sm font-medium text-gray-900">Danh sách lớp học đã đăng ký</h4>
-                        
+
                         {isLoadingEnrollments ? (
                             <div className="text-center py-8 text-gray-500">Đang tải...</div>
                         ) : enrollments.length === 0 ? (
@@ -234,13 +254,20 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                                                     {enrollment.leftAt && <span>Kết thúc: {enrollment.leftAt}</span>}
                                                 </div>
                                             </div>
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                enrollment.status === 'ACTIVE' ? 'bg-green-50 text-green-700' :
-                                                enrollment.status === 'SUSPENDED' ? 'bg-yellow-50 text-yellow-700' :
-                                                'bg-red-50 text-red-700'
-                                            }`}>
-                                                {enrollment.status === 'ACTIVE' ? 'Đang học' :
-                                                 enrollment.status === 'SUSPENDED' ? 'Tạm dừng' : 'Đã rớt'}
+                                            <span
+                                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                    enrollment.status === 'ACTIVE'
+                                                        ? 'bg-green-50 text-green-700'
+                                                        : enrollment.status === 'SUSPENDED'
+                                                          ? 'bg-yellow-50 text-yellow-700'
+                                                          : 'bg-red-50 text-red-700'
+                                                }`}
+                                            >
+                                                {enrollment.status === 'ACTIVE'
+                                                    ? 'Đang học'
+                                                    : enrollment.status === 'SUSPENDED'
+                                                      ? 'Tạm dừng'
+                                                      : 'Đã rớt'}
                                             </span>
                                         </div>
 
@@ -249,7 +276,6 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                                                 Ghi chú: {enrollment.note}
                                             </p>
                                         )}
-
                                     </div>
                                 ))}
                             </div>
@@ -294,7 +320,7 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                             <h4 className="text-sm font-medium text-gray-900">Bảng điểm</h4>
                             <span className="text-sm text-gray-600">Điểm trung bình: 8.75</span>
                         </div>
-                        
+
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
@@ -341,18 +367,22 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                             </div>
                         ) : enrollments.length > 0 ? (
                             <div>
-                                <label className="block text-sm font-medium text-gray-900 mb-3">Lớp học đã đăng ký</label>
+                                <label className="block text-sm font-medium text-gray-900 mb-3">
+                                    Lớp học đã đăng ký
+                                </label>
                                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                                     {enrollments.map((enrollment) => (
                                         <button
                                             key={enrollment.classId}
-                                            onClick={() => setSelectedClass({
-                                                classId: enrollment.classId,
-                                                name: enrollment.className,
-                                                programName: enrollment.programName,
-                                                centerName: '',
-                                                status: 'ACTIVE'
-                                            })}
+                                            onClick={() =>
+                                                setSelectedClass({
+                                                    classId: enrollment.classId,
+                                                    name: enrollment.className,
+                                                    programName: enrollment.programName,
+                                                    centerName: '',
+                                                    status: 'ACTIVE',
+                                                })
+                                            }
                                             className={`flex-shrink-0 px-4 py-3 rounded-lg border-2 transition-all ${
                                                 selectedClass?.classId === enrollment.classId
                                                     ? 'border-blue-500 bg-blue-50'
@@ -360,8 +390,12 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                                             }`}
                                         >
                                             <div className="text-left">
-                                                <div className="text-sm font-medium text-gray-900">{enrollment.className}</div>
-                                                <div className="text-xs text-gray-500 mt-1">{enrollment.programName}</div>
+                                                <div className="text-sm font-medium text-gray-900">
+                                                    {enrollment.className}
+                                                </div>
+                                                <div className="text-xs text-gray-500 mt-1">
+                                                    {enrollment.programName}
+                                                </div>
                                             </div>
                                         </button>
                                     ))}
@@ -398,13 +432,12 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                     </div>
                     <div>
                         <h2 className="text-lg font-semibold text-gray-900">Hồ sơ Học viên - {student.name}</h2>
-                        <p className="text-sm text-gray-500">{student.studentId} • {student.class}</p>
+                        <p className="text-sm text-gray-500">
+                            {student.studentId} • {student.class}
+                        </p>
                     </div>
                 </div>
-                <button 
-                    className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
-                    onClick={onClose}
-                >
+                <button className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100" onClick={onClose}>
                     <X size={20} />
                 </button>
             </div>
@@ -433,9 +466,7 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
             </div>
 
             {/* Tab Content */}
-            <div className="px-4 py-4">
-                {renderTabContent()}
-            </div>
+            <div className="px-4 py-4">{renderTabContent()}</div>
 
             {/* Modal Footer */}
             <div className="px-4 py-3 border-t flex justify-end">

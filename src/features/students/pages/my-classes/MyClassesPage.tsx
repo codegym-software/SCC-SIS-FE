@@ -1,5 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, ArrowLeft } from 'lucide-react';
+import {
+    Search,
+    Eye,
+    ArrowLeft,
+    GripVertical,
+    FileText,
+    Download,
+    ExternalLink,
+    BookOpen,
+    Users,
+    ClipboardList,
+    Calendar,
+} from 'lucide-react';
+import {
+    DndContext,
+    DragOverlay,
+    PointerSensor,
+    KeyboardSensor,
+    useSensor,
+    useSensors,
+    closestCenter,
+    type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Types
 type ClassStatus = 'Đang học' | 'Hoàn thành' | 'Sắp học';
@@ -57,12 +88,185 @@ type Lesson = {
     hasPrerequisite?: boolean;
 };
 
+// Sortable Item Component
+function SortableModuleItem({ lesson, index }: { lesson: Lesson; index: number }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+        id: lesson.id,
+    });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            className={`
+                flex items-start gap-3 p-4 rounded-lg
+                bg-white border-2 border-gray-200
+                ${isDragging ? 'opacity-50 z-50' : 'hover:border-gray-300 hover:shadow-md'}
+                transition-all duration-500
+            `}
+        >
+            {/* Số thứ tự */}
+            <div className="flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                    {index + 1}
+                </div>
+            </div>
+
+            {/* Drag Handle - Rộng hơn */}
+            <div
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing flex-shrink-0 px-3 py-2 -my-2 hover:bg-gray-50 rounded-lg transition-colors group"
+            >
+                <div className="flex flex-col items-center gap-1">
+                    <GripVertical size={24} className="text-gray-400 group-hover:text-gray-600 transition-colors" />
+                    <span className="text-[10px] text-gray-400 group-hover:text-gray-600 font-medium">KÉO</span>
+                </div>
+            </div>
+
+            {/* Status icon */}
+            <div className="mt-1 flex-shrink-0">
+                {lesson.status === 'Hoàn thành' ? (
+                    <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">
+                        ✓
+                    </div>
+                ) : lesson.status === 'Đang học' ? (
+                    <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs">
+                        ⏵
+                    </div>
+                ) : (
+                    <div className="w-5 h-5 rounded-full bg-gray-300" />
+                )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                        <h4 className="font-semibold text-sm">{lesson.title}</h4>
+                        {lesson.hasPrerequisite && (
+                            <div className="text-xs text-orange-600 mt-1">⚠️ Có điều kiện tiên quyết</div>
+                        )}
+                    </div>
+                    <span
+                        className={`px-2 py-0.5 rounded text-xs ml-2 flex-shrink-0 ${
+                            lesson.status === 'Hoàn thành'
+                                ? 'bg-green-100 text-green-700'
+                                : lesson.status === 'Đang học'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-gray-100 text-gray-700'
+                        }`}
+                    >
+                        {lesson.status}
+                    </span>
+                </div>
+
+                {lesson.canCollapse && <div className="text-xs text-blue-600 mb-2">⚡ Có thể sáp xếp</div>}
+
+                <p className="text-sm text-gray-600 mb-3">{lesson.description}</p>
+
+                <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap mb-3">
+                    <span>📘 Mã: {lesson.code}</span>
+                    <span>⏱️ {lesson.credits} tín chỉ</span>
+                    <span>📅 {lesson.duration}</span>
+                </div>
+
+                <div className="flex items-center gap-2 mb-3">
+                    <button className="px-3 py-1.5 text-xs rounded-md border hover:bg-gray-50 flex items-center gap-1">
+                        <Eye size={12} />
+                        Ôn tập
+                    </button>
+                </div>
+
+                {/* Accordion Tài liệu */}
+                <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value={`docs-${lesson.id}`} className="border-0">
+                        <AccordionTrigger className="px-3 py-2 text-xs hover:no-underline bg-gray-50 hover:bg-gray-100 rounded-md">
+                            <span className="flex items-center gap-2">
+                                <FileText size={12} />
+                                Xem tài liệu
+                            </span>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-3 pb-0">
+                            <div className="space-y-2">
+                                {/* Danh sách tài liệu mẫu */}
+                                <a
+                                    href="#"
+                                    className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 border border-gray-200 transition-colors group"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <FileText size={14} className="text-blue-600" />
+                                        <div>
+                                            <div className="text-xs font-medium">Slide bài giảng</div>
+                                            <div className="text-[10px] text-gray-500">PDF • 2.5 MB</div>
+                                        </div>
+                                    </div>
+                                    <Download size={14} className="text-gray-400 group-hover:text-blue-600" />
+                                </a>
+
+                                <a
+                                    href="#"
+                                    className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 border border-gray-200 transition-colors group"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <FileText size={14} className="text-green-600" />
+                                        <div>
+                                            <div className="text-xs font-medium">Bài tập thực hành</div>
+                                            <div className="text-[10px] text-gray-500">DOCX • 1.8 MB</div>
+                                        </div>
+                                    </div>
+                                    <Download size={14} className="text-gray-400 group-hover:text-green-600" />
+                                </a>
+
+                                <a
+                                    href="#"
+                                    className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 border border-gray-200 transition-colors group"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <FileText size={14} className="text-purple-600" />
+                                        <div>
+                                            <div className="text-xs font-medium">Source code mẫu</div>
+                                            <div className="text-[10px] text-gray-500">ZIP • 5.2 MB</div>
+                                        </div>
+                                    </div>
+                                    <Download size={14} className="text-gray-400 group-hover:text-purple-600" />
+                                </a>
+
+                                <a
+                                    href="#"
+                                    className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 border border-gray-200 transition-colors group"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <ExternalLink size={14} className="text-orange-600" />
+                                        <div>
+                                            <div className="text-xs font-medium">Tài liệu tham khảo</div>
+                                            <div className="text-[10px] text-gray-500">Link bên ngoài</div>
+                                        </div>
+                                    </div>
+                                    <ExternalLink size={14} className="text-gray-400 group-hover:text-orange-600" />
+                                </a>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </div>
+        </div>
+    );
+}
+
 export default function MyClassesPage() {
-    const [view, setView] = useState<'list' | 'detail' | 'module'>('list');
+    const [view, setView] = useState<'list' | 'detail' | 'module' | 'classroom'>('list');
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('Tất cả');
     const [selectedClass, setSelectedClass] = useState<Class | null>(null);
     const [selectedModule, setSelectedModule] = useState<ModuleDetail | null>(null);
+    const [sortableModules, setSortableModules] = useState<Lesson[]>([]);
+    const [activeId, setActiveId] = useState<string | null>(null);
 
     // Mock data - Classes
     const [classes] = useState<Class[]>([
@@ -226,15 +430,7 @@ export default function MyClassesPage() {
         return matchesSearch && matchesStatus;
     });
 
-    const handleViewClassDetail = (cls: Class) => {
-        setSelectedClass(cls);
-        setView('detail');
-    };
-
-    const handleViewModule = () => {
-        setSelectedModule(mockModuleDetail);
-        setView('module');
-    };
+    // Removed explicit detail/module entry points per request
 
     const handleBackToList = () => {
         setSelectedClass(null);
@@ -245,6 +441,53 @@ export default function MyClassesPage() {
     const handleBackToDetail = () => {
         setSelectedModule(null);
         setView('detail');
+    };
+
+    const handleEnterClassroom = (cls: Class) => {
+        setSelectedClass(cls);
+        setSortableModules(mockModuleDetail.lessons);
+        setView('classroom');
+    };
+
+    const handleBackToListFromClassroom = () => {
+        setSelectedClass(null);
+        setSortableModules([]);
+        setView('list');
+    };
+
+    // @dnd-kit sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        }),
+    );
+
+    const handleDragStart = (event: DragEndEvent) => {
+        setActiveId(event.active.id as string);
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            setSortableModules((items) => {
+                const oldIndex = items.findIndex((item) => item.id === active.id);
+                const newIndex = items.findIndex((item) => item.id === over.id);
+
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        }
+
+        setActiveId(null);
+    };
+
+    const handleDragCancel = () => {
+        setActiveId(null);
     };
 
     // Render Class List
@@ -276,7 +519,11 @@ export default function MyClassesPage() {
                 {/* Class Cards Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredClasses.map((cls) => (
-                        <div key={cls.id} className="bg-white border rounded-xl p-4 hover:shadow-md transition-shadow">
+                        <div
+                            key={cls.id}
+                            className="bg-white border rounded-xl p-4 hover:shadow-md transition-shadow cursor-pointer"
+                            onClick={() => handleEnterClassroom(cls)}
+                        >
                             {/* Header */}
                             <div className="flex items-start justify-between mb-3">
                                 <div className="flex-1">
@@ -296,9 +543,15 @@ export default function MyClassesPage() {
                                         </span>
                                     </div>
                                 </div>
+                                {/* Eye icon to view details without entering class */}
                                 <button
-                                    onClick={() => handleViewClassDetail(cls)}
-                                    className="p-1.5 hover:bg-gray-100 rounded"
+                                    title="Xem chi tiết"
+                                    className="p-2 rounded hover:bg-gray-100 text-gray-600"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedClass(cls);
+                                        setView('detail');
+                                    }}
                                 >
                                     <Eye size={16} />
                                 </button>
@@ -346,16 +599,7 @@ export default function MyClassesPage() {
                                 </div>
                             </div>
 
-                            {/* Actions */}
-                            <div className="mt-4 flex gap-2">
-                                <button
-                                    onClick={() => handleViewClassDetail(cls)}
-                                    className="flex-1 h-9 rounded-md bg-gray-900 text-white text-sm font-medium"
-                                >
-                                    Xem chi tiết
-                                </button>
-                                <button className="flex-1 h-9 rounded-md border text-sm">Vào lớp</button>
-                            </div>
+                            {/* Actions removed: clicking the card enters classroom directly */}
                         </div>
                     ))}
                 </div>
@@ -445,12 +689,7 @@ export default function MyClassesPage() {
                                         <span>⏱️ 13 tín chỉ</span>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={handleViewModule}
-                                    className="px-4 py-2 text-sm rounded-md border hover:bg-gray-50"
-                                >
-                                    Xem chi tiết
-                                </button>
+                                {/* Removed 'Xem chi tiết' button to simplify student UI */}
                             </div>
 
                             {/* Modules preview */}
@@ -586,7 +825,7 @@ export default function MyClassesPage() {
                     </div>
 
                     <div className="space-y-3">
-                        {selectedModule.lessons.map((lesson, idx) => (
+                        {selectedModule.lessons.map((lesson, index) => (
                             <div
                                 key={lesson.id}
                                 className={`border rounded-lg p-4 ${
@@ -594,9 +833,11 @@ export default function MyClassesPage() {
                                 }`}
                             >
                                 <div className="flex items-start gap-4">
-                                    {/* Drag handle */}
-                                    <div className="text-gray-400 mt-1">
-                                        <span className="text-sm">::</span>
+                                    {/* Lesson Number */}
+                                    <div className="flex-shrink-0">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                                            {index + 1}
+                                        </div>
                                     </div>
 
                                     {/* Status icon */}
@@ -664,6 +905,103 @@ export default function MyClassesPage() {
                             </div>
                         ))}
                     </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Render Classroom View with Drag-Drop Modules
+    if (view === 'classroom' && selectedClass) {
+        return (
+            <div className="space-y-6">
+                {/* Back button */}
+                <button
+                    onClick={handleBackToListFromClassroom}
+                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                    <ArrowLeft size={16} />
+                    <span>Quay lại danh sách lớp</span>
+                </button>
+
+                {/* Class Header */}
+                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <div className="flex items-start justify-between mb-4">
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900 mb-2">{selectedClass.name}</h1>
+                            <p className="text-sm text-gray-500">{selectedClass.classCode}</p>
+                        </div>
+                        <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-700">
+                            {selectedClass.status}
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex items-center gap-3">
+                            <Users className="text-gray-400" size={20} />
+                            <div>
+                                <p className="text-xs text-gray-500">Giảng viên</p>
+                                <p className="text-sm font-medium text-gray-900">{selectedClass.instructor}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Calendar className="text-gray-400" size={20} />
+                            <div>
+                                <p className="text-xs text-gray-500">Lịch học</p>
+                                <p className="text-sm font-medium text-gray-900">{selectedClass.schedule}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <BookOpen className="text-gray-400" size={20} />
+                            <div>
+                                <p className="text-xs text-gray-500">Phòng học</p>
+                                <p className="text-sm font-medium text-gray-900">{selectedClass.room}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Modules with Drag-Drop */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-gray-900">Danh sách Module</h2>
+                        <div className="text-sm text-gray-500">💡 Kéo thả để sắp xếp lại thứ tự module</div>
+                    </div>
+
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                        onDragCancel={handleDragCancel}
+                    >
+                        <SortableContext
+                            items={sortableModules.map((m) => m.id)}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            <div className="space-y-3">
+                                {sortableModules.map((lesson, index) => (
+                                    <SortableModuleItem key={lesson.id} lesson={lesson} index={index} />
+                                ))}
+                            </div>
+                        </SortableContext>
+
+                        <DragOverlay>
+                            {activeId ? (
+                                <div className="bg-white rounded-lg border-2 border-blue-500 p-4 shadow-lg opacity-90">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                                            {sortableModules.findIndex((m) => m.id === activeId) + 1}
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-sm">
+                                                {sortableModules.find((m) => m.id === activeId)?.title}
+                                            </h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </DragOverlay>
+                    </DndContext>
                 </div>
             </div>
         );

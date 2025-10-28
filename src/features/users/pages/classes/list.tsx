@@ -1,5 +1,4 @@
-import { BookOpen, Calendar, MapPin } from 'lucide-react';
-import { useState } from 'react';
+import { Calendar, MapPin } from 'lucide-react';
 import ClassActions from '@/features/users/pages/classes/components/actions.tsx';
 
 interface ClassListProps {
@@ -9,25 +8,26 @@ interface ClassListProps {
     setOpenAssignInstructor: (classItem: any) => void;
     onEdit?: (classItem: any) => void;
     onManageStudents?: (classItem: any) => void;
+    onRowClick?: (classItem: any) => void;
     totalClasses: number;
     currentPage: number;
     totalPages: number;
     onPageChange: (page: number) => void;
 }
 
-const ClassList: React.FC<ClassListProps> = ({ 
-    classes, 
-    statusFilter, 
-    query, 
+const ClassList: React.FC<ClassListProps> = ({
+    classes,
+    // keep statusFilter, query in interface for compatibility but not destructured to avoid unused warnings
     setOpenAssignInstructor,
     onEdit,
     onManageStudents,
+    onRowClick,
     totalClasses,
     currentPage,
     totalPages,
-    onPageChange
+    onPageChange,
 }) => {
-    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    // no local state needed here currently
 
     return (
         <>
@@ -55,7 +55,8 @@ const ClassList: React.FC<ClassListProps> = ({
                     {classes.map((c) => (
                         <div
                             key={c.id}
-                            className="px-3 py-3 pr-12 grid grid-cols-11 gap-3 items-center border-t first:border-t-0 relative"
+                            className="px-3 py-3 pr-12 grid grid-cols-11 gap-3 items-center border-t first:border-t-0 relative cursor-pointer hover:bg-gray-50"
+                            onClick={() => onRowClick?.(c)}
                         >
                             <div className="col-span-12 md:col-span-2">
                                 <div className="flex items-start gap-3">
@@ -104,8 +105,13 @@ const ClassList: React.FC<ClassListProps> = ({
                                     {c.status}
                                 </span>
                             </div>
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 z-40">
-                                <ClassActions 
+                            <div
+                                className="absolute right-3 top-1/2 -translate-y-1/2 z-40"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                }}
+                            >
+                                <ClassActions
                                     onEdit={() => onEdit?.(c)}
                                     onManageStudents={() => onManageStudents?.(c)}
                                     onAssignInstructor={() => setOpenAssignInstructor(c)}
@@ -118,30 +124,29 @@ const ClassList: React.FC<ClassListProps> = ({
                 {/* Pagination */}
                 <div className="px-3 py-3 border-t flex items-center justify-between text-sm text-gray-500">
                     <div>
-                        Hiển thị {((currentPage - 1) * 6) + 1} - {Math.min(currentPage * 6, totalClasses)} trong số {totalClasses} kết quả
+                        Hiển thị {(currentPage - 1) * 6 + 1} - {Math.min(currentPage * 6, totalClasses)} trong số{' '}
+                        {totalClasses} kết quả
                     </div>
                     <div className="flex items-center gap-2">
-                        <button 
+                        <button
                             onClick={() => onPageChange(currentPage - 1)}
                             disabled={currentPage === 1}
                             className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Previous
                         </button>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                            <button 
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <button
                                 key={page}
                                 onClick={() => onPageChange(page)}
                                 className={`h-8 px-3 rounded-md text-sm ${
-                                    page === currentPage 
-                                        ? 'bg-gray-900 text-white' 
-                                        : 'border bg-white hover:bg-gray-50'
+                                    page === currentPage ? 'bg-gray-900 text-white' : 'border bg-white hover:bg-gray-50'
                                 }`}
                             >
                                 {page}
                             </button>
                         ))}
-                        <button 
+                        <button
                             onClick={() => onPageChange(currentPage + 1)}
                             disabled={currentPage === totalPages}
                             className="h-8 px-3 rounded-md border bg-white hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
