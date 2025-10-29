@@ -109,9 +109,12 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                 }
             }
             
-            // Format students with enrolled classes - chỉ hiển thị học viên PENDING
+            // Format students with enrolled classes
+            // Hiển thị học viên PENDING và ACTIVE để có thể đăng ký thêm lớp (nếu không trùng lịch)
+            // Loại bỏ học viên DROPPED (nghỉ học) - họ không thể đăng ký lớp mới
+            // Cho phép học viên GRADUATED (tốt nghiệp) đăng ký lại nếu muốn
             const formattedStudents: Student[] = students
-                .filter(student => student.overallStatus === 'PENDING')
+                .filter(student => student.overallStatus !== 'DROPPED') // Loại bỏ học viên đã nghỉ học
                 .map(student => ({
                     studentId: student.studentId,
                     fullName: student.fullName,

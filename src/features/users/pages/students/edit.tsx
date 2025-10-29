@@ -1,29 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Edit, Mail, Phone, MapPin, Calendar, Upload, Image as ImageIcon } from 'lucide-react';
-
-type Student = {
-    id: string;
-    studentId: string;
-    name: string;
-    email: string;
-    phone: string;
-    initial: string;
-    class: string;
-    program: string;
-    classes: Array<{ className: string; programName: string }>;
-    registrationDate: string;
-    status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
-    avatar?: string;
-    dob?: string | null;
-    address?: string | null;
-    gender?: string | null;
-    nationalIdNo?: string | null;
-};
+import type { StudentUI } from '@/shared/types/student-ui';
 
 interface StudentEditProps {
-    student: Student;
+    student: StudentUI;
     onClose?: () => void;
-    onSave?: (updatedStudent: Student) => void;
+    onSave?: (updatedStudent: StudentUI) => void;
 }
 
 const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) => {

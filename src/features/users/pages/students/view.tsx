@@ -19,96 +19,76 @@ import { getClassStudents } from '@/shared/api/classes';
 import { useToast } from '@/shared/hooks/useToast';
 import ClassLogTab from '@/features/users/pages/classes/components/journals/ClassLogTab';
 import type { EnrollmentResponse } from '@/shared/types/classes';
-
-type Student = {
-    id: string;
-    studentId: string;
-    name: string;
-    email: string;
-    phone: string;
-    initial: string;
-    class: string;
-    program: string;
-    classes: Array<{ className: string; programName: string }>;
-    registrationDate: string;
-    status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
-    dob?: string | null;
-    address?: string | null;
-    gender?: string | null;
-    nationalIdNo?: string | null;
-};
+import type { StudentEnrollment } from '@/shared/types/student';
+import type { StudentUI } from '@/shared/types/student-ui';
 
 interface StudentViewProps {
-    student: Student;
+    student: StudentUI;
     onClose?: () => void;
 }
 
 const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
     const { error: showErrorToast } = useToast();
     const [activeTab, setActiveTab] = useState('info');
-    const [enrollments, setEnrollments] = useState<any[]>([]);
-    const [isLoadingEnrollments, setIsLoadingEnrollments] = useState(false);
     const [selectedClass, setSelectedClass] = useState<any | null>(null);
 
     // Load student's enrollments when viewing classes tab
     useEffect(() => {
-        loadEnrollments(); // Load ngay khi mount để có activeEnrollment
-    }, [student.id]);
+        // Auto-select first enrollment if available
+        if (student.enrollments && student.enrollments.length > 0 && !selectedClass) {
+            const firstEnrollment = student.enrollments[0];
+            setSelectedClass({
+                classId: firstEnrollment.classId,
+                name: firstEnrollment.className,
+                programName: firstEnrollment.programName,
+                centerName: '',
+                status: firstEnrollment.status,
+            });
+        }
+    }, [student.enrollments, selectedClass]);
 
-    const loadEnrollments = async () => {
-        try {
-            setIsLoadingEnrollments(true);
-            // Get all classes
-            const classesResponse = await listClasses();
-            const classes = classesResponse.data;
+    // Function để tính overall status từ enrollments
+    const calculateOverallStatus = (enrollments: StudentEnrollment[]): 'Đang chờ' | 'Đang học' | 'Nghỉ học' => {
+        if (enrollments.length === 0) return 'Đang chờ';
+        
+        const hasActive = enrollments.some(e => e.status === 'ACTIVE');
+        const hasSuspended = enrollments.some(e => e.status === 'SUSPENDED');
+        const hasDropped = enrollments.some(e => e.status === 'DROPPED');
+        
+        if (hasActive) return 'Đang học';
+        if (hasSuspended) return 'Đang chờ';
+        if (hasDropped) return 'Nghỉ học';
+        
+        return 'Đang chờ';
+    };
 
-            // For each class, get enrollments and find this student
-            const studentEnrollments: any[] = [];
+    const getEnrollmentStatusColor = (status: string) => {
+        switch (status) {
+            case 'ACTIVE':
+                return 'bg-green-50 text-green-700';
+            case 'SUSPENDED':
+                return 'bg-yellow-50 text-yellow-700';
+            case 'DROPPED':
+                return 'bg-red-50 text-red-700';
+            case 'GRADUATED':
+                return 'bg-blue-50 text-blue-700';
+            default:
+                return 'bg-gray-50 text-gray-700';
+        }
+    };
 
-            for (const classItem of classes) {
-                try {
-                    const response = await getClassStudents(classItem.classId, {
-                        page: 0,
-                        size: 1000,
-                    });
-                    const enrollmentsData: EnrollmentResponse[] = response.data.content || response.data;
-
-                    // Find this student's enrollment in this class
-                    const studentEnrollment = enrollmentsData.find((e) => e.studentId === parseInt(student.id));
-                    if (studentEnrollment) {
-                        const enrollment = {
-                            ...studentEnrollment,
-                            className: classItem.name,
-                            classId: classItem.classId,
-                            programName: classItem.programName,
-                        };
-                        studentEnrollments.push(enrollment);
-                    }
-                } catch (error) {
-                    // Skip if can't access this class
-                    console.log(`Cannot access class ${classItem.classId}`);
-                }
-            }
-
-            setEnrollments(studentEnrollments);
-            // Auto-select first class if available
-            if (studentEnrollments.length > 0 && !selectedClass) {
-                setSelectedClass({
-                    classId: studentEnrollments[0].classId,
-                    name: studentEnrollments[0].className,
-                    programName: studentEnrollments[0].programName,
-                    centerName: '',
-                    status: 'ACTIVE',
-                });
-            }
-        } catch (error: any) {
-            console.error('Error loading enrollments:', error);
-            showErrorToast(
-                'Lỗi tải danh sách lớp học',
-                error?.response?.data?.message || 'Không thể tải danh sách lớp học',
-            );
-        } finally {
-            setIsLoadingEnrollments(false);
+    const getEnrollmentStatusText = (status: string) => {
+        switch (status) {
+            case 'ACTIVE':
+                return 'Đang học';
+            case 'SUSPENDED':
+                return 'Bảo lưu';
+            case 'DROPPED':
+                return 'Đã nghỉ';
+            case 'GRADUATED':
+                return 'Tốt nghiệp';
+            default:
+                return status;
         }
     };
 
@@ -208,23 +188,25 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                             <h4 className="text-sm font-medium text-gray-900 mb-4">Thông tin học tập</h4>
                             <div className="space-y-3">
                                 <div className="flex items-center gap-3">
-                                    <BookOpen size={16} className="text-gray-500" />
-                                    <span className="text-sm">{student.program}</span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <User size={16} className="text-gray-500" />
-                                    <span className="text-sm">{student.class}</span>
-                                </div>
-                                <div className="flex items-center gap-3">
                                     <Calendar size={16} className="text-gray-500" />
                                     <span className="text-sm">Đăng ký: {student.registrationDate}</span>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <CheckCircle size={16} className="text-green-500" />
                                     <span
-                                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(student.status)}`}
+                                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                            calculateOverallStatus(student.enrollments) === 'Đang học' ? 'bg-green-50 text-green-700' :
+                                            calculateOverallStatus(student.enrollments) === 'Đang chờ' ? 'bg-yellow-50 text-yellow-700' :
+                                            'bg-red-50 text-red-700'
+                                        }`}
                                     >
-                                        {student.status}
+                                        {calculateOverallStatus(student.enrollments)}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <BookOpen size={16} className="text-gray-500" />
+                                    <span className="text-sm">
+                                        {student.enrollments.length} lớp học
                                     </span>
                                 </div>
                             </div>
@@ -237,13 +219,11 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                     <div className="space-y-4">
                         <h4 className="text-sm font-medium text-gray-900">Danh sách lớp học đã đăng ký</h4>
 
-                        {isLoadingEnrollments ? (
-                            <div className="text-center py-8 text-gray-500">Đang tải...</div>
-                        ) : enrollments.length === 0 ? (
+                        {student.enrollments.length === 0 ? (
                             <div className="text-center py-8 text-gray-500">Chưa đăng ký lớp học nào</div>
                         ) : (
                             <div className="space-y-3">
-                                {enrollments.map((enrollment) => (
+                                {student.enrollments.map((enrollment) => (
                                     <div key={enrollment.enrollmentId} className="border rounded-lg p-4 space-y-3">
                                         <div className="flex items-start justify-between">
                                             <div className="flex-1">
@@ -255,25 +235,15 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                                                 </div>
                                             </div>
                                             <span
-                                                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                    enrollment.status === 'ACTIVE'
-                                                        ? 'bg-green-50 text-green-700'
-                                                        : enrollment.status === 'SUSPENDED'
-                                                          ? 'bg-yellow-50 text-yellow-700'
-                                                          : 'bg-red-50 text-red-700'
-                                                }`}
+                                                className={`px-2 py-1 rounded-full text-xs font-medium ${getEnrollmentStatusColor(enrollment.status)}`}
                                             >
-                                                {enrollment.status === 'ACTIVE'
-                                                    ? 'Đang học'
-                                                    : enrollment.status === 'SUSPENDED'
-                                                      ? 'Tạm dừng'
-                                                      : 'Đã rớt'}
+                                                {getEnrollmentStatusText(enrollment.status)}
                                             </span>
                                         </div>
 
-                                        {enrollment.note && (
+                                        {enrollment.enrollmentNote && (
                                             <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                                                Ghi chú: {enrollment.note}
+                                                Ghi chú: {enrollment.enrollmentNote}
                                             </p>
                                         )}
                                     </div>

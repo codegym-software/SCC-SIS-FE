@@ -1,40 +1,26 @@
 import React, { useState } from 'react';
 import { X, UserCheck } from 'lucide-react';
 import { updateStudentStatus } from '@/shared/api/students';
-
-type Student = {
-    id: string;
-    studentId: string;
-    name: string;
-    email: string;
-    phone: string;
-    initial: string;
-    class: string;
-    program: string;
-    classes: Array<{ className: string; programName: string }>;
-    registrationDate: string;
-    status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
-};
+import type { StudentUI } from '@/shared/types/student-ui';
 
 interface ChangeStatusModalProps {
-    student: Student;
+    student: StudentUI;
     onClose: () => void;
-    onSave: (studentId: string, newStatus: Student['status']) => void;
+    onSave: (studentId: string, newStatus: StudentUI['status']) => void;
 }
 
 const ChangeStatusModal: React.FC<ChangeStatusModalProps> = ({ student, onClose, onSave }) => {
-    const [selectedStatus, setSelectedStatus] = useState<Student['status']>(student.status);
+    const [selectedStatus, setSelectedStatus] = useState<StudentUI['status']>(student.status);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string>('');
 
     // Map UI status to backend enum
-    const mapStatusToAPI = (status: Student['status']): string => {
+    const mapStatusToAPI = (status: StudentUI['status']): string => {
         switch(status) {
             case 'Đang học': return 'ACTIVE';
-            case 'Bảo lưu': return 'SUSPENDED';
-            case 'Tốt nghiệp': return 'GRADUATED';
-            case 'Tạm dừng': return 'INACTIVE';
-            default: return 'ACTIVE';
+            case 'Đang chờ': return 'PENDING';
+            case 'Nghỉ học': return 'DROPPED';
+            default: return 'PENDING';
         }
     };
 
@@ -51,7 +37,8 @@ const ChangeStatusModal: React.FC<ChangeStatusModalProps> = ({ student, onClose,
             const apiStatus = mapStatusToAPI(selectedStatus);
             await updateStudentStatus(parseInt(student.id), apiStatus);
             
-            onSave(student.id, selectedStatus);
+            // Gọi onSave và đợi nó hoàn thành trước khi đóng modal
+            await onSave(student.id, selectedStatus);
             onClose();
         } catch (err: any) {
             console.error('Error updating student status:', err);
@@ -61,28 +48,21 @@ const ChangeStatusModal: React.FC<ChangeStatusModalProps> = ({ student, onClose,
         }
     };
 
-    const statusOptions: { value: Student['status']; label: string; description: string }[] = [
-        {
-            value: 'Đang học',
-            label: 'Đang học',
-            description: 'Học viên đang tham gia khóa học'
-        },
-        {
-            value: 'Bảo lưu',
-            label: 'Bảo lưu',
-            description: 'Học viên tạm dừng học tập'
-        },
-        {
-            value: 'Tốt nghiệp',
-            label: 'Tốt nghiệp',
-            description: 'Học viên đã hoàn thành khóa học'
-        },
-        {
-            value: 'Tạm dừng',
-            label: 'Tạm dừng',
-            description: 'Học viên tạm dừng do lý do cá nhân'
+    // Chỉ cho phép chuyển từ "Đang chờ" sang "Nghỉ học"
+    const getAvailableStatusOptions = () => {
+        if (student.status === 'Đang chờ') {
+            return [
+                {
+                    value: 'Nghỉ học' as StudentUI['status'],
+                    label: 'Nghỉ học',
+                    description: 'Học viên không tiếp tục học tập'
+                }
+            ];
         }
-    ];
+        return []; // Không cho phép thay đổi trạng thái khác
+    };
+
+    const statusOptions = getAvailableStatusOptions();
 
     return (
         <div className="bg-white rounded-lg w-96 max-w-sm">
@@ -134,31 +114,38 @@ const ChangeStatusModal: React.FC<ChangeStatusModalProps> = ({ student, onClose,
                         <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
                             Chọn trạng thái mới
                         </label>
-                        <div className="space-y-3">
-                            {statusOptions.map((option) => (
-                                <label
-                                    key={option.value}
-                                    className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                                        selectedStatus === option.value
-                                            ? 'border-blue-500 bg-blue-50'
-                                            : 'border-gray-200 hover:border-gray-300'
-                                    }`}
-                                >
-                                    <input
-                                        type="radio"
-                                        name="status"
-                                        value={option.value}
-                                        checked={selectedStatus === option.value}
-                                        onChange={(e) => setSelectedStatus(e.target.value as Student['status'])}
-                                        className="mt-1"
-                                    />
-                                    <div className="flex-1">
-                                        <div className="font-medium text-gray-900">{option.label}</div>
-                                        <div className="text-sm text-gray-500">{option.description}</div>
-                                    </div>
-                                </label>
-                            ))}
-                        </div>
+                        {statusOptions.length > 0 ? (
+                            <div className="space-y-3">
+                                {statusOptions.map((option) => (
+                                    <label
+                                        key={option.value}
+                                        className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                                            selectedStatus === option.value
+                                                ? 'border-blue-500 bg-blue-50'
+                                                : 'border-gray-200 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="status"
+                                            value={option.value}
+                                            checked={selectedStatus === option.value}
+                                            onChange={(e) => setSelectedStatus(e.target.value as StudentUI['status'])}
+                                            className="mt-1"
+                                        />
+                                        <div className="flex-1">
+                                            <div className="font-medium text-gray-900">{option.label}</div>
+                                            <div className="text-sm text-gray-500">{option.description}</div>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-gray-500">
+                                <p className="text-sm">Không thể thay đổi trạng thái từ "{student.status}"</p>
+                                <p className="text-xs mt-1">Trạng thái này được quản lý tự động dựa trên lớp học</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -171,13 +158,15 @@ const ChangeStatusModal: React.FC<ChangeStatusModalProps> = ({ student, onClose,
                 >
                     Hủy
                 </button>
-                <button
-                    onClick={handleSave}
-                    disabled={selectedStatus === student.status || isSubmitting}
-                    className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                    {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật trạng thái'}
-                </button>
+                {statusOptions.length > 0 && (
+                    <button
+                        onClick={handleSave}
+                        disabled={selectedStatus === student.status || isSubmitting}
+                        className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                        {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật trạng thái'}
+                    </button>
+                )}
             </div>
         </div>
     );

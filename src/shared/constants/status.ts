@@ -1,28 +1,22 @@
-// Student status constants
+// Student status constants - chỉ có 3 trạng thái theo yêu cầu
 export const STUDENT_STATUS = {
-  PENDING: 'PENDING',
-  ACTIVE: 'ACTIVE', 
-  INACTIVE: 'INACTIVE',
-  GRADUATED: 'GRADUATED',
-  SUSPENDED: 'SUSPENDED',
-  DROPPED: 'DROPPED'
+  PENDING: 'PENDING',    // đang chờ
+  ACTIVE: 'ACTIVE',      // đang học
+  DROPPED: 'DROPPED'     // nghỉ học
 } as const;
 
-// Enrollment status constants  
+// Enrollment status constants - có 4 trạng thái theo yêu cầu
 export const ENROLLMENT_STATUS = {
-  ACTIVE: 'ACTIVE',
-  SUSPENDED: 'SUSPENDED',
-  DROPPED: 'DROPPED',
-  GRADUATED: 'GRADUATED'
+  ACTIVE: 'ACTIVE',      // đang học
+  SUSPENDED: 'SUSPENDED', // bảo lưu
+  DROPPED: 'DROPPED',    // đã nghỉ
+  GRADUATED: 'GRADUATED' // tốt nghiệp
 } as const;
 
 // Student status labels (Vietnamese)
 export const STUDENT_STATUS_LABELS = {
   [STUDENT_STATUS.PENDING]: 'Đang chờ',
   [STUDENT_STATUS.ACTIVE]: 'Đang học',
-  [STUDENT_STATUS.INACTIVE]: 'Không hoạt động',
-  [STUDENT_STATUS.GRADUATED]: 'Đã tốt nghiệp',
-  [STUDENT_STATUS.SUSPENDED]: 'Tạm dừng',
   [STUDENT_STATUS.DROPPED]: 'Nghỉ học'
 } as const;
 
@@ -38,9 +32,6 @@ export const ENROLLMENT_STATUS_LABELS = {
 export const STUDENT_STATUS_COLORS = {
   [STUDENT_STATUS.PENDING]: 'bg-yellow-100 text-yellow-800',
   [STUDENT_STATUS.ACTIVE]: 'bg-green-100 text-green-800',
-  [STUDENT_STATUS.INACTIVE]: 'bg-gray-100 text-gray-800',
-  [STUDENT_STATUS.GRADUATED]: 'bg-blue-100 text-blue-800',
-  [STUDENT_STATUS.SUSPENDED]: 'bg-orange-100 text-orange-800',
   [STUDENT_STATUS.DROPPED]: 'bg-red-100 text-red-800'
 } as const;
 

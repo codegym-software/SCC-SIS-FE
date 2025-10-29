@@ -177,8 +177,8 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                     ? 'Đang học'
                     : newStatus === 'SUSPENDED'
                       ? 'Bảo lưu'
-                      : newStatus === 'COMPLETED'
-                        ? 'Hoàn thành'
+                      : newStatus === 'GRADUATED'
+                        ? 'Tốt nghiệp'
                         : newStatus === 'DROPPED'
                           ? 'Đã nghỉ'
                           : newStatus;
@@ -200,8 +200,8 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                 return 'Đang học';
             case 'SUSPENDED':
                 return 'Bảo lưu';
-            case 'COMPLETED':
-                return 'Hoàn thành';
+            case 'GRADUATED':
+                return 'Tốt nghiệp';
             case 'DROPPED':
                 return 'Đã nghỉ';
             default:
@@ -214,11 +214,11 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
             case 'ACTIVE':
                 return 'bg-green-100 text-green-700';
             case 'SUSPENDED':
-                return 'bg-orange-100 text-orange-700';
-            case 'COMPLETED':
+                return 'bg-yellow-100 text-yellow-700';
+            case 'GRADUATED':
                 return 'bg-blue-100 text-blue-700';
             case 'DROPPED':
-                return 'bg-gray-100 text-gray-700';
+                return 'bg-red-100 text-red-700';
             default:
                 return 'bg-gray-100 text-gray-700';
         }

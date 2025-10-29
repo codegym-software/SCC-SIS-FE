@@ -1,6 +1,6 @@
 // src/shared/api/students.ts
 import api from './http';
-import type { StudentDto, CreateStudentDto, UpdateStudentDto } from '../types/student';
+import type { StudentDto, CreateStudentDto, UpdateStudentDto, StudentWithEnrollmentsDto } from '../types/student';
 
 /**
  * Tạo học viên mới
@@ -99,3 +99,17 @@ export const importStudentsFromExcel = (file: File) => {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
 };
+
+/**
+ * Lấy thông tin chi tiết học viên với enrollments theo ID
+ * GET /api/students/{id}/enrollments
+ */
+export const getStudentWithEnrollmentsById = (studentId: number) => 
+    api.get<StudentWithEnrollmentsDto>(`/api/students/${studentId}/enrollments`);
+
+/**
+ * Lấy danh sách tất cả học viên với enrollments chi tiết
+ * GET /api/students/with-enrollments
+ */
+export const getAllStudentsWithEnrollments = () => 
+    api.get<StudentWithEnrollmentsDto[]>('/api/students/with-enrollments');
