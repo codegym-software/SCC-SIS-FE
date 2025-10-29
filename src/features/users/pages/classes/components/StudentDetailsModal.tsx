@@ -60,8 +60,9 @@ const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ student, clas
     const getStatusDisplay = (status: string) => {
         switch(status) {
             case 'ACTIVE': return 'Đang học';
-            case 'SUSPENDED': return 'Tạm dừng';
-            case 'DROPPED': return 'Đã rớt';
+            case 'SUSPENDED': return 'Bảo lưu';
+            case 'DROPPED': return 'Đã nghỉ';
+            case 'GRADUATED': return 'Tốt nghiệp';
             default: return status;
         }
     };
@@ -71,6 +72,7 @@ const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ student, clas
             case 'ACTIVE': return 'bg-green-50 text-green-700';
             case 'SUSPENDED': return 'bg-yellow-50 text-yellow-700';
             case 'DROPPED': return 'bg-red-50 text-red-700';
+            case 'GRADUATED': return 'bg-blue-50 text-blue-700';
             default: return 'bg-gray-50 text-gray-700';
         }
     };

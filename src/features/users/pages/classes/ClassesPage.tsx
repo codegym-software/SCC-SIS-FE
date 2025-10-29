@@ -18,12 +18,15 @@ import {
     UserPlus,
     FileText,
     History,
+    Pause,
+    Play,
 } from 'lucide-react';
 import ClassList from '@/features/users/pages/classes/list.tsx';
 import ManageStudentsModal from '@/features/users/pages/classes/components/ManageStudentsModal';
 import AttendanceModal from '@/features/users/pages/classes/components/AttendanceModal';
 import ClassLogTab from '@/features/users/pages/classes/components/journals/ClassLogTab';
 import AssignInstructorModal from '@/features/users/pages/classes/components/AssignInstructorModal';
+import ConfirmDialog from '@/shared/components/ConfirmDialog';
 import { useToast } from '@/shared/hooks/useToast';
 import { useUserProfile } from '@/stores/userProfile';
 import http from '@/shared/api/http';
@@ -88,15 +91,24 @@ const mapStatusToUI = (status: ClassStatus): Class['status'] => {
     return statusMap[status];
 };
 
-// Helper function to map UI status to API status
-const mapStatusToAPI = (status: Class['status']): ClassStatus => {
-    const statusMap: Record<Class['status'], ClassStatus> = {
-        'Chuẩn bị': 'PLANNED',
-        'Đang học': 'ONGOING',
-        'Hoàn thành': 'FINISHED',
-        'Tạm dừng': 'CANCELLED',
-    };
-    return statusMap[status];
+// Helper function to calculate status from dates
+const calculateStatusFromDates = (startDate?: string, endDate?: string): ClassStatus => {
+    if (!startDate || !endDate) {
+        return 'PLANNED';
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (today < start) {
+        return 'PLANNED';
+    } else if (today > end) {
+        return 'FINISHED';
+    } else {
+        return 'ONGOING';
+    }
 };
 
 // Helper function to format schedule from API data
@@ -260,6 +272,8 @@ export default function ClassesPage() {
     const [openEdit, setOpenEdit] = useState<Class | null>(null);
     // ManageStudents now renders inline in Students tab; keep state only if needed elsewhere
     const [openAssignInstructor, setOpenAssignInstructor] = useState<Class | null>(null);
+    const [pauseConfirm, setPauseConfirm] = useState<Class | null>(null);
+    const [resumeConfirm, setResumeConfirm] = useState<Class | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const classesPerPage = 6;
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -348,6 +362,46 @@ export default function ClassesPage() {
     // Check if user has GLOBAL scope (can select center)
     const hasGlobalScope = !userProfile?.centerId;
 
+    // Confirm pause class
+    const confirmPause = async () => {
+        if (!pauseConfirm) return;
+        try {
+            const UpdateClassRequest = {
+                status: 'CANCELLED' as const
+            };
+            const response = await updateClass(Number(pauseConfirm.id), UpdateClassRequest);
+            const updatedClass = mapClassDtoToUI(response.data);
+            setClasses((prev) => prev.map((c) => (c.id === pauseConfirm.id ? updatedClass : c)));
+            if (selectedClass?.id === pauseConfirm.id) {
+                setSelectedClass(updatedClass);
+            }
+            toast.success('Tạm dừng thành công!', `Lớp học đã được tạm dừng`);
+        } catch (err) {
+            toast.error('Lỗi tạm dừng lớp học');
+        } finally {
+            setPauseConfirm(null);
+        }
+    };
+
+    // Confirm resume class
+    const confirmResume = async () => {
+        if (!resumeConfirm) return;
+        try {
+            const calculatedStatus = calculateStatusFromDates(resumeConfirm.startDate, resumeConfirm.endDate);
+            const response = await updateClass(Number(resumeConfirm.id), { status: calculatedStatus });
+            const updatedClass = mapClassDtoToUI(response.data);
+            setClasses((prev) => prev.map((c) => (c.id === resumeConfirm.id ? updatedClass : c)));
+            if (selectedClass?.id === resumeConfirm.id) {
+                setSelectedClass(updatedClass);
+            }
+            toast.success('Khôi phục thành công!', `Lớp học đã được khôi phục`);
+        } catch (err) {
+            toast.error('Lỗi khôi phục lớp học');
+        } finally {
+            setResumeConfirm(null);
+        }
+    };
+
     // Fetch classes and programs from API
     useEffect(() => {
         const fetchData = async () => {
@@ -366,6 +420,63 @@ export default function ClassesPage() {
                     const centersRes = await getCentersLite();
                     setCenters(centersRes.data);
                 }
+
+                // Fetch student counts and instructors for all classes in parallel
+                const studentCountPromises = mappedClasses.map(async (cls) => {
+                    try {
+                        const res = await getClassStudents(parseInt(cls.id, 10), { status: 'ACTIVE', page: 0, size: 1 });
+                        let activeCount = 0;
+                        const data: any = res.data;
+                        if (data && typeof data.totalElements === 'number') {
+                            activeCount = data.totalElements;
+                        } else if (data && Array.isArray(data)) {
+                            activeCount = data.filter((e: any) => e.status === 'ACTIVE').length;
+                        } else if (data && Array.isArray(data.content) && typeof data.totalElements === 'number') {
+                            activeCount = data.totalElements;
+                        }
+                        return { classId: cls.id, studentCount: activeCount };
+                    } catch (e) {
+                        console.error(`Failed to load student count for class ${cls.id}`, e);
+                        return { classId: cls.id, studentCount: 0 };
+                    }
+                });
+
+                const instructorPromises = mappedClasses.map(async (cls) => {
+                    try {
+                        const res = await http.get(`/api/classes/${cls.id}/lecturers`);
+                        const apiData: any[] = res.data.items || [];
+                        const instructors: Instructor[] = apiData
+                            .filter((item) => item.active)
+                            .map((item) => ({
+                                id: item.assignmentId.toString(),
+                                name: item.lecturer.fullName,
+                                initial: item.lecturer.fullName.charAt(0).toUpperCase(),
+                                avatar: item.lecturer.avatarUrl || undefined,
+                            }));
+                        return { classId: cls.id, instructors };
+                    } catch (e) {
+                        console.error(`Failed to load instructors for class ${cls.id}`, e);
+                        return { classId: cls.id, instructors: [] };
+                    }
+                });
+
+                const [studentCounts, instructorData] = await Promise.all([
+                    Promise.all(studentCountPromises),
+                    Promise.all(instructorPromises),
+                ]);
+
+                // Update classes with student counts and instructors
+                setClasses((prev) =>
+                    prev.map((cls) => {
+                        const countData = studentCounts.find((sc) => sc.classId === cls.id);
+                        const instructorInfo = instructorData.find((id) => id.classId === cls.id);
+                        return {
+                            ...cls,
+                            students: countData ? countData.studentCount : cls.students,
+                            instructors: instructorInfo ? instructorInfo.instructors : cls.instructors,
+                        };
+                    }),
+                );
             } catch (error) {
                 console.error('Failed to fetch data:', error);
                 toast.error('Lỗi tải dữ liệu', 'Không thể tải danh sách lớp học');
@@ -498,7 +609,7 @@ export default function ClassesPage() {
                     const endDate = String(form.get('endDate') || '');
                     const room = String(form.get('location') || '');
                     const capacity = Number(form.get('maxStudents') || 0);
-                    const status = String(form.get('status') || 'Chuẩn bị') as Class['status'];
+                    // Status không còn được chọn từ form nữa - chỉ cho phép set CANCELLED khi cần
 
                     // Validation
                     if (!name || name.trim().length < 3) {
@@ -511,6 +622,23 @@ export default function ClassesPage() {
                     if (!startDate) {
                         newErrors.startDate = 'Vui lòng chọn ngày bắt đầu';
                     }
+                    
+                    // Validate endDate phải lớn hơn startDate và thời gian hiện tại
+                    if (endDate) {
+                        const start = new Date(startDate);
+                        const end = new Date(endDate);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        if (end <= start) {
+                            newErrors.startDate = 'Ngày kết thúc phải lớn hơn ngày bắt đầu';
+                        }
+                        
+                        if (end < today) {
+                            newErrors.startDate = 'Ngày kết thúc phải lớn hơn thời gian hiện tại';
+                        }
+                    }
+                    
                     if (selectedDays.length === 0 || !selectedTime) {
                         newErrors.schedule = 'Vui lòng chọn đầy đủ ngày và giờ học';
                     }
@@ -610,9 +738,11 @@ export default function ClassesPage() {
                             if (room.trim()) updatePayload.room = room.trim();
                             if (capacity > 0) updatePayload.capacity = capacity;
 
-                            // Update status
-                            updatePayload.status = mapStatusToAPI(status);
-
+                            // Status chỉ cho phép set CANCELLED (tạm dừng) khi cần
+                            // Các status khác (PLANNED, ONGOING, FINISHED) sẽ tự động tính từ ngày
+                            // Bây giờ chỉ set status nếu user muốn tạm dừng class
+                            // Không có checkbox "Tạm dừng" nên không set gì cả
+                            
                             if (studyDays.length > 0) updatePayload.studyDays = studyDays;
                             if (studyTime) updatePayload.studyTime = studyTime;
 
@@ -832,8 +962,16 @@ export default function ClassesPage() {
                                     type="date"
                                     defaultValue={editing?.startDate}
                                     required
-                                    className={`w-full h-9 rounded-md border px-3 text-sm ${errors.startDate ? 'border-red-500' : ''}`}
+                                    disabled={!!editing}
+                                    className={`w-full h-9 rounded-md border px-3 text-sm ${
+                                        errors.startDate ? 'border-red-500' : ''
+                                    } ${editing ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                                 />
+                                {editing && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Không thể thay đổi ngày bắt đầu sau khi tạo lớp
+                                    </p>
+                                )}
                                 {errors.startDate && (
                                     <div className="text-xs text-red-600 mt-1">{errors.startDate}</div>
                                 )}
@@ -844,8 +982,16 @@ export default function ClassesPage() {
                                     name="endDate"
                                     type="date"
                                     defaultValue={editing?.endDate}
-                                    className="w-full h-9 rounded-md border px-3 text-sm"
+                                    disabled={!!editing}
+                                    className={`w-full h-9 rounded-md border px-3 text-sm ${
+                                        editing ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''
+                                    }`}
                                 />
+                                {editing && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Không thể thay đổi ngày kết thúc sau khi tạo lớp
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-xs text-gray-600 mb-1">Ngày học * (tối đa 2 ngày)</label>
@@ -901,17 +1047,18 @@ export default function ClassesPage() {
                                 )}
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-600 mb-1">Trạng thái</label>
-                                <select
-                                    name="status"
-                                    defaultValue={editing?.status ?? 'Chuẩn bị'}
-                                    className="w-full h-9 rounded-md border px-2 text-sm"
-                                >
-                                    <option>Chuẩn bị</option>
-                                    <option>Đang học</option>
-                                    <option>Hoàn thành</option>
-                                    <option>Tạm dừng</option>
-                                </select>
+                                <label className="block text-xs text-gray-600 mb-1">
+                                    {editing?.status === 'Tạm dừng' ? 'Đang tạm dừng' : 'Trạng thái'}
+                                </label>
+                                {editing?.status === 'Tạm dừng' ? (
+                                    <div className="text-sm text-gray-500 italic">
+                                        Trạng thái được tính tự động từ ngày bắt đầu và kết thúc
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-gray-500 italic">
+                                        Được tính tự động từ ngày bắt đầu và kết thúc
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -972,9 +1119,31 @@ export default function ClassesPage() {
                             >
                                 {selectedClass.status}
                             </Badge>
+                            {selectedClass.status !== 'Hoàn thành' && (
+                                selectedClass.status === 'Tạm dừng' ? (
+                                    <button
+                                        onClick={() => setResumeConfirm(selectedClass)}
+                                        className="px-2 py-1 text-xs bg-green-50 text-green-700 hover:bg-green-100 rounded-md transition-colors flex items-center gap-1"
+                                        title="Khôi phục lớp học"
+                                    >
+                                        <Play size={12} />
+                                        <span>Khôi phục</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => setPauseConfirm(selectedClass)}
+                                        className="px-2 py-1 text-xs bg-orange-50 text-orange-700 hover:bg-orange-100 rounded-md transition-colors flex items-center gap-1"
+                                        title="Tạm dừng lớp học"
+                                    >
+                                        <Pause size={12} />
+                                        <span>Tạm dừng</span>
+                                    </button>
+                                )
+                            )}
                             <button
                                 onClick={() => setOpenEdit(selectedClass)}
                                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                title="Chỉnh sửa lớp học"
                             >
                                 <Edit size={16} className="text-gray-600" />
                             </button>
@@ -1240,6 +1409,30 @@ export default function ClassesPage() {
                         />
                     )}
                 </Modal>
+
+                {/* Pause Confirmation Dialog - within detail view */}
+                <ConfirmDialog
+                    open={!!pauseConfirm}
+                    onClose={() => setPauseConfirm(null)}
+                    onConfirm={confirmPause}
+                    title="Xác nhận tạm dừng lớp học"
+                    description={`Bạn có chắc chắn muốn tạm dừng lớp học "${pauseConfirm?.name}"? Lớp học sẽ không hoạt động cho đến khi được khôi phục.`}
+                    confirmText="Tạm dừng"
+                    cancelText="Hủy"
+                    variant="danger"
+                />
+
+                {/* Resume Confirmation Dialog - within detail view */}
+                <ConfirmDialog
+                    open={!!resumeConfirm}
+                    onClose={() => setResumeConfirm(null)}
+                    onConfirm={confirmResume}
+                    title="Xác nhận khôi phục lớp học"
+                    description={`Bạn có chắc chắn muốn khôi phục lớp học "${resumeConfirm?.name}"? Lớp học sẽ quay lại trạng thái hoạt động.`}
+                    confirmText="Khôi phục"
+                    cancelText="Hủy"
+                    variant="primary"
+                />
             </div>
         );
     }
@@ -1255,7 +1448,7 @@ export default function ClassesPage() {
                 </div>
                 <button
                     onClick={() => setOpenCreate(true)}
-                    className="inline-flex items-center gap-2 rounded-md bg-emerald-600 text-white text-sm px-4 py-2 hover:bg-emerald-700 transition-all duration-300"
+                    className="inline-flex items-center gap-2 rounded-md bg-black text-white text-sm px-4 py-2 hover:bg-gray-800 transition-all duration-300"
                 >
                     + Thêm Mới
                 </button>
@@ -1381,13 +1574,46 @@ export default function ClassesPage() {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="w-40">
                                                     <DropdownMenuItem
-                                                        onClick={() => setOpenEdit(classItem)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setOpenEdit(classItem);
+                                                        }}
                                                         className="flex items-center gap-2 cursor-pointer"
                                                     >
                                                         <Edit size={14} />
                                                         <span>Chỉnh sửa</span>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-red-600">
+                                                    {classItem.status !== 'Hoàn thành' && (
+                                                        classItem.status === 'Tạm dừng' ? (
+                                                            <DropdownMenuItem 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setResumeConfirm(classItem);
+                                                                }}
+                                                                className="flex items-center gap-2 cursor-pointer text-green-600"
+                                                            >
+                                                                <Check size={14} />
+                                                                <span>Khôi phục</span>
+                                                            </DropdownMenuItem>
+                                                        ) : (
+                                                            <DropdownMenuItem 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setPauseConfirm(classItem);
+                                                                }}
+                                                                className="flex items-center gap-2 cursor-pointer text-orange-600"
+                                                            >
+                                                                <X size={14} />
+                                                                <span>Tạm dừng</span>
+                                                            </DropdownMenuItem>
+                                                        )
+                                                    )}
+                                                    <DropdownMenuItem 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                        }}
+                                                        className="flex items-center gap-2 cursor-pointer text-red-600"
+                                                    >
                                                         <Trash2 size={14} />
                                                         <span>Xóa</span>
                                                     </DropdownMenuItem>
@@ -1447,32 +1673,12 @@ export default function ClassesPage() {
                                             <div className="flex items-center gap-2 text-xs text-gray-600">
                                                 <Users size={12} className="text-gray-400" />
                                                 <span>
-                                                    {classItem.students} / {classItem.maxStudents} học viên
+                                                    {classItem.instructors?.length || 0} giảng viên
                                                 </span>
                                             </div>
                                         </div>
 
                                         {/* Instructors */}
-                                        {classItem.instructors && classItem.instructors.length > 0 && (
-                                            <div className="flex items-center gap-2 pt-2">
-                                                <div className="flex -space-x-2">
-                                                    {classItem.instructors.slice(0, 3).map((instructor, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 border-2 border-white flex items-center justify-center text-xs text-white font-medium"
-                                                            title={instructor.name}
-                                                        >
-                                                            {instructor.name.charAt(0).toUpperCase()}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                {classItem.instructors.length > 3 && (
-                                                    <span className="text-xs text-gray-500">
-                                                        +{classItem.instructors.length - 3}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             );
@@ -1526,6 +1732,30 @@ export default function ClassesPage() {
                     />
                 )}
             </Modal>
+
+            {/* Pause Confirmation Dialog - for list view */}
+            <ConfirmDialog
+                open={!!pauseConfirm}
+                onClose={() => setPauseConfirm(null)}
+                onConfirm={confirmPause}
+                title="Xác nhận tạm dừng lớp học"
+                description={`Bạn có chắc chắn muốn tạm dừng lớp học "${pauseConfirm?.name}"? Lớp học sẽ không hoạt động cho đến khi được khôi phục.`}
+                confirmText="Tạm dừng"
+                cancelText="Hủy"
+                variant="danger"
+            />
+
+            {/* Resume Confirmation Dialog - for list view */}
+            <ConfirmDialog
+                open={!!resumeConfirm}
+                onClose={() => setResumeConfirm(null)}
+                onConfirm={confirmResume}
+                title="Xác nhận khôi phục lớp học"
+                description={`Bạn có chắc chắn muốn khôi phục lớp học "${resumeConfirm?.name}"? Lớp học sẽ quay lại trạng thái hoạt động.`}
+                confirmText="Khôi phục"
+                cancelText="Hủy"
+                variant="primary"
+            />
         </div>
     );
 }

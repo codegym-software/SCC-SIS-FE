@@ -1,6 +1,6 @@
 // src/shared/types/classes.ts
 export type ClassStatus = 'PLANNED' | 'ONGOING' | 'FINISHED' | 'CANCELLED';
-export type EnrollmentStatus = 'ACTIVE' | 'DROPPED' | 'SUSPENDED';
+export type EnrollmentStatus = 'ACTIVE' | 'SUSPENDED' | 'DROPPED' | 'GRADUATED';
 
 export type CreateClassRequest = {
     programId: number;

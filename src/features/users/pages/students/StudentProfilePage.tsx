@@ -7,30 +7,11 @@ import CreateStudentModal from './create';
 import ChangeStatusModal from './components/ChangeStatusModal';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
 import ImportStudentsModal from './components/ImportStudentsModal';
-import { listStudents, getStudentById, updateStudent, deleteStudent, searchStudents, exportStudents } from '@/shared/api/students';
-import { listClasses, getClassStudents } from '@/shared/api/classes';
+import { updateStudent, deleteStudent, searchStudents, exportStudents, getAllStudentsWithEnrollments, getStudentWithEnrollmentsById } from '@/shared/api/students';
 import { getPrograms } from '@/shared/api/programs';
-import type { StudentDto, UpdateStudentDto } from '@/shared/types/student';
+import type { UpdateStudentDto, StudentWithEnrollmentsDto } from '@/shared/types/student';
+import type { StudentUI } from '@/shared/types/student-ui';
 import { useToast } from '@/shared/hooks/useToast';
-
-type Student = {
-    id: string;
-    studentId: string;
-    name: string;
-    email: string;
-    phone: string;
-    initial: string;
-    class: string;
-    program: string;
-    classes: Array<{ className: string; programName: string }>; // Multiple classes support
-    registrationDate: string;
-    status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
-    avatar?: string;
-    dob?: string | null;
-    address?: string | null;
-    gender?: string | null;
-    nationalIdNo?: string | null;
-};
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
     if (!open) return null;
@@ -65,67 +46,23 @@ export default function StudentProfilePage() {
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [programFilter, setProgramFilter] = useState('Tất cả chương trình');
-    const [openView, setOpenView] = useState<Student | null>(null);
-    const [openEdit, setOpenEdit] = useState<Student | null>(null);
+    const [openView, setOpenView] = useState<StudentUI | null>(null);
+    const [openEdit, setOpenEdit] = useState<StudentUI | null>(null);
     const [openCreate, setOpenCreate] = useState(false);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-    const [deleteConfirm, setDeleteConfirm] = useState<Student | null>(null);
-    const [openChangeStatus, setOpenChangeStatus] = useState<Student | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<StudentUI | null>(null);
+    const [openChangeStatus, setOpenChangeStatus] = useState<StudentUI | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const studentsPerPage = 8;
 
-    const [students, setStudents] = useState<Student[]>([]);
+    const [students, setStudents] = useState<StudentUI[]>([]);
     const [openImport, setOpenImport] = useState(false);
     const [exportConfirm, setExportConfirm] = useState(false);
-    const [enrollmentMap, setEnrollmentMap] = useState<Map<number, any>>(new Map());
     const [isLoading, setIsLoading] = useState(true);
     const [programs, setPrograms] = useState<Array<{ programId: number; name: string }>>([]);
 
-    // Load tất cả enrollments một lần để tối ưu
-    const loadAllEnrollments = async () => {
-        try {
-            const classesResponse = await listClasses();
-            const classes = classesResponse.data;
-            const map = new Map<number, Array<{ className: string; programName: string }>>();
-            
-            // Load enrollments của tất cả classes
-            for (const classItem of classes) {
-                try {
-                    const enrollmentsResponse = await getClassStudents(classItem.classId, {
-                        status: 'ACTIVE',
-                        page: 0,
-                        size: 1000
-                    });
-                    const enrollments = enrollmentsResponse.data.content || enrollmentsResponse.data;
-                    
-                    // Map student ID -> array of classes
-                    enrollments.forEach((enrollment: any) => {
-                        if (!map.has(enrollment.studentId)) {
-                            map.set(enrollment.studentId, []);
-                        }
-                        map.get(enrollment.studentId)!.push({
-                            className: classItem.name,
-                            programName: classItem.programName
-                        });
-                    });
-                } catch (error) {
-                    // Skip if can't access this class
-                }
-            }
-            
-            setEnrollmentMap(map);
-        } catch (error) {
-            console.error('Error loading enrollments:', error);
-        }
-    };
-
-    // Helper function: Convert StudentDto từ BE sang Student type của FE
-    const mapStudentDtoToStudent = (dto: StudentDto): Student => {
-        // Lấy thông tin lớp học từ enrollment map
-        const enrollmentInfo = enrollmentMap.get(dto.studentId) || [];
-        const className = enrollmentInfo.length > 0 ? enrollmentInfo[0].className : 'Chưa có lớp';
-        const programName = enrollmentInfo.length > 0 ? enrollmentInfo[0].programName : 'Chưa đăng ký';
-        
+    // Helper function: Convert StudentWithEnrollmentsDto từ BE sang StudentUI type của FE
+    const mapStudentWithEnrollmentsDtoToStudent = (dto: StudentWithEnrollmentsDto): StudentUI => {
         return {
             id: dto.studentId.toString(),
             studentId: `SV${String(dto.studentId).padStart(3, '0')}`,
@@ -133,19 +70,18 @@ export default function StudentProfilePage() {
             email: dto.email,
             phone: dto.phone,
             initial: dto.fullName.split(' ').map(n => n[0]).join(''),
-            class: className,
-            program: programName,
-            classes: enrollmentInfo, // All classes
             registrationDate: dto.createdAt.split('T')[0],
-            status: (dto.overallStatus === 'ACTIVE' ? 'Đang học' : 
-                     dto.overallStatus === 'INACTIVE' ? 'Tạm dừng' : 
-                     dto.overallStatus === 'GRADUATED' ? 'Tốt nghiệp' : 
-                     'Bảo lưu') as Student['status'],
+            status: (dto.overallStatus === 'PENDING' ? 'Đang chờ' :
+                     dto.overallStatus === 'ACTIVE' ? 'Đang học' : 
+                     dto.overallStatus === 'DROPPED' ? 'Nghỉ học' :
+                     dto.overallStatus === 'GRADUATED' ? 'Tốt nghiệp' :
+                     'Đang chờ') as StudentUI['status'],
             avatar: loadStudentAvatar(dto.studentId.toString()),
             dob: dto.dob || null,
             address: dto.addressLine || null,
             gender: dto.gender || null,
-            nationalIdNo: dto.nationalIdNo || null
+            nationalIdNo: dto.nationalIdNo || null,
+            enrollments: dto.enrollments || []
         };
     };
 
@@ -154,17 +90,40 @@ export default function StudentProfilePage() {
         try {
             let response;
             if (keyword && keyword.trim()) {
-                // Nếu có keyword → gọi API search
-                response = await searchStudents(keyword.trim());
+                // Nếu có keyword → gọi API search (vẫn dùng API cũ vì search chưa có enrollments)
+                const searchResponse = await searchStudents(keyword.trim());
+                // Map từ StudentDto sang Student (không có enrollments)
+                const studentsData = searchResponse.data.map(dto => ({
+                    id: dto.studentId.toString(),
+                    studentId: `SV${String(dto.studentId).padStart(3, '0')}`,
+                    name: dto.fullName,
+                    email: dto.email,
+                    phone: dto.phone,
+                    initial: dto.fullName.split(' ').map(n => n[0]).join(''),
+                    registrationDate: dto.createdAt.split('T')[0],
+                    status: (dto.overallStatus === 'PENDING' ? 'Đang chờ' :
+                             dto.overallStatus === 'ACTIVE' ? 'Đang học' : 
+                             dto.overallStatus === 'DROPPED' ? 'Nghỉ học' :
+                             dto.overallStatus === 'GRADUATED' ? 'Tốt nghiệp' :
+                             'Đang chờ') as StudentUI['status'],
+                    avatar: loadStudentAvatar(dto.studentId.toString()),
+                    dob: dto.dob || null,
+                    address: dto.addressLine || null,
+                    gender: dto.gender || null,
+                    nationalIdNo: dto.nationalIdNo || null,
+                    enrollments: [] // Empty enrollments for search results
+                }));
+                setStudents(studentsData);
             } else {
-                // Nếu không có keyword → load all
-                response = await listStudents();
+                // Nếu không có keyword → load all với enrollments
+                response = await getAllStudentsWithEnrollments();
+                const studentsData = response.data.map(dto => mapStudentWithEnrollmentsDtoToStudent(dto));
+                console.log('🔍 Reloaded students data:', studentsData.length, 'students');
+                setStudents(studentsData);
             }
-            // Map students với enrollment info
-            const studentsData = response.data.map(dto => mapStudentDtoToStudent(dto));
-            setStudents(studentsData);
         } catch (error) {
             console.error('Error fetching students:', error);
+            toast.error('Lỗi tải dữ liệu', 'Không thể tải danh sách học viên');
         }
     };
 
@@ -182,15 +141,14 @@ export default function StudentProfilePage() {
         }
     };
 
-    // Load enrollments và students on mount
+    // Load programs và students on mount
     useEffect(() => {
         const initData = async () => {
             setIsLoading(true);
             await Promise.all([
                 loadPrograms(), // Load programs
-                loadAllEnrollments(), // Load enrollments
             ]);
-            await fetchStudents(); // Load students sau
+            await fetchStudents(); // Load students với enrollments
             setIsLoading(false);
         };
         initData();
@@ -200,24 +158,22 @@ export default function StudentProfilePage() {
     // Tự động tìm kiếm khi thay đổi query (debounce)
     useEffect(() => {
         const handler = setTimeout(() => {
-            if (enrollmentMap.size > 0) {
-                fetchStudents(query);
-                setCurrentPage(1);
-            }
+            fetchStudents(query);
+            setCurrentPage(1);
         }, 500);
         return () => clearTimeout(handler);
-    }, [query, enrollmentMap]);
+    }, [query]);
 
     // Function to load avatar from localStorage
     const loadStudentAvatar = (studentId: string) => {
         return localStorage.getItem(`student_avatar_${studentId}`) || '';
     };
 
-    const handleView = async (student: Student) => {
+    const handleView = async (student: StudentUI) => {
         try {
-            // Load full student details from API
-            const response = await getStudentById(parseInt(student.id));
-            const fullStudent = mapStudentDtoToStudent(response.data);
+            // Load full student details with enrollments from API
+            const response = await getStudentWithEnrollmentsById(parseInt(student.id));
+            const fullStudent = mapStudentWithEnrollmentsDtoToStudent(response.data);
             setOpenView(fullStudent);
         } catch (error) {
             console.error('Error fetching student details:', error);
@@ -226,11 +182,11 @@ export default function StudentProfilePage() {
         }
     };
 
-    const handleEdit = (student: Student) => {
+    const handleEdit = (student: StudentUI) => {
         setOpenEdit(student);
     };
 
-    const handleSaveEdit = async (updatedStudent: Student) => {
+    const handleSaveEdit = async (updatedStudent: StudentUI) => {
         try {
             // Prepare update payload (only 5 fields allowed)
             const updatePayload: UpdateStudentDto = {
@@ -268,19 +224,42 @@ export default function StudentProfilePage() {
         setExportConfirm(true);
     };
 
+    // Helper: Convert frontend status to backend status
+    const mapStatusToBackend = (frontendStatus: string): string | undefined => {
+        switch (frontendStatus) {
+            case 'Đang học': return 'ACTIVE';
+            case 'Tốt nghiệp': return 'GRADUATED';
+            case 'Bảo lưu': return 'SUSPENDED';
+            case 'Tạm dừng': return 'INACTIVE';
+            case 'Tất cả trạng thái': return undefined;
+            default: return undefined;
+        }
+    };
+
     const confirmExport = async () => {
         try {
-            const response = await exportStudents();
+            // Lấy backend status từ filter
+            const backendStatus = mapStatusToBackend(statusFilter);
+            
+            const response = await exportStudents(backendStatus);
             const blob = new Blob([response.data], { 
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
             });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'students.xlsx';
+            
+            // Đặt tên file theo status filter
+            const fileName = backendStatus 
+                ? `students_${backendStatus.toLowerCase()}.xlsx`
+                : 'students_all.xlsx';
+            a.download = fileName;
+            
             a.click();
             URL.revokeObjectURL(url);
-            toast.success('Xuất file thành công', 'Dữ liệu học viên đã được tải về dưới dạng file Excel');
+            
+            const statusText = statusFilter === 'Tất cả trạng thái' ? 'tất cả' : statusFilter.toLowerCase();
+            toast.success('Xuất file thành công', `Đã tải danh sách học viên ${statusText} dưới dạng file Excel`);
             setExportConfirm(false);
         } catch (err) {
             toast.error('Lỗi xuất file', 'Không thể tải file Excel');
@@ -292,15 +271,20 @@ export default function StudentProfilePage() {
         setOpenMenuId(openMenuId === id ? null : id);
     };
 
-    const handleDeleteStudent = (student: Student) => {
+    const handleDeleteStudent = (student: StudentUI) => {
         setDeleteConfirm(student);
     };
 
     const reloadAllData = async () => {
         setIsLoading(true);
-        await loadAllEnrollments();
-        await fetchStudents();
-        setIsLoading(false);
+        try {
+            // Reload với query hiện tại (nếu có)
+            await fetchStudents(query || undefined);
+        } catch (error) {
+            console.error('Error reloading data:', error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const confirmDeleteStudent = async () => {
@@ -322,25 +306,39 @@ export default function StudentProfilePage() {
         }
     };
 
-    const handleChangeStatus = (student: Student) => {
+    const handleChangeStatus = (student: StudentUI) => {
         setOpenChangeStatus(student);
     };
 
-    const handleSaveStatusChange = async (studentId: string, newStatus: Student['status']) => {
-        const student = students.find(s => s.id === studentId);
-        if (student) {
-            toast.success('Cập nhật trạng thái thành công!', `Trạng thái học viên ${student.name} đã được đổi sang ${newStatus}`);
+    const handleSaveStatusChange = async (studentId: string, newStatus: StudentUI['status']) => {
+        try {
+            console.log('🔄 Starting status change for student:', studentId, 'to:', newStatus);
+            
+            // Reload all data to get updated status FIRST
+            await reloadAllData();
+            
+            console.log('✅ Data reloaded');
+            
+            // Reset filter về "Tất cả trạng thái" để học viên vẫn hiển thị sau khi đổi trạng thái
+            setStatusFilter('Tất cả trạng thái');
+            
+            // Show success message
+            toast.success('Cập nhật trạng thái thành công!', `Trạng thái học viên đã được đổi sang ${newStatus}`);
+            
+            setOpenChangeStatus(null);
+        } catch (error) {
+            console.error('Error updating student status:', error);
+            toast.error('Cập nhật trạng thái thất bại!', 'Có lỗi xảy ra khi cập nhật trạng thái học viên');
         }
-        
-        // Reload all data to get updated status
-        await reloadAllData();
-        setOpenChangeStatus(null);
     };
 
     // Filter students client-side (chỉ filter theo status và program, query đã filter từ BE)
     const filteredStudents = students.filter(student => {
         const matchesStatus = statusFilter === 'Tất cả trạng thái' || student.status === statusFilter;
-        const matchesProgram = programFilter === 'Tất cả chương trình' || student.program === programFilter;
+        
+        // Check if student has any enrollment matching the program filter
+        const matchesProgram = programFilter === 'Tất cả chương trình' || 
+            student.enrollments.some(enrollment => enrollment.programName === programFilter);
         
         return matchesStatus && matchesProgram;
     });
@@ -476,7 +474,11 @@ export default function StudentProfilePage() {
                 onClose={() => setExportConfirm(false)}
                 onConfirm={confirmExport}
                 title="Xác nhận xuất danh sách"
-                description="Bạn có muốn tải xuống danh sách tất cả học viên ra file Excel? File sẽ chứa đầy đủ thông tin của các học viên hiện tại."
+                description={
+                    statusFilter === 'Tất cả trạng thái'
+                        ? 'Bạn có muốn tải xuống danh sách TẤT CẢ học viên ra file Excel? File sẽ chứa đầy đủ thông tin của các học viên hiện tại.'
+                        : `Bạn có muốn tải xuống danh sách học viên đang ở trạng thái "${statusFilter}" ra file Excel? Chỉ những học viên có trạng thái này sẽ được xuất.`
+                }
                 confirmText="Xuất file"
                 cancelText="Hủy"
                 variant="primary"

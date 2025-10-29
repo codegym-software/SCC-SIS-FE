@@ -1,5 +1,4 @@
 import { Calendar, MapPin } from 'lucide-react';
-import ClassActions from '@/features/users/pages/classes/components/actions.tsx';
 
 interface ClassListProps {
     classes: any[];
@@ -17,10 +16,6 @@ interface ClassListProps {
 
 const ClassList: React.FC<ClassListProps> = ({
     classes,
-    // keep statusFilter, query in interface for compatibility but not destructured to avoid unused warnings
-    setOpenAssignInstructor,
-    onEdit,
-    onManageStudents,
     onRowClick,
     totalClasses,
     currentPage,
@@ -41,21 +36,20 @@ const ClassList: React.FC<ClassListProps> = ({
                     </div>
                 </div>
 
-                <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-11 gap-3">
+                <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-10 gap-3">
                     <div className="col-span-2">Lớp học</div>
                     <div className="col-span-2">Trung tâm</div>
                     <div className="col-span-2">Thời gian</div>
                     <div className="col-span-2">Chương trình</div>
                     <div className="col-span-1">Phòng học</div>
                     <div className="col-span-1">Trạng thái</div>
-                    <div className="col-span-1"></div>
                 </div>
 
                 <div className="divide-y">
                     {classes.map((c) => (
                         <div
                             key={c.id}
-                            className="px-3 py-3 pr-12 grid grid-cols-11 gap-3 items-center border-t first:border-t-0 relative cursor-pointer hover:bg-gray-50"
+                            className="px-3 py-3 grid grid-cols-10 gap-3 items-center border-t first:border-t-0 cursor-pointer hover:bg-gray-50"
                             onClick={() => onRowClick?.(c)}
                         >
                             <div className="col-span-12 md:col-span-2">
@@ -104,18 +98,6 @@ const ClassList: React.FC<ClassListProps> = ({
                                 >
                                     {c.status}
                                 </span>
-                            </div>
-                            <div
-                                className="absolute right-3 top-1/2 -translate-y-1/2 z-40"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                }}
-                            >
-                                <ClassActions
-                                    onEdit={() => onEdit?.(c)}
-                                    onManageStudents={() => onManageStudents?.(c)}
-                                    onAssignInstructor={() => setOpenAssignInstructor(c)}
-                                />
                             </div>
                         </div>
                     ))}

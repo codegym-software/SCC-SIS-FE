@@ -1,29 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Edit, Mail, Phone, MapPin, Calendar, Upload, Image as ImageIcon } from 'lucide-react';
-
-type Student = {
-    id: string;
-    studentId: string;
-    name: string;
-    email: string;
-    phone: string;
-    initial: string;
-    class: string;
-    program: string;
-    classes: Array<{ className: string; programName: string }>;
-    registrationDate: string;
-    status: 'Đang học' | 'Bảo lưu' | 'Tốt nghiệp' | 'Tạm dừng';
-    avatar?: string;
-    dob?: string | null;
-    address?: string | null;
-    gender?: string | null;
-    nationalIdNo?: string | null;
-};
+import type { StudentUI } from '@/shared/types/student-ui';
 
 interface StudentEditProps {
-    student: Student;
+    student: StudentUI;
     onClose?: () => void;
-    onSave?: (updatedStudent: Student) => void;
+    onSave?: (updatedStudent: StudentUI) => void;
 }
 
 const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) => {
@@ -44,7 +26,6 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
         }
     }, [student.id]);
 
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(student.avatar || null);
 
     const [errors, setErrors] = useState<{
@@ -93,8 +74,6 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                 return;
             }
 
-            setSelectedFile(file);
-            
             // Convert file to base64 and save to localStorage
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -114,7 +93,6 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
     };
 
     const removeImage = () => {
-        setSelectedFile(null);
         setPreviewUrl(null);
         // Remove from localStorage
         localStorage.removeItem(`student_avatar_${student.id}`);
@@ -159,7 +137,7 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                 email: formData.email,
                 phone: formData.phone,
                 address: formData.address,
-                dateOfBirth: formData.dateOfBirth,
+                dob: formData.dateOfBirth,
                 avatar: previewUrl || student.avatar
             };
             
