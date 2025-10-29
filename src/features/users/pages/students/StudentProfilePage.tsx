@@ -137,13 +137,10 @@ export default function StudentProfilePage() {
             program: programName,
             classes: enrollmentInfo, // All classes
             registrationDate: dto.createdAt.split('T')[0],
-            status: (dto.overallStatus === 'PENDING' ? 'Đang chờ' :
-                     dto.overallStatus === 'ACTIVE' ? 'Đang học' : 
-                     dto.overallStatus === 'INACTIVE' ? 'Không hoạt động' : 
-                     dto.overallStatus === 'GRADUATED' ? 'Đã tốt nghiệp' : 
-                     dto.overallStatus === 'SUSPENDED' ? 'Tạm dừng' :
-                     dto.overallStatus === 'DROPPED' ? 'Nghỉ học' :
-                     'Đang chờ') as Student['status'],
+            status: (dto.overallStatus === 'ACTIVE' ? 'Đang học' : 
+                     dto.overallStatus === 'INACTIVE' ? 'Tạm dừng' : 
+                     dto.overallStatus === 'GRADUATED' ? 'Tốt nghiệp' : 
+                     'Bảo lưu') as Student['status'],
             avatar: loadStudentAvatar(dto.studentId.toString()),
             dob: dto.dob || null,
             address: dto.addressLine || null,
