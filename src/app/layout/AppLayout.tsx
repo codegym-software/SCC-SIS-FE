@@ -92,55 +92,61 @@ function AppLayout({ children }: AppLayoutProps) {
 
     // Check if user is STUDENT
     const isStudent = me?.roles?.some((role) => role.code === 'STUDENT') ?? false;
+    const isLecturer = me?.roles?.some((role) => role.code === 'LECTURER') ?? false;
 
     // Menu configuration - easily extensible
     const menuGroups: MenuGroup[] = [
         {
             id: 'main',
             items: [
-                {
-                    id: 'dashboard',
-                    label: 'Tổng quan',
-                    path: '/',
-                    icon: Home,
-                    end: true,
-                },
-                {
-                    id: 'users',
-                    label: 'Quản lý Người dùng',
-                    path: '/users',
-                    icon: Users2,
-                },
-                {
-                    id: 'centers',
-                    label: 'Quản lý Trung tâm',
-                    path: '/centers',
-                    icon: Building2,
-                },
-                {
-                    id: 'roles',
-                    label: 'Vai trò & Phân quyền',
-                    path: '/roles',
-                    icon: Shield,
-                },
-                {
-                    id: 'programs',
-                    label: 'Chương trình & Module',
-                    path: '/programs',
-                    icon: BookOpen,
-                },
-                {
-                    id: 'classes',
-                    label: 'Quản lý Lớp học',
-                    path: '/classes',
-                    icon: GraduationCap,
-                },
-                {
-                    id: 'students',
-                    label: 'Hồ sơ Học viên',
-                    path: '/students',
-                    icon: User,
-                },
+                // Admin/Staff menu items
+                ...(!isStudent && !isLecturer
+                    ? [
+                          {
+                              id: 'dashboard',
+                              label: 'Tổng quan',
+                              path: '/',
+                              icon: Home,
+                              end: true,
+                          },
+                          {
+                              id: 'users',
+                              label: 'Quản lý Người dùng',
+                              path: '/users',
+                              icon: Users2,
+                          },
+                          {
+                              id: 'centers',
+                              label: 'Quản lý Trung tâm',
+                              path: '/centers',
+                              icon: Building2,
+                          },
+                          {
+                              id: 'roles',
+                              label: 'Vai trò & Phân quyền',
+                              path: '/roles',
+                              icon: Shield,
+                          },
+                          {
+                              id: 'programs',
+                              label: 'Chương trình & Module',
+                              path: '/programs',
+                              icon: BookOpen,
+                          },
+                          {
+                              id: 'classes',
+                              label: 'Quản lý Lớp học',
+                              path: '/classes',
+                              icon: GraduationCap,
+                          },
+                          {
+                              id: 'students',
+                              label: 'Hồ sơ Học viên',
+                              path: '/students',
+                              icon: User,
+                          },
+                      ]
+                    : []),
                 // Menu cho Học viên
                 ...(isStudent
                     ? [
@@ -148,6 +154,23 @@ function AppLayout({ children }: AppLayoutProps) {
                               id: 'my-classes',
                               label: 'Lớp học của tôi',
                               path: '/my-classes',
+                              icon: GraduationCap,
+                          },
+                      ]
+                    : []),
+                // Menu cho Giảng viên
+                ...(isLecturer
+                    ? [
+                          {
+                              id: 'classes',
+                              label: 'Quản lý Lớp học',
+                              path: '/classes',
+                              icon: GraduationCap,
+                          },
+                          {
+                              id: 'attendance',
+                              label: 'Quản lý Điểm danh',
+                              path: '/attendance',
                               icon: GraduationCap,
                           },
                       ]

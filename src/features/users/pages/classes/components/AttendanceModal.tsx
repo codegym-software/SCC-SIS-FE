@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Users, CheckCircle, XCircle, Clock, AlertCircle, X } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, Clock, AlertCircle, X } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
 import http from '@/shared/api/http';
 
@@ -31,13 +31,14 @@ type AttendanceRecord = {
 interface AttendanceModalProps {
     classItem: Class;
     onClose: () => void;
+    initialDate?: string; // yyyy-mm-dd, optional preset for selected date
 }
 
-const AttendanceModal: React.FC<AttendanceModalProps> = ({ classItem, onClose }) => {
+const AttendanceModal: React.FC<AttendanceModalProps> = ({ classItem, onClose, initialDate }) => {
     const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [students, setStudents] = useState<Student[]>([]);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -48,13 +49,13 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ classItem, onClose })
                 setIsLoading(true);
                 const response = await http.get(`/api/classes/${classItem.id}/enrollments`);
                 const enrollments = response.data.items || response.data;
-                
+
                 const studentsData: Student[] = enrollments.map((enrollment: any) => ({
                     id: enrollment.student.id,
                     fullName: enrollment.student.fullName,
                     studentCode: enrollment.student.studentCode,
                     email: enrollment.student.email,
-                    phone: enrollment.student.phone
+                    phone: enrollment.student.phone,
                 }));
 
                 setStudents(studentsData);
@@ -77,27 +78,27 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ classItem, onClose })
             try {
                 const response = await http.get(`/api/classes/${classItem.id}/attendance?date=${selectedDate}`);
                 const records = response.data.items || response.data;
-                
+
                 const attendanceData: AttendanceRecord[] = records.map((record: any) => ({
                     id: record.id,
                     studentId: record.studentId,
                     studentName: record.studentName,
                     date: record.date,
                     status: record.status,
-                    note: record.note
+                    note: record.note,
                 }));
 
                 setAttendanceRecords(attendanceData);
             } catch (error) {
                 console.error('Error fetching attendance:', error);
                 // Initialize with default records if no data
-                const defaultRecords: AttendanceRecord[] = students.map(student => ({
+                const defaultRecords: AttendanceRecord[] = students.map((student) => ({
                     id: 0,
                     studentId: student.id,
                     studentName: student.fullName,
                     date: selectedDate,
                     status: 'PRESENT',
-                    note: ''
+                    note: '',
                 }));
                 setAttendanceRecords(defaultRecords);
             }
@@ -109,39 +110,31 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ classItem, onClose })
     }, [selectedDate, students, classItem.id]);
 
     const handleStatusChange = (studentId: number, status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED') => {
-        setAttendanceRecords(prev => 
-            prev.map(record => 
-                record.studentId === studentId 
-                    ? { ...record, status }
-                    : record
-            )
+        setAttendanceRecords((prev) =>
+            prev.map((record) => (record.studentId === studentId ? { ...record, status } : record)),
         );
     };
 
     const handleNoteChange = (studentId: number, note: string) => {
-        setAttendanceRecords(prev => 
-            prev.map(record => 
-                record.studentId === studentId 
-                    ? { ...record, note }
-                    : record
-            )
+        setAttendanceRecords((prev) =>
+            prev.map((record) => (record.studentId === studentId ? { ...record, note } : record)),
         );
     };
 
     const handleSubmit = async () => {
         try {
             setIsSubmitting(true);
-            
-            const attendanceData = attendanceRecords.map(record => ({
+
+            const attendanceData = attendanceRecords.map((record) => ({
                 studentId: record.studentId,
                 date: selectedDate,
                 status: record.status,
-                note: record.note || null
+                note: record.note || null,
             }));
 
             await http.post(`/api/classes/${classItem.id}/attendance`, {
                 date: selectedDate,
-                records: attendanceData
+                records: attendanceData,
             });
 
             showSuccessToast('Lưu điểm danh thành công', 'Điểm danh đã được lưu');
@@ -153,45 +146,19 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ classItem, onClose })
         }
     };
 
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'PRESENT':
-                return <CheckCircle size={16} className="text-green-600" />;
-            case 'ABSENT':
-                return <XCircle size={16} className="text-red-600" />;
-            case 'LATE':
-                return <Clock size={16} className="text-yellow-600" />;
-            case 'EXCUSED':
-                return <AlertCircle size={16} className="text-blue-600" />;
-            default:
-                return <CheckCircle size={16} className="text-gray-400" />;
-        }
-    };
+    // icon helper removed in table layout; keeping statuses via colored toggles
 
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case 'PRESENT':
-                return 'Có mặt';
-            case 'ABSENT':
-                return 'Vắng mặt';
-            case 'LATE':
-                return 'Đi muộn';
-            case 'EXCUSED':
-                return 'Có phép';
-            default:
-                return status;
-        }
-    };
+    // status label helper (currently unused in table version; keep for future)
 
     const getStatusCounts = () => {
         const counts = {
             present: 0,
             absent: 0,
             late: 0,
-            excused: 0
+            excused: 0,
         };
 
-        attendanceRecords.forEach(record => {
+        attendanceRecords.forEach((record) => {
             switch (record.status) {
                 case 'PRESENT':
                     counts.present++;
@@ -214,23 +181,20 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ classItem, onClose })
     const counts = getStatusCounts();
 
     return (
-        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[85vh] flex flex-col">
+            {/* Header - fixed at top */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
                 <div>
                     <h2 className="text-lg font-semibold text-gray-900">Điểm danh lớp học</h2>
                     <p className="text-sm text-gray-600 mt-1">{classItem.name}</p>
                 </div>
-                <button
-                    onClick={onClose}
-                    className="text-gray-400 hover:text-gray-600"
-                >
+                <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                     <X size={20} />
                 </button>
             </div>
 
-            {/* Date Selection */}
-            <div className="px-6 py-4 border-b border-gray-200">
+            {/* Date Selection - fixed at top */}
+            <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Calendar size={16} className="text-gray-500" />
@@ -245,8 +209,8 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ classItem, onClose })
                 </div>
             </div>
 
-            {/* Statistics */}
-            <div className="px-6 py-4 border-b border-gray-200">
+            {/* Statistics - fixed at top */}
+            <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
                 <div className="grid grid-cols-4 gap-4">
                     <div className="text-center">
                         <div className="flex items-center justify-center gap-1 text-green-600 mb-1">
@@ -279,55 +243,116 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ classItem, onClose })
                 </div>
             </div>
 
-            {/* Attendance List */}
-            <div className="px-6 py-4">
+            {/* Attendance List - scrollable content */}
+            <div className="px-6 py-4 flex-1 overflow-y-auto">
                 {isLoading ? (
                     <div className="text-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
                         <p className="text-gray-600">Đang tải danh sách học viên...</p>
                     </div>
                 ) : (
-                    <div className="space-y-3">
-                        {attendanceRecords.map((record) => (
-                            <div key={record.studentId} className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg">
-                                <div className="flex-shrink-0">
-                                    {getStatusIcon(record.status)}
-                                </div>
-                                
-                                <div className="flex-1">
-                                    <div className="font-medium text-gray-900">{record.studentName}</div>
-                                </div>
+                    <div className="overflow-auto">
+                        <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
+                            <thead className="bg-gray-50">
+                                <tr className="text-left text-sm text-gray-600">
+                                    <th className="px-3 py-2 border-b w-14">STT</th>
+                                    <th className="px-3 py-2 border-b w-40">Mã số</th>
+                                    <th className="px-3 py-2 border-b">Họ đệm</th>
+                                    <th className="px-3 py-2 border-b w-40">Tên</th>
+                                    <th className="px-3 py-2 border-b text-center w-24">Có mặt</th>
+                                    <th className="px-3 py-2 border-b text-center w-24">Vắng</th>
+                                    <th className="px-3 py-2 border-b text-center w-24">Trễ</th>
+                                    <th className="px-3 py-2 border-b text-center w-24">Phép</th>
+                                    <th className="px-3 py-2 border-b min-w-[220px]">Ghi chú</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {attendanceRecords.map((record, idx) => {
+                                    const student = students.find((s) => s.id === record.studentId);
+                                    const code = student?.studentCode || '';
+                                    const full = record.studentName || '';
+                                    const parts = full.trim().split(/\s+/);
+                                    const first = parts.length ? parts[parts.length - 1] : '';
+                                    const last = parts.slice(0, -1).join(' ');
 
-                                <div className="flex items-center gap-2">
-                                    <select
-                                        value={record.status}
-                                        onChange={(e) => handleStatusChange(record.studentId, e.target.value as any)}
-                                        className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    >
-                                        <option value="PRESENT">Có mặt</option>
-                                        <option value="ABSENT">Vắng mặt</option>
-                                        <option value="LATE">Đi muộn</option>
-                                        <option value="EXCUSED">Có phép</option>
-                                    </select>
-                                </div>
+                                    const cellBtn = (
+                                        active: boolean,
+                                        color: string,
+                                        onClick: () => void,
+                                        label: string,
+                                    ) => (
+                                        <button
+                                            type="button"
+                                            title={label}
+                                            onClick={onClick}
+                                            className={`mx-auto block h-6 w-6 rounded-md border transition-colors ${
+                                                active
+                                                    ? `${color} text-white border-transparent`
+                                                    : 'bg-white text-gray-400 border-gray-300 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            {active ? '✓' : ''}
+                                        </button>
+                                    );
 
-                                <div className="flex-1">
-                                    <input
-                                        type="text"
-                                        value={record.note || ''}
-                                        onChange={(e) => handleNoteChange(record.studentId, e.target.value)}
-                                        placeholder="Ghi chú..."
-                                        className="w-full px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    />
-                                </div>
-                            </div>
-                        ))}
+                                    return (
+                                        <tr key={record.studentId} className="text-sm">
+                                            <td className="px-3 py-2 border-b text-gray-600">{idx + 1}</td>
+                                            <td className="px-3 py-2 border-b font-medium text-gray-900">{code}</td>
+                                            <td className="px-3 py-2 border-b text-gray-900">{last}</td>
+                                            <td className="px-3 py-2 border-b font-medium text-gray-900">{first}</td>
+                                            <td className="px-3 py-2 border-b text-center">
+                                                {cellBtn(
+                                                    record.status === 'PRESENT',
+                                                    'bg-green-600 hover:bg-green-700',
+                                                    () => handleStatusChange(record.studentId, 'PRESENT'),
+                                                    'Có mặt',
+                                                )}
+                                            </td>
+                                            <td className="px-3 py-2 border-b text-center">
+                                                {cellBtn(
+                                                    record.status === 'ABSENT',
+                                                    'bg-red-600 hover:bg-red-700',
+                                                    () => handleStatusChange(record.studentId, 'ABSENT'),
+                                                    'Vắng',
+                                                )}
+                                            </td>
+                                            <td className="px-3 py-2 border-b text-center">
+                                                {cellBtn(
+                                                    record.status === 'LATE',
+                                                    'bg-amber-500 hover:bg-amber-600',
+                                                    () => handleStatusChange(record.studentId, 'LATE'),
+                                                    'Trễ',
+                                                )}
+                                            </td>
+                                            <td className="px-3 py-2 border-b text-center">
+                                                {cellBtn(
+                                                    record.status === 'EXCUSED',
+                                                    'bg-blue-600 hover:bg-blue-700',
+                                                    () => handleStatusChange(record.studentId, 'EXCUSED'),
+                                                    'Phép',
+                                                )}
+                                            </td>
+                                            <td className="px-3 py-2 border-b">
+                                                <input
+                                                    type="text"
+                                                    value={record.note || ''}
+                                                    onChange={(e) => handleNoteChange(record.studentId, e.target.value)}
+                                                    placeholder="Nhập ghi chú..."
+                                                    className="w-full px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                />
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>
 
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
+            {/* Footer - fixed at bottom */}
+            <div className="px-6 py-4 border-t border-gray-200 flex gap-3 flex-shrink-0">
                 <button
                     onClick={onClose}
                     className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"

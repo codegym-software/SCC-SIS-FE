@@ -51,6 +51,7 @@ interface ManageStudentsModalProps {
     onClose?: () => void;
     inlineMode?: boolean; // when true, render as inline panel (no close/footer)
     onStudentsChanged?: () => void; // callback when students list changes (add/remove/status)
+    readOnly?: boolean; // when true, hide add/edit/delete buttons
 }
 
 const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
@@ -58,6 +59,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
     onClose,
     inlineMode = false,
     onStudentsChanged,
+    readOnly = false,
 }) => {
     const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -272,13 +274,15 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                         <option value="DROPPED">Đã nghỉ</option>
                     </select>
                 </div>
-                <button
-                    onClick={handleAddStudent}
-                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-                >
-                    <Plus size={16} />
-                    Thêm học viên
-                </button>
+                {!readOnly && (
+                    <button
+                        onClick={handleAddStudent}
+                        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                    >
+                        <Plus size={16} />
+                        Thêm học viên
+                    </button>
+                )}
             </div>
 
             {/* Students List */}
@@ -362,17 +366,19 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                                 >
                                                     {getStatusText(student.status)}
                                                 </span>
-                                                <button
-                                                    onClick={() => {
-                                                        setEditingStatus(student.enrollmentId);
-                                                        setNewStatus(student.status);
-                                                        setNewNote(student.note || '');
-                                                    }}
-                                                    className="text-gray-400 hover:text-blue-600"
-                                                    title="Đổi trạng thái"
-                                                >
-                                                    <Edit2 size={14} />
-                                                </button>
+                                                {!readOnly && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingStatus(student.enrollmentId);
+                                                            setNewStatus(student.status);
+                                                            setNewNote(student.note || '');
+                                                        }}
+                                                        className="text-gray-400 hover:text-blue-600"
+                                                        title="Đổi trạng thái"
+                                                    >
+                                                        <Edit2 size={14} />
+                                                    </button>
+                                                )}
                                             </div>
                                             {student.note && (
                                                 <div className="text-xs text-gray-500 italic">Note: {student.note}</div>
@@ -383,24 +389,35 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
 
                                 {/* Actions */}
                                 <div className="col-span-3">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger className="h-8 w-8 rounded hover:bg-gray-100 flex items-center justify-center">
-                                            <span className="text-gray-400">⋯</span>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent className="w-48">
-                                            <DropdownMenuItem onClick={() => handleViewDetails(student)}>
-                                                <Eye size={14} className="mr-2" />
-                                                Xem chi tiết
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() => handleRemoveFromClass(student)}
-                                                className="text-red-600"
-                                            >
-                                                <UserMinus size={14} className="mr-2" />
-                                                Xóa khỏi lớp
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    {!readOnly && (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger className="h-8 w-8 rounded hover:bg-gray-100 flex items-center justify-center">
+                                                <span className="text-gray-400">⋯</span>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent className="w-48">
+                                                <DropdownMenuItem onClick={() => handleViewDetails(student)}>
+                                                    <Eye size={14} className="mr-2" />
+                                                    Xem chi tiết
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => handleRemoveFromClass(student)}
+                                                    className="text-red-600"
+                                                >
+                                                    <UserMinus size={14} className="mr-2" />
+                                                    Xóa khỏi lớp
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
+                                    {readOnly && (
+                                        <button
+                                            onClick={() => handleViewDetails(student)}
+                                            className="h-8 px-3 text-xs rounded border hover:bg-gray-50 flex items-center gap-1"
+                                        >
+                                            <Eye size={14} />
+                                            Xem
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
