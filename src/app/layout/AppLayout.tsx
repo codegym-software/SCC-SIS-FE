@@ -11,6 +11,7 @@ import {
     LogOut,
     ChevronLeft,
     ChevronRight,
+    ClipboardCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { keycloak } from '../../keycloak';
@@ -108,52 +109,68 @@ function AppLayout({ children }: AppLayoutProps) {
                           icon: GraduationCap,
                       },
                   ]
-                : [
-                      // Menu cho Admin/Staff
-                      {
-                          id: 'dashboard',
-                          label: 'Tổng quan',
-                          path: '/',
-                          icon: Home,
-                          end: true,
-                      },
-                      {
-                          id: 'users',
-                          label: 'Quản lý Người dùng',
-                          path: '/users',
-                          icon: Users2,
-                      },
-                      {
-                          id: 'centers',
-                          label: 'Quản lý Trung tâm',
-                          path: '/centers',
-                          icon: Building2,
-                      },
-                      {
-                          id: 'roles',
-                          label: 'Vai trò & Phân quyền',
-                          path: '/roles',
-                          icon: Shield,
-                      },
-                      {
-                          id: 'programs',
-                          label: 'Chương trình & Module',
-                          path: '/programs',
-                          icon: BookOpen,
-                      },
-                      {
-                          id: 'classes',
-                          label: 'Quản lý Lớp học',
-                          path: '/classes',
-                          icon: GraduationCap,
-                      },
-                      {
-                          id: 'students',
-                          label: 'Hồ sơ Học viên',
-                          path: '/students',
-                          icon: User,
-                      },
-                  ],
+                : isLecturer
+                  ? [
+                        // Menu cho Giảng viên
+                        {
+                            id: 'attendance',
+                            label: 'Quản lý Điểm danh',
+                            path: '/attendance',
+                            icon: ClipboardCheck,
+                        },
+                        {
+                            id: 'classes',
+                            label: 'Quản lý Lớp học',
+                            path: '/classes',
+                            icon: BookOpen,
+                        },
+                    ]
+                  : [
+                        // Menu cho Admin/Staff
+                        {
+                            id: 'dashboard',
+                            label: 'Tổng quan',
+                            path: '/',
+                            icon: Home,
+                            end: true,
+                        },
+                        {
+                            id: 'users',
+                            label: 'Quản lý Người dùng',
+                            path: '/users',
+                            icon: Users2,
+                        },
+                        {
+                            id: 'centers',
+                            label: 'Quản lý Trung tâm',
+                            path: '/centers',
+                            icon: Building2,
+                        },
+                        {
+                            id: 'roles',
+                            label: 'Vai trò & Phân quyền',
+                            path: '/roles',
+                            icon: Shield,
+                        },
+                        {
+                            id: 'programs',
+                            label: 'Chương trình & Module',
+                            path: '/programs',
+                            icon: BookOpen,
+                        },
+                        {
+                            id: 'classes',
+                            label: 'Quản lý Lớp học',
+                            path: '/classes',
+                            icon: GraduationCap,
+                        },
+                        {
+                            id: 'students',
+                            label: 'Hồ sơ Học viên',
+                            path: '/students',
+                            icon: User,
+                        },
+                    ],
         },
         // Có thể thêm group khác như:
         // {
