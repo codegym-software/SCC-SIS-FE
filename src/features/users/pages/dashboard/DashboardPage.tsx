@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
     Building2,
     Users,
@@ -18,13 +17,8 @@ import SystemStatus from './components/system-status';
 import { listActiveCenters } from '../../../../shared/api/centers';
 import { listUserViews } from '../../../../shared/api/userViews';
 import { getRoles } from '../../../../shared/api/roles';
-import { useUserProfile } from '../../../../stores/userProfile';
 
 export default function DashboardPage() {
-    const navigate = useNavigate();
-    const { me, loading: userLoading } = useUserProfile();
-    
-    // All hooks must be declared before any conditional returns
     const [isLoaded, setIsLoaded] = useState(false);
     const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
 
@@ -32,16 +26,6 @@ export default function DashboardPage() {
     const [centersCount, setCentersCount] = useState<number>(0);
     const [activeUsersCount, setActiveUsersCount] = useState<number>(0);
     const [rolesCount, setRolesCount] = useState<number>(0);
-    
-    // Redirect students to their classes page
-    useEffect(() => {
-        if (!userLoading && me) {
-            const isStudent = me.roles?.some((role) => role.code === 'STUDENT') ?? false;
-            if (isStudent) {
-                navigate('/my-classes', { replace: true });
-            }
-        }
-    }, [me, userLoading, navigate]);
 
     // Function to fetch dashboard data from APIs
     const fetchDashboardData = async () => {
@@ -222,18 +206,6 @@ export default function DashboardPage() {
             color: 'from-purple-500 to-violet-500',
         },
     ];
-
-    // Show loading while checking user role
-    if (userLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Đang tải...</p>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div

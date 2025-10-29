@@ -9,8 +9,6 @@ import {
     Users,
     Calendar,
     Loader2,
-    ChevronDown,
-    ChevronUp,
 } from 'lucide-react';
 import { useUserProfile } from '@/stores/userProfile';
 import { getMyClasses, type ClassDto } from '@/shared/api/classes';
@@ -79,8 +77,6 @@ function SortableModuleItem({
     index: number;
     onViewDocument?: (resource: any) => void;
 }) {
-    const [isCollapsed, setIsCollapsed] = useState(false);
-    
     // Chỉ môn BẮT BUỘC (isMandatory = true) mới KHÔNG được kéo thả
     const canDrag = !module.isMandatory;
     
@@ -157,96 +153,79 @@ function SortableModuleItem({
                 <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
                         <h4 className="font-semibold text-sm">{module.name}</h4>
-                        {!isCollapsed && module.isMandatory && (
+                        {module.isMandatory && (
                             <div className="flex items-center gap-1 text-xs text-gray-700 mt-1 bg-gray-200 px-2 py-1 rounded-md border border-gray-400 w-fit">
                                 <span>🔒</span>
                                 <span className="font-semibold">Môn BẮT BUỘC - Không thể sắp xếp</span>
                             </div>
                         )}
                     </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setIsCollapsed(!isCollapsed)}
-                            className="p-1 rounded-md hover:bg-gray-100 transition-colors"
-                            title={isCollapsed ? 'Mở rộng' : 'Thu gọn'}
-                        >
-                            {isCollapsed ? (
-                                <ChevronDown size={18} className="text-gray-500" />
-                            ) : (
-                                <ChevronUp size={18} className="text-gray-500" />
-                            )}
-                        </button>
-                        <span
-                            className={`px-2 py-0.5 rounded text-xs flex-shrink-0 ${
-                                module.status === 'Hoàn thành'
-                                    ? 'bg-green-100 text-green-700'
-                                    : module.status === 'Đang học'
-                                      ? 'bg-blue-100 text-blue-700'
-                                      : 'bg-gray-100 text-gray-700'
-                            }`}
-                        >
-                            {module.status || 'Chưa học'}
-                        </span>
-                    </div>
+                    <span
+                        className={`px-2 py-0.5 rounded text-xs ml-2 flex-shrink-0 ${
+                            module.status === 'Hoàn thành'
+                                ? 'bg-green-100 text-green-700'
+                                : module.status === 'Đang học'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-gray-100 text-gray-700'
+                        }`}
+                    >
+                        {module.status || 'Chưa học'}
+                    </span>
                 </div>
 
-                {!isCollapsed && (
-                    <>
-                        {module.isMandatory === false && <div className="text-xs text-blue-600 mb-2">📌 Môn tự chọn</div>}
+                {module.isMandatory === false && <div className="text-xs text-blue-600 mb-2">📌 Môn tự chọn</div>}
 
-                        <p className="text-sm text-gray-600 mb-3">{module.description || 'Không có mô tả'}</p>
+                <p className="text-sm text-gray-600 mb-3">{module.description || 'Không có mô tả'}</p>
 
-                        <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap mb-3">
-                            <span>📘 Mã: {module.code}</span>
-                            <span>⏱️ {module.credits} tín chỉ</span>
-                            {module.durationHours && <span>📅 {module.durationHours}h</span>}
-                            {module.level && <span>🎯 {module.level}</span>}
-                        </div>
+                <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap mb-3">
+                    <span>📘 Mã: {module.code}</span>
+                    <span>⏱️ {module.credits} tín chỉ</span>
+                    {module.durationHours && <span>📅 {module.durationHours}h</span>}
+                    {module.level && <span>🎯 {module.level}</span>}
+                </div>
 
-                        <div className="flex items-center gap-2 mb-3">
-                            <button className="px-3 py-1.5 text-xs rounded-md border hover:bg-gray-50 flex items-center gap-1">
-                                <Eye size={12} />
-                                Ôn tập
-                            </button>
-                        </div>
+                <div className="flex items-center gap-2 mb-3">
+                    <button className="px-3 py-1.5 text-xs rounded-md border hover:bg-gray-50 flex items-center gap-1">
+                        <Eye size={12} />
+                        Ôn tập
+                    </button>
+                </div>
 
-                        {/* Accordion Tài liệu */}
-                        {module.resources && module.resources.length > 0 && (
-                        <Accordion type="single" collapsible className="w-full">
-                                <AccordionItem value={`docs-${module.moduleId}`} className="border-0">
-                                <AccordionTrigger className="px-3 py-2 text-xs hover:no-underline bg-gray-50 hover:bg-gray-100 rounded-md">
-                                    <span className="flex items-center gap-2">
-                                        <FileText size={12} />
-                                            Xem tài liệu ({module.resources.length})
-                                    </span>
-                                </AccordionTrigger>
-                                <AccordionContent className="pt-3 pb-0">
-                                    <div className="space-y-2">
-                                            {module.resources.map((resource, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 border border-gray-200 transition-colors group cursor-pointer"
-                                                    onClick={() => onViewDocument && onViewDocument(resource)}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <FileText size={14} className="text-blue-600" />
-                                            <div>
-                                                        <div className="text-xs font-medium">{resource.fileName || 'Document'}</div>
-                                                        <div className="text-[10px] text-gray-500">
-                                                            {resource.fileType?.toUpperCase()} 
-                                                            {resource.fileSize && ` • ${(resource.fileSize / 1024 / 1024).toFixed(1)} MB`}
+                {/* Accordion Tài liệu */}
+                {module.resources && module.resources.length > 0 && (
+                <Accordion type="single" collapsible className="w-full">
+                        <AccordionItem value={`docs-${module.moduleId}`} className="border-0">
+                        <AccordionTrigger className="px-3 py-2 text-xs hover:no-underline bg-gray-50 hover:bg-gray-100 rounded-md">
+                            <span className="flex items-center gap-2">
+                                <FileText size={12} />
+                                    Xem tài liệu ({module.resources.length})
+                            </span>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-3 pb-0">
+                            <div className="space-y-2">
+                                    {module.resources.map((resource, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 border border-gray-200 transition-colors group cursor-pointer"
+                                            onClick={() => onViewDocument && onViewDocument(resource)}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <FileText size={14} className="text-blue-600" />
+                                        <div>
+                                                    <div className="text-xs font-medium">{resource.fileName || 'Document'}</div>
+                                                    <div className="text-[10px] text-gray-500">
+                                                        {resource.fileType?.toUpperCase()} 
+                                                        {resource.fileSize && ` • ${(resource.fileSize / 1024 / 1024).toFixed(1)} MB`}
                                         </div>
                                     </div>
                                         </div>
                                             <Eye size={14} className="text-gray-400 group-hover:text-blue-600" />
                                         </div>
-                                            ))}
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
-                        )}
-                    </>
+                                    ))}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
                 )}
             </div>
         </div>
@@ -267,7 +246,6 @@ export default function MyClassesPage() {
     // Data states
     const [classes, setClasses] = useState<ClassDto[]>([]);
     const [modules, setModules] = useState<ModuleWithStatus[]>([]);
-    const [modulesBySemester, setModulesBySemester] = useState<Record<number, ModuleWithStatus[]>>({});
     const [loading, setLoading] = useState(false);
     
     // Document viewer
@@ -280,19 +258,6 @@ export default function MyClassesPage() {
             loadClasses();
         }
     }, [me?.userId]);
-
-    // Update modulesBySemester when sortableModules changes
-    useEffect(() => {
-        const grouped: Record<number, ModuleWithStatus[]> = {};
-        sortableModules.forEach(module => {
-            const semester = module.semester || 1;
-            if (!grouped[semester]) {
-                grouped[semester] = [];
-            }
-            grouped[semester].push(module);
-        });
-        setModulesBySemester(grouped);
-    }, [sortableModules]);
 
     // Load classes for student
     const loadClasses = async () => {
@@ -313,29 +278,16 @@ export default function MyClassesPage() {
         try {
             setLoading(true);
             const response = await getModulesByProgram({ programId });
-            
-            // Map modules with status
             const modulesData = response.data.map((module, index) => ({
                 ...module,
                 // Giả sử module đầu tiên là đang học, các module trước đó hoàn thành, sau đó chưa học
                 status: index === 0 ? 'Đang học' as const : 
                        index < 2 ? 'Hoàn thành' as const : 
                        'Chưa học' as const,
+                // hasPrerequisite không cần nữa vì dùng isMandatory từ API
             }));
-            
             setModules(modulesData);
             setSortableModules(modulesData);
-            
-            // Group modules by semester
-            const grouped: Record<number, ModuleWithStatus[]> = {};
-            modulesData.forEach(module => {
-                const semester = module.semester || 1;
-                if (!grouped[semester]) {
-                    grouped[semester] = [];
-                }
-                grouped[semester].push(module);
-            });
-            setModulesBySemester(grouped);
         } catch (error: any) {
             toast.error(error?.response?.data?.message || 'Không thể tải danh sách module');
             console.error('Error loading modules:', error);
@@ -424,25 +376,10 @@ export default function MyClassesPage() {
 
         if (over && active.id !== over.id) {
             setSortableModules((items) => {
-                const activeModule = items.find((item) => item.moduleId.toString() === active.id);
-                const overModule = items.find((item) => item.moduleId.toString() === over.id);
-
-                // 🔒 Kiểm tra: Modules chỉ có thể được di chuyển trong cùng một semester
-                if (activeModule && overModule && activeModule.semester !== overModule.semester) {
-                    toast.error(`🔒 Không thể di chuyển module giữa các học kỳ! Module thuộc học kỳ ${activeModule.semester} không thể di chuyển sang học kỳ ${overModule.semester}.`);
-                    return items;
-                }
-
-                // 🔒 Kiểm tra: Module BẮT BUỘC không thể được di chuyển
-                if (activeModule?.isMandatory) {
-                    toast.error('🔒 Không thể sắp xếp module BẮT BUỘC! Các module bắt buộc có vị trí cố định.');
-                    return items;
-                }
-
-                // 🔒 Kiểm tra: Không cho phép kéo qua module BẮT BUỘC
                 const oldIndex = items.findIndex((item) => item.moduleId.toString() === active.id);
                 const newIndex = items.findIndex((item) => item.moduleId.toString() === over.id);
-                
+
+                // 🔒 Kiểm tra: Không cho phép kéo qua module BẮT BUỘC
                 const start = Math.min(oldIndex, newIndex);
                 const end = Math.max(oldIndex, newIndex);
                 
@@ -689,79 +626,52 @@ export default function MyClassesPage() {
                         </div>
                     </div>
 
-                    {Object.keys(modulesBySemester).length === 0 ? (
-                        <div className="text-center py-12 text-gray-500">
-                            <p>Chưa có module nào trong chương trình học này.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-6">
-                            {Object.keys(modulesBySemester)
-                                .sort((a, b) => parseInt(a) - parseInt(b))
-                                .map((semester) => {
-                                    const semesterModules = modulesBySemester[parseInt(semester)];
-                                    const startIndex = sortableModules.findIndex(m => m.semester === parseInt(semester));
-                                    
-                                    return (
-                                        <div key={semester} className="space-y-3">
-                                            {/* Semester Header */}
-                                            <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg">
-                                                <h3 className="font-bold text-base">
-                                                    Học kỳ {semester}
-                                                    <span className="ml-2 text-sm font-normal">
-                                                        ({semesterModules.length} {semesterModules.length === 1 ? 'module' : 'modules'})
-                                                    </span>
-                                                </h3>
-                                            </div>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                        onDragCancel={handleDragCancel}
+                    >
+                        <SortableContext
+                            items={sortableModules.map((m) => m.moduleId.toString())}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            <div className="space-y-3">
+                                {sortableModules.length === 0 ? (
+                                    <div className="text-center py-12 text-gray-500">
+                                        <p>Chưa có module nào trong chương trình học này.</p>
+                                    </div>
+                                ) : (
+                                    sortableModules.map((module, index) => (
+                                        <SortableModuleItem 
+                                            key={module.moduleId} 
+                                            module={module} 
+                                            index={index}
+                                            onViewDocument={handleViewDocument}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        </SortableContext>
 
-                                            {/* Modules in this semester */}
-                                            <DndContext
-                                                sensors={sensors}
-                                                collisionDetection={closestCenter}
-                                                onDragStart={handleDragStart}
-                                                onDragEnd={handleDragEnd}
-                                                onDragCancel={handleDragCancel}
-                                            >
-                                                <SortableContext
-                                                    items={semesterModules.map((m) => m.moduleId.toString())}
-                                                    strategy={verticalListSortingStrategy}
-                                                >
-                                                    <div className="space-y-3 pl-4 border-l-2 border-gray-200 ml-2">
-                                                        {semesterModules.map((module, idx) => {
-                                                            const globalIndex = sortableModules.findIndex(m => m.moduleId === module.moduleId);
-                                                            return (
-                                                                <SortableModuleItem 
-                                                                    key={module.moduleId} 
-                                                                    module={module} 
-                                                                    index={globalIndex}
-                                                                    onViewDocument={handleViewDocument}
-                                                                />
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </SortableContext>
-
-                                                <DragOverlay>
-                                                    {activeId ? (
-                                                        <div className="bg-white rounded-lg border-2 border-blue-500 p-4 shadow-lg opacity-90">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                                                                    {sortableModules.findIndex((m) => m.moduleId.toString() === activeId) + 1}
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                    <h4 className="font-semibold text-sm">
-                                                                        {sortableModules.find((m) => m.moduleId.toString() === activeId)?.name}
-                                                                    </h4>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ) : null}
-                                                </DragOverlay>
-                                            </DndContext>
+                        <DragOverlay>
+                            {activeId ? (
+                                <div className="bg-white rounded-lg border-2 border-blue-500 p-4 shadow-lg opacity-90">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                                            {sortableModules.findIndex((m) => m.moduleId.toString() === activeId) + 1}
                                         </div>
-                                    );
-                                })}
-                        </div>
-                    )}
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-sm">
+                                                {sortableModules.find((m) => m.moduleId.toString() === activeId)?.name}
+                                            </h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </DragOverlay>
+                    </DndContext>
                 </div>
 
                 {/* Document Viewer Modal */}

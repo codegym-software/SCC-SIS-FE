@@ -268,8 +268,8 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                         <option value="ALL">Tất cả trạng thái</option>
                         <option value="ACTIVE">Đang học</option>
                         <option value="SUSPENDED">Bảo lưu</option>
+                        <option value="COMPLETED">Hoàn thành</option>
                         <option value="DROPPED">Đã nghỉ</option>
-                        <option value="GRADUATED">Tốt nghiệp</option>
                     </select>
                 </div>
                 <button
@@ -325,8 +325,8 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                                 <option value="">Chọn trạng thái</option>
                                                 <option value="ACTIVE">Đang học</option>
                                                 <option value="SUSPENDED">Bảo lưu</option>
+                                                <option value="COMPLETED">Hoàn thành</option>
                                                 <option value="DROPPED">Đã nghỉ</option>
-                                                <option value="GRADUATED">Tốt nghiệp</option>
                                             </select>
                                             <textarea
                                                 value={newNote}
