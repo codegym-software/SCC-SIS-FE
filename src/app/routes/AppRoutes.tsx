@@ -9,6 +9,8 @@ import StudentProfilePage from '../../features/users/pages/students/StudentProfi
 import SettingsPage from '../../features/users/pages/settings/SettingsPage';
 import MyClassesPage from '../../features/students/pages/my-classes/MyClassesPage';
 import ProtectedRoute from './ProtectedRoute';
+import AttendancePage from '../../features/users/pages/attendance/AttendancePage';
+import TakeAttendancePage from '../../features/users/pages/attendance/TakeAttendancePage';
 
 export default function AppRoutes() {
     return (
@@ -20,6 +22,22 @@ export default function AppRoutes() {
             <Route path="/programs" element={<ProgramsPage />} />
             <Route path="/classes" element={<ClassesPage />} />
             <Route path="/students" element={<StudentProfilePage />} />
+            <Route
+                path="/attendance"
+                element={
+                    <ProtectedRoute allowedRoles={['LECTURER']}>
+                        <AttendancePage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/attendance/take"
+                element={
+                    <ProtectedRoute allowedRoles={['LECTURER']}>
+                        <TakeAttendancePage />
+                    </ProtectedRoute>
+                }
+            />
             <Route
                 path="/my-classes"
                 element={

@@ -92,6 +92,7 @@ function AppLayout({ children }: AppLayoutProps) {
 
     // Check if user is STUDENT
     const isStudent = me?.roles?.some((role) => role.code === 'STUDENT') ?? false;
+    const isLecturer = me?.roles?.some((role) => role.code === 'LECTURER') ?? false;
 
     // Menu configuration - easily extensible
     const menuGroups: MenuGroup[] = [
