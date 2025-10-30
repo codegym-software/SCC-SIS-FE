@@ -109,3 +109,30 @@ export const updateAttendanceSession = (sessionId: number, data: UpdateAttendanc
  */
 export const deleteAttendanceSession = (sessionId: number) =>
     http.delete(`/api/attendance-sessions/${sessionId}`);
+
+// ===== STUDENT ATTENDANCE HISTORY =====
+
+export interface StudentAttendanceHistory {
+    studentId: number;
+    studentName: string;
+    studentCode: string;
+    classId: number;
+    className: string;
+    totalSessions: number;
+    presentCount: number;
+    absentCount: number;
+    records: Array<{
+        sessionId: number;
+        attendanceDate: string; // yyyy-mm-dd
+        status: AttendanceStatus;
+        notes?: string;
+        teacherName: string;
+    }>;
+}
+
+/**
+ * 7. Lấy lịch sử điểm danh của học viên trong một lớp
+ * GET /api/students/{studentId}/classes/{classId}/attendance
+ */
+export const getStudentAttendanceHistory = (studentId: number, classId: number) =>
+    http.get<StudentAttendanceHistory>(`/api/students/${studentId}/classes/${classId}/attendance`);

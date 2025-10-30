@@ -82,9 +82,10 @@ export default function TakeAttendancePage() {
                     setStudents(studentsData);
                     
                     // Initialize attendance records with existing data
+                    // Use enrollmentId as key (consistent with create mode)
                     const existingRecords = new Map(
                         sessionData.records.map((r: any) => [
-                            r.studentId,
+                            r.enrollmentId,
                             {
                                 studentId: r.studentId,
                                 enrollmentId: r.enrollmentId,
@@ -110,9 +111,10 @@ export default function TakeAttendancePage() {
                     setStudents(studentsData);
 
                     // Initialize attendance records with PRESENT by default
+                    // Use enrollmentId as key to avoid duplicate keys
                     const initialRecords = new Map(
                         studentsData.map((s) => [
-                            s.id,
+                            s.enrollmentId,
                             {
                                 studentId: s.id,
                                 enrollmentId: s.enrollmentId,
@@ -134,23 +136,23 @@ export default function TakeAttendancePage() {
         fetchData();
     }, [classId, sessionIdParam]);
 
-    const handleStatusChange = (studentId: number, status: AttendanceStatus) => {
+    const handleStatusChange = (enrollmentId: number, status: AttendanceStatus) => {
         setAttendanceRecords((prev) => {
             const newMap = new Map(prev);
-            const record = newMap.get(studentId);
+            const record = newMap.get(enrollmentId);
             if (record) {
-                newMap.set(studentId, { ...record, status });
+                newMap.set(enrollmentId, { ...record, status });
             }
             return newMap;
         });
     };
 
-    const handleNoteChange = (studentId: number, note: string) => {
+    const handleNoteChange = (enrollmentId: number, note: string) => {
         setAttendanceRecords((prev) => {
             const newMap = new Map(prev);
-            const record = newMap.get(studentId);
+            const record = newMap.get(enrollmentId);
             if (record) {
-                newMap.set(studentId, { ...record, note });
+                newMap.set(enrollmentId, { ...record, note });
             }
             return newMap;
         });
@@ -160,8 +162,8 @@ export default function TakeAttendancePage() {
     const handleSelectAll = (checked: boolean) => {
         setAttendanceRecords((prev) => {
             const newMap = new Map(prev);
-            newMap.forEach((record, studentId) => {
-                newMap.set(studentId, { ...record, status: checked ? 'PRESENT' : null });
+            newMap.forEach((record, enrollmentId) => {
+                newMap.set(enrollmentId, { ...record, status: checked ? 'PRESENT' : null });
             });
             return newMap;
         });
@@ -181,7 +183,7 @@ export default function TakeAttendancePage() {
             if (isEditMode && sessionId) {
                 // UPDATE existing session
                 const records = students.map((student) => {
-                    const record = attendanceRecords.get(student.id);
+                    const record = attendanceRecords.get(student.enrollmentId);
                     return {
                         recordId: record?.recordId!,
                         status: record?.status || 'ABSENT',
@@ -198,7 +200,7 @@ export default function TakeAttendancePage() {
             } else {
                 // CREATE new session
                 const records = students.map((student) => {
-                    const record = attendanceRecords.get(student.id);
+                    const record = attendanceRecords.get(student.enrollmentId);
                     return {
                         enrollmentId: student.enrollmentId!,
                         studentId: student.id,
@@ -383,14 +385,14 @@ export default function TakeAttendancePage() {
                                 ) : (
                                     <AnimatePresence>
                                         {students.map((student, index) => {
-                                            const record = attendanceRecords.get(student.id);
+                                            const record = attendanceRecords.get(student.enrollmentId);
                                             const nameParts = student.fullName.split(' ');
                                             const firstName = nameParts[nameParts.length - 1];
                                             const lastName = nameParts.slice(0, -1).join(' ');
 
                                             return (
                                                 <motion.tr
-                                                    key={student.id}
+                                                    key={student.enrollmentId}
                                                     initial={{ opacity: 0, x: -20 }}
                                                     animate={{ opacity: 1, x: 0 }}
                                                     transition={{ delay: index * 0.02 }}
@@ -408,7 +410,7 @@ export default function TakeAttendancePage() {
                                                             <StatusCheckbox
                                                                 status="PRESENT"
                                                                 currentStatus={record?.status || null}
-                                                                onClick={() => handleStatusChange(student.id, 'PRESENT')}
+                                                                onClick={() => handleStatusChange(student.enrollmentId, 'PRESENT')}
                                                                 label="Có mặt"
                                                             />
                                                         </div>
@@ -418,7 +420,7 @@ export default function TakeAttendancePage() {
                                                             <StatusCheckbox
                                                                 status="ABSENT"
                                                                 currentStatus={record?.status || null}
-                                                                onClick={() => handleStatusChange(student.id, 'ABSENT')}
+                                                                onClick={() => handleStatusChange(student.enrollmentId, 'ABSENT')}
                                                                 label="Vắng"
                                                             />
                                                         </div>
@@ -427,7 +429,7 @@ export default function TakeAttendancePage() {
                                                         <input
                                                             type="text"
                                                             value={record?.note || ''}
-                                                            onChange={(e) => handleNoteChange(student.id, e.target.value)}
+                                                            onChange={(e) => handleNoteChange(student.enrollmentId, e.target.value)}
                                                             placeholder="Nhập ghi chú..."
                                                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                                                         />
