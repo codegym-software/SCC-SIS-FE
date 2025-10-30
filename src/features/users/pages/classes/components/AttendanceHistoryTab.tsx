@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, Users, CheckCircle, XCircle, Eye, Edit, Trash2, X, Save } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Calendar, Users, CheckCircle, XCircle, Eye, Edit, Trash2, X, Save, ChevronDown } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
 import {
     getClassAttendanceSessions,
@@ -26,6 +26,11 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+    
+    // Filter states
+    const currentDate = new Date();
+    const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1); // 1-12
+    const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
     
     // Edit states
     const [editNotes, setEditNotes] = useState('');
@@ -158,12 +163,90 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
         return `${day}/${month}/${year}`;
     };
 
+    // Filter sessions by month/year
+    const filteredSessions = useMemo(() => {
+        return sessions.filter(session => {
+            const [year, month] = session.attendanceDate.split('-');
+            return parseInt(month) === selectedMonth && parseInt(year) === selectedYear;
+        });
+    }, [sessions, selectedMonth, selectedYear]);
+
+    // Get available years from sessions
+    const availableYears = useMemo(() => {
+        const years = new Set(sessions.map(s => parseInt(s.attendanceDate.split('-')[0])));
+        return Array.from(years).sort((a, b) => b - a);
+    }, [sessions]);
+
+    // Generate month options
+    const months = [
+        { value: 1, label: 'Tháng 1' },
+        { value: 2, label: 'Tháng 2' },
+        { value: 3, label: 'Tháng 3' },
+        { value: 4, label: 'Tháng 4' },
+        { value: 5, label: 'Tháng 5' },
+        { value: 6, label: 'Tháng 6' },
+        { value: 7, label: 'Tháng 7' },
+        { value: 8, label: 'Tháng 8' },
+        { value: 9, label: 'Tháng 9' },
+        { value: 10, label: 'Tháng 10' },
+        { value: 11, label: 'Tháng 11' },
+        { value: 12, label: 'Tháng 12' },
+    ];
+
     return (
         <div className="space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+            {/* Header with Filters */}
+            <div className="flex items-center justify-between flex-wrap gap-4">
                 <h3 className="text-lg font-semibold text-gray-900">Lịch sử điểm danh</h3>
+                
+                {/* Month/Year Filters */}
+                <div className="flex items-center gap-3">
+                    {/* Month Selector */}
+                    <div className="relative">
+                        <select
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                            className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+                        >
+                            {months.map(month => (
+                                <option key={month.value} value={month.value}>
+                                    {month.label}
+                                </option>
+                            ))}
+                        </select>
+                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+
+                    {/* Year Selector */}
+                    <div className="relative">
+                        <select
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                            className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+                        >
+                            {availableYears.length > 0 ? (
+                                availableYears.map(year => (
+                                    <option key={year} value={year}>
+                                        Năm {year}
+                                    </option>
+                                ))
+                            ) : (
+                                <option value={selectedYear}>Năm {selectedYear}</option>
+                            )}
+                        </select>
+                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                </div>
             </div>
+
+            {/* Result Count */}
+            {!isLoading && sessions.length > 0 && (
+                <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                    <span className="text-sm text-blue-800">
+                        <span className="font-semibold">{filteredSessions.length}</span> buổi điểm danh trong Tháng {selectedMonth}/{selectedYear}
+                    </span>
+                </div>
+            )}
 
             {/* Sessions List */}
             {isLoading ? (
@@ -171,15 +254,25 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
                     <p className="text-sm">Đang tải...</p>
                 </div>
-            ) : sessions.length === 0 ? (
+            ) : filteredSessions.length === 0 ? (
                 <div className="bg-gray-50 rounded-lg p-12 text-center">
                     <Calendar size={48} className="mx-auto text-gray-400 mb-3" />
-                    <p className="text-gray-600 font-medium mb-1">Chưa có buổi điểm danh nào</p>
-                    <p className="text-sm text-gray-500">Điểm danh sẽ xuất hiện ở đây sau khi bạn tạo buổi đầu tiên</p>
+                    <p className="text-gray-600 font-medium mb-1">
+                        {sessions.length === 0 
+                            ? 'Chưa có buổi điểm danh nào' 
+                            : `Không có buổi điểm danh nào trong Tháng ${selectedMonth}/${selectedYear}`
+                        }
+                    </p>
+                    <p className="text-sm text-gray-500">
+                        {sessions.length === 0
+                            ? 'Điểm danh sẽ xuất hiện ở đây sau khi bạn tạo buổi đầu tiên'
+                            : 'Hãy chọn tháng/năm khác để xem lịch sử điểm danh'
+                        }
+                    </p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {sessions.map(session => (
+                    {filteredSessions.map(session => (
                         <div
                             key={session.sessionId}
                             onClick={() => handleViewSession(session.sessionId)}

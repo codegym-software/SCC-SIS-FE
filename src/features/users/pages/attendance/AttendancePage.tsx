@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
     ChevronLeft,
     ChevronRight,
@@ -63,9 +63,14 @@ const TIME_SLOTS = {
 export default function AttendancePage() {
     const { me } = useUserProfile();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const isLecturer = me?.roles?.some((r) => r.code === 'LECTURER');
     const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
-    const [viewMode, setViewMode] = useState<ViewMode>('month');
+    // Initialize viewMode from URL params or default to 'month'
+    const [viewMode, setViewMode] = useState<ViewMode>(() => {
+        const viewParam = searchParams.get('view');
+        return (viewParam === 'day' || viewParam === 'week' || viewParam === 'month') ? viewParam : 'month';
+    });
     const [activeTab, setActiveTab] = useState<'schedule' | 'history' | 'stats'>('schedule');
     const [sessions, setSessions] = useState<SessionWithTime[]>([]);
     const [loading, setLoading] = useState(false);
@@ -422,6 +427,7 @@ export default function AttendancePage() {
                                                     classId: session.classId.toString(),
                                                     className: session.className,
                                                     date: session.attendanceDate,
+                                                    viewMode: viewMode, // Pass current view mode
                                                 });
                                                 if (session.sessionId) {
                                                     params.set('sessionId', session.sessionId.toString());
@@ -551,6 +557,7 @@ export default function AttendancePage() {
                                                                                     classId: session.classId.toString(),
                                                                                     className: session.className,
                                                                                     date: session.attendanceDate,
+                                                                                    viewMode: viewMode, // Pass current view mode
                                                                                 });
                                                                                 if (session.sessionId) {
                                                                                     params.set('sessionId', session.sessionId.toString());
@@ -733,6 +740,7 @@ export default function AttendancePage() {
                                                                 classId: session.classId.toString(),
                                                                 className: session.className,
                                                                 date: session.attendanceDate,
+                                                                viewMode: viewMode, // Pass current view mode
                                                             });
                                                             if (session.sessionId) {
                                                                 params.set('sessionId', session.sessionId.toString());

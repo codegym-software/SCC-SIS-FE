@@ -33,12 +33,16 @@ export default function DashboardPage() {
     const [activeUsersCount, setActiveUsersCount] = useState<number>(0);
     const [rolesCount, setRolesCount] = useState<number>(0);
     
-    // Redirect students to their classes page
+    // Redirect students and lecturers to their respective pages
     useEffect(() => {
         if (!userLoading && me) {
             const isStudent = me.roles?.some((role) => role.code === 'STUDENT') ?? false;
+            const isLecturer = me.roles?.some((role) => role.code === 'LECTURER') ?? false;
+            
             if (isStudent) {
                 navigate('/my-classes', { replace: true });
+            } else if (isLecturer) {
+                navigate('/classes', { replace: true });
             }
         }
     }, [me, userLoading, navigate]);
