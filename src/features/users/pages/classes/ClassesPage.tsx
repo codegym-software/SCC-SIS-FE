@@ -266,6 +266,7 @@ function MultiSelect({
 export default function ClassesPage() {
     const toast = useToast();
     const { me: userProfile } = useUserProfile();
+    const isLecturer = userProfile?.roles?.some((r) => r.code === 'LECTURER');
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [openCreate, setOpenCreate] = useState(false);
@@ -1305,6 +1306,7 @@ export default function ClassesPage() {
                             <ManageStudentsModal
                                 classItem={selectedClass as any}
                                 inlineMode
+                                readOnly={isLecturer}
                                 onStudentsChanged={() => {
                                     if (selectedClass?.id) {
                                         fetchActiveStudentCount(selectedClass.id);
@@ -1319,12 +1321,14 @@ export default function ClassesPage() {
                         <div className="bg-white rounded-lg border p-6 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-semibold text-lg">Danh sách giảng viên</h3>
-                                <button
-                                    onClick={() => setOpenAssignInstructor(selectedClass)}
-                                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                                >
-                                    + Phân công giảng viên
-                                </button>
+                                {!isLecturer && (
+                                    <button
+                                        onClick={() => setOpenAssignInstructor(selectedClass)}
+                                        className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                    >
+                                        + Phân công giảng viên
+                                    </button>
+                                )}
                             </div>
                             <div className="space-y-3">
                                 {selectedClass.instructors.map((instructor, idx) => (
@@ -1398,6 +1402,7 @@ export default function ClassesPage() {
                             classItem={openAssignInstructor as any}
                             onClose={() => setOpenAssignInstructor(null)}
                             onUpdateInstructors={handleUpdateInstructors}
+                            readOnly={isLecturer}
                         />
                     )}
                 </Modal>
@@ -1721,6 +1726,7 @@ export default function ClassesPage() {
                         classItem={openAssignInstructor as any}
                         onClose={() => setOpenAssignInstructor(null)}
                         onUpdateInstructors={handleUpdateInstructors}
+                        readOnly={isLecturer}
                     />
                 )}
             </Modal>

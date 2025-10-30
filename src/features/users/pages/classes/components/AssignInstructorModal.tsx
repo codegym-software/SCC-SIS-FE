@@ -84,6 +84,7 @@ interface AssignInstructorModalProps {
     classItem: ClassItem;
     onClose?: () => void;
     onUpdateInstructors?: (classId: string, updatedInstructors: Instructor[]) => void;
+    readOnly?: boolean; // when true, hide assign button
 }
 
 // Helper functions to format study days and time
@@ -111,7 +112,7 @@ const formatStudyTime = (time?: StudyTime): string => {
     return timeMap[time] || time;
 };
 
-const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem, onClose, onUpdateInstructors }) => {
+const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem, onClose, onUpdateInstructors, readOnly = false }) => {
     const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [selectedInstructors, setSelectedInstructors] = useState<string[]>([]);
@@ -646,23 +647,25 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                             <span className="ml-2 text-amber-600 font-medium">(Đã đạt giới hạn tối đa)</span>
                         )}
                     </div>
-                    <button
-                        onClick={handleAssignInstructor}
-                        disabled={assignedInstructors.length >= MAX_ACTIVE_LECTURERS}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            assignedInstructors.length >= MAX_ACTIVE_LECTURERS
-                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                : 'bg-purple-600 text-white hover:bg-purple-700'
-                        }`}
-                        title={
-                            assignedInstructors.length >= MAX_ACTIVE_LECTURERS
-                                ? `Lớp học đã đạt giới hạn tối đa ${MAX_ACTIVE_LECTURERS} giảng viên`
-                                : 'Phân công giảng viên cho lớp học'
-                        }
-                    >
-                        <Plus size={16} />
-                        Phân công giảng viên
-                    </button>
+                    {!readOnly && (
+                        <button
+                            onClick={handleAssignInstructor}
+                            disabled={assignedInstructors.length >= MAX_ACTIVE_LECTURERS}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                assignedInstructors.length >= MAX_ACTIVE_LECTURERS
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    : 'bg-purple-600 text-white hover:bg-purple-700'
+                            }`}
+                            title={
+                                assignedInstructors.length >= MAX_ACTIVE_LECTURERS
+                                    ? `Lớp học đã đạt giới hạn tối đa ${MAX_ACTIVE_LECTURERS} giảng viên`
+                                    : 'Phân công giảng viên cho lớp học'
+                            }
+                        >
+                            <Plus size={16} />
+                            Phân công giảng viên
+                        </button>
+                    )}
                 </div>
 
                 {/* Instructors List */}
@@ -717,12 +720,14 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
 
                                 {/* Actions */}
                                 <div className="col-span-2 flex justify-center">
-                                    <button
-                                        onClick={() => handleRemoveInstructor(instructor.id)}
-                                        className="px-4 py-1.5 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors whitespace-nowrap"
-                                    >
-                                        Hủy gán
-                                    </button>
+                                    {!readOnly && (
+                                        <button
+                                            onClick={() => handleRemoveInstructor(instructor.id)}
+                                            className="px-4 py-1.5 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors whitespace-nowrap"
+                                        >
+                                            Hủy gán
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}

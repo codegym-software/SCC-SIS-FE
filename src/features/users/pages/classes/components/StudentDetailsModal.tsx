@@ -198,7 +198,7 @@ const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ student, clas
                         </div>
                         <div>
                             <div className="text-xs text-gray-500">Email</div>
-                            <div className="text-sm font-medium text-gray-900">{student.studentEmail}</div>
+                            <div className="text-sm font-medium text-gray-900">{student.email}</div>
                         </div>
                     </div>
 
