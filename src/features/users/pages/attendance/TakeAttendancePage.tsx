@@ -1,69 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Calendar, CheckCircle, XCircle, Clock, AlertCircle, Users, Save, User } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
+import { useUserProfile } from '@/stores/userProfile';
+import { createAttendanceSession, getAttendanceSessionDetail, updateAttendanceSession, type AttendanceStatus as ApiAttendanceStatus } from '@/shared/api/attendance';
+import http from '@/shared/api/http';
 
-// Mock student data with more entries
-const generateMockStudents = (_classId: number) => {
-    const firstNames = [
-        'An',
-        'Bình',
-        'Cường',
-        'Dũng',
-        'Em',
-        'Phương',
-        'Giang',
-        'Hà',
-        'Hùng',
-        'Khánh',
-        'Linh',
-        'Minh',
-        'Nam',
-        'Oanh',
-        'Phúc',
-        'Quân',
-        'Trang',
-        'Tuấn',
-        'Vân',
-        'Yến',
-        'Long',
-        'Mai',
-        'Hương',
-        'Đức',
-        'Thảo',
-        'Hoàng',
-        'Lan',
-        'Thanh',
-        'Nhung',
-        'Tâm',
-    ];
-    const lastNames = ['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Phan', 'Vũ', 'Võ', 'Đặng', 'Bùi', 'Đỗ', 'Hồ'];
-    const middleNames = ['Văn', 'Thị', 'Đình', 'Hữu', 'Quang', 'Minh', 'Anh', 'Thanh', 'Tuấn', 'Hồng', 'Thu', 'Xuân'];
+type AttendanceStatus = 'PRESENT' | 'ABSENT' | null;
 
-    const students = [];
-    for (let i = 0; i < 35; i++) {
-        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-        const middleName = middleNames[Math.floor(Math.random() * middleNames.length)];
-        const firstName = firstNames[i % firstNames.length];
-        students.push({
-            id: i + 1,
-            studentCode: `BCS230${String(i + 1).padStart(3, '0')}`,
-            lastName: lastName,
-            middleName: middleName,
-            firstName: firstName,
-            fullName: `${lastName} ${middleName} ${firstName}`,
-            email: `student${i + 1}@example.com`,
-            phone: `098${String(1000000 + i).substring(1)}`,
-        });
-    }
-    return students;
+type Student = {
+    id: number;
+    enrollmentId: number;
+    studentCode: string;
+    fullName: string;
+    email: string;
 };
-
-type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED' | null;
 
 type AttendanceRecord = {
     studentId: number;
+    enrollmentId?: number;
+    recordId?: number; // For edit mode
     status: AttendanceStatus;
     note: string;
 };
@@ -71,19 +28,110 @@ type AttendanceRecord = {
 export default function TakeAttendancePage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const { me } = useUserProfile();
     const { success: showSuccessToast, error: showErrorToast } = useToast();
 
-    const classId = searchParams.get('classId') || '1';
-    const className = searchParams.get('className') || 'Lớp học';
-    const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
-    const timeRange = searchParams.get('timeRange') || '07:00 - 09:40';
-    const room = searchParams.get('room') || 'VPC2-401';
+    // Sử dụng useMemo để đảm bảo date không bị reset khi re-render
+    const classId = useMemo(() => searchParams.get('classId') || '1', [searchParams]);
+    const className = useMemo(() => searchParams.get('className') || 'Lớp học', [searchParams]);
+    const sessionIdParam = useMemo(() => searchParams.get('sessionId'), [searchParams]); // Check if editing existing session
+    const date = useMemo(() => {
+        const urlDate = searchParams.get('date');
+        if (!urlDate) {
+            // Use local timezone instead of UTC
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        return urlDate;
+    }, [searchParams]);
 
-    const [students] = useState(generateMockStudents(parseInt(classId)));
-    const [attendanceRecords, setAttendanceRecords] = useState<Map<number, AttendanceRecord>>(
-        new Map(students.map((s) => [s.id, { studentId: s.id, status: null, note: '' }])),
-    );
+    const [students, setStudents] = useState<Student[]>([]);
+    const [attendanceRecords, setAttendanceRecords] = useState<Map<number, AttendanceRecord>>(new Map());
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [sessionId, setSessionId] = useState<number | null>(null);
+
+    // Fetch students and existing attendance data if editing
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setIsLoading(true);
+                
+                // Check if editing existing session
+                if (sessionIdParam) {
+                    setIsEditMode(true);
+                    setSessionId(parseInt(sessionIdParam));
+                    
+                    // Fetch existing attendance session
+                    const sessionResponse = await getAttendanceSessionDetail(parseInt(sessionIdParam));
+                    const sessionData = sessionResponse.data;
+                    
+                    // Build students list from records
+                    const studentsData: Student[] = sessionData.records.map((record: any) => ({
+                        id: record.studentId,
+                        enrollmentId: record.enrollmentId,
+                        studentCode: record.studentCode || `SV${record.studentId}`,
+                        fullName: record.studentName,
+                        email: record.studentEmail || '',
+                    }));
+                    setStudents(studentsData);
+                    
+                    // Initialize attendance records with existing data
+                    const existingRecords = new Map(
+                        sessionData.records.map((r: any) => [
+                            r.studentId,
+                            {
+                                studentId: r.studentId,
+                                enrollmentId: r.enrollmentId,
+                                recordId: r.recordId,
+                                status: r.status as AttendanceStatus,
+                                note: r.notes || '',
+                            },
+                        ])
+                    );
+                    setAttendanceRecords(existingRecords);
+                } else {
+                    // Creating new attendance - fetch students
+                    const response = await http.get(`/api/classes/${classId}/students`);
+                    const enrollments = response.data.content || response.data.items || response.data;
+
+                    const studentsData: Student[] = enrollments.map((enrollment: any) => ({
+                        id: enrollment.studentId,
+                        enrollmentId: enrollment.enrollmentId,
+                        studentCode: enrollment.studentCode || `SV${enrollment.studentId}`,
+                        fullName: enrollment.studentName,
+                        email: enrollment.studentEmail,
+                    }));
+                    setStudents(studentsData);
+
+                    // Initialize attendance records with PRESENT by default
+                    const initialRecords = new Map(
+                        studentsData.map((s) => [
+                            s.id,
+                            {
+                                studentId: s.id,
+                                enrollmentId: s.enrollmentId,
+                                status: 'PRESENT' as AttendanceStatus,
+                                note: '',
+                            },
+                        ])
+                    );
+                    setAttendanceRecords(initialRecords);
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showErrorToast('Lỗi', 'Không thể tải dữ liệu');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [classId, sessionIdParam]);
 
     const handleStatusChange = (studentId: number, status: AttendanceStatus) => {
         setAttendanceRecords((prev) => {
@@ -107,15 +155,84 @@ export default function TakeAttendancePage() {
         });
     };
 
+    // Handle "Select All" checkbox for PRESENT status
+    const handleSelectAll = (checked: boolean) => {
+        setAttendanceRecords((prev) => {
+            const newMap = new Map(prev);
+            newMap.forEach((record, studentId) => {
+                newMap.set(studentId, { ...record, status: checked ? 'PRESENT' : null });
+            });
+            return newMap;
+        });
+    };
+
+    // Check if all students are marked as PRESENT
+    const allPresent = Array.from(attendanceRecords.values()).every((r) => r.status === 'PRESENT');
+
     const handleSubmit = async () => {
+        if (!me?.userId && !isEditMode) {
+            showErrorToast('Lỗi', 'Không tìm thấy thông tin giảng viên');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
-            // Simulate API call
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            showSuccessToast('Thành công', 'Đã lưu điểm danh');
+            if (isEditMode && sessionId) {
+                // UPDATE existing session
+                const records = students.map((student) => {
+                    const record = attendanceRecords.get(student.id);
+                    return {
+                        recordId: record?.recordId!,
+                        status: record?.status || 'ABSENT',
+                        notes: record?.note || undefined,
+                    };
+                });
+
+                await updateAttendanceSession(sessionId, {
+                    notes: '',
+                    records,
+                });
+
+                showSuccessToast('Thành công', 'Đã cập nhật điểm danh');
+            } else {
+                // CREATE new session
+                const records = students.map((student) => {
+                    const record = attendanceRecords.get(student.id);
+                    return {
+                        enrollmentId: student.enrollmentId!,
+                        studentId: student.id,
+                        status: record?.status || 'ABSENT',
+                        notes: record?.note || undefined,
+                    };
+                });
+
+                await createAttendanceSession({
+                    classId: parseInt(classId),
+                    teacherId: me!.userId,
+                    attendanceDate: date,
+                    notes: '',
+                    records,
+                });
+
+                showSuccessToast('Thành công', 'Đã lưu điểm danh');
+            }
+            
             setTimeout(() => navigate('/attendance'), 500);
-        } catch (error) {
-            showErrorToast('Lỗi', 'Không thể lưu điểm danh');
+        } catch (error: any) {
+            console.error('Error saving attendance:', error);
+            console.error('Error response:', error?.response?.data);
+            
+            const errorData = error?.response?.data;
+            const errorMessage = errorData?.message || errorData?.error || 'Không thể lưu điểm danh';
+            
+            // Show specific error message
+            if (errorMessage.includes('already taken') || errorMessage.includes('Attendance already taken')) {
+                showErrorToast('Lỗi', 'Đã có điểm danh cho ngày này rồi. Vui lòng vào "Lịch sử điểm danh" để xem hoặc chỉnh sửa.');
+            } else if (errorMessage.includes('not found') || errorMessage.includes('Not found')) {
+                showErrorToast('Lỗi', 'Không tìm thấy thông tin lớp học hoặc học viên');
+            } else {
+                showErrorToast('Lỗi', errorMessage);
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -182,15 +299,11 @@ export default function TakeAttendancePage() {
                                     <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
                                         <span className="flex items-center gap-1">
                                             <Calendar size={14} />
-                                            {new Date(date).toLocaleDateString('vi-VN')}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <Clock size={14} />
-                                            {timeRange}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <User size={14} />
-                                            {room}
+                                            {(() => {
+                                                // Parse date string directly without timezone conversion
+                                                const [year, month, day] = date.split('-');
+                                                return `${day}/${month}/${year}`;
+                                            })()}
                                         </span>
                                     </div>
                                 </div>
@@ -204,7 +317,7 @@ export default function TakeAttendancePage() {
                             className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md"
                         >
                             <Save size={18} />
-                            <span>{isSubmitting ? 'Đang lưu...' : 'Lưu điểm danh'}</span>
+                            <span>{isSubmitting ? 'Đang lưu...' : (isEditMode ? 'Cập nhật điểm danh' : 'Lưu điểm danh')}</span>
                         </motion.button>
                     </div>
                 </div>
@@ -242,10 +355,19 @@ export default function TakeAttendancePage() {
                                     <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">
                                         <span>Tên</span>
                                     </th>
-                                    <th className="px-4 py-4 text-center text-sm font-semibold text-gray-700 w-16">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <CheckCircle size={16} className="text-green-600" />
-                                            <span>Có mặt</span>
+                                    <th className="px-4 py-4 text-center text-sm font-semibold text-gray-700 w-28">
+                                        <div className="flex flex-col items-center justify-center gap-1">
+                                            <div className="flex items-center gap-2">
+                                                <CheckCircle size={16} className="text-green-600" />
+                                                <span>Có mặt</span>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={allPresent}
+                                                onChange={(e) => handleSelectAll(e.target.checked)}
+                                                className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
+                                                title="Chọn tất cả"
+                                            />
                                         </div>
                                     </th>
                                     <th className="px-4 py-4 text-center text-sm font-semibold text-gray-700 w-16">
@@ -254,99 +376,75 @@ export default function TakeAttendancePage() {
                                             <span>Vắng</span>
                                         </div>
                                     </th>
-                                    <th className="px-4 py-4 text-center text-sm font-semibold text-gray-700 w-16">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <Clock size={16} className="text-amber-600" />
-                                            <span>Trễ</span>
-                                        </div>
-                                    </th>
-                                    <th className="px-4 py-4 text-center text-sm font-semibold text-gray-700 w-16">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <AlertCircle size={16} className="text-blue-600" />
-                                            <span>Phép</span>
-                                        </div>
-                                    </th>
                                     <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 w-64">
                                         <span>Ghi chú</span>
                                     </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                <AnimatePresence>
-                                    {students.map((student, index) => {
-                                        const record = attendanceRecords.get(student.id);
-                                        return (
-                                            <motion.tr
-                                                key={student.id}
-                                                initial={{ opacity: 0, x: -20 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: index * 0.02 }}
-                                                whileHover={{ backgroundColor: '#f9fafb' }}
-                                                className="hover:bg-gray-50 transition-colors"
-                                            >
-                                                <td className="px-4 py-4 text-sm text-gray-900">{index + 1}</td>
-                                                <td className="px-4 py-4 text-sm font-medium text-gray-900">
-                                                    {student.studentCode}
-                                                </td>
-                                                <td className="px-4 py-4 text-sm text-gray-700">
-                                                    {student.lastName} {student.middleName}
-                                                </td>
-                                                <td className="px-4 py-4 text-sm font-medium text-gray-900">
-                                                    {student.firstName}
-                                                </td>
-                                                <td className="px-4 py-4 text-center">
-                                                    <div className="flex justify-center">
-                                                        <StatusCheckbox
-                                                            status="PRESENT"
-                                                            currentStatus={record?.status || null}
-                                                            onClick={() => handleStatusChange(student.id, 'PRESENT')}
-                                                            label="Có mặt"
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                                            Đang tải danh sách học viên...
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    <AnimatePresence>
+                                        {students.map((student, index) => {
+                                            const record = attendanceRecords.get(student.id);
+                                            const nameParts = student.fullName.split(' ');
+                                            const firstName = nameParts[nameParts.length - 1];
+                                            const lastName = nameParts.slice(0, -1).join(' ');
+
+                                            return (
+                                                <motion.tr
+                                                    key={student.id}
+                                                    initial={{ opacity: 0, x: -20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: index * 0.02 }}
+                                                    whileHover={{ backgroundColor: '#f9fafb' }}
+                                                    className="hover:bg-gray-50 transition-colors"
+                                                >
+                                                    <td className="px-4 py-4 text-sm text-gray-900">{index + 1}</td>
+                                                    <td className="px-4 py-4 text-sm font-medium text-gray-900">
+                                                        {student.studentCode}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-sm text-gray-700">{lastName}</td>
+                                                    <td className="px-4 py-4 text-sm font-medium text-gray-900">{firstName}</td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <div className="flex justify-center">
+                                                            <StatusCheckbox
+                                                                status="PRESENT"
+                                                                currentStatus={record?.status || null}
+                                                                onClick={() => handleStatusChange(student.id, 'PRESENT')}
+                                                                label="Có mặt"
+                                                            />
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <div className="flex justify-center">
+                                                            <StatusCheckbox
+                                                                status="ABSENT"
+                                                                currentStatus={record?.status || null}
+                                                                onClick={() => handleStatusChange(student.id, 'ABSENT')}
+                                                                label="Vắng"
+                                                            />
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <input
+                                                            type="text"
+                                                            value={record?.note || ''}
+                                                            onChange={(e) => handleNoteChange(student.id, e.target.value)}
+                                                            placeholder="Nhập ghi chú..."
+                                                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                                                         />
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-4 text-center">
-                                                    <div className="flex justify-center">
-                                                        <StatusCheckbox
-                                                            status="ABSENT"
-                                                            currentStatus={record?.status || null}
-                                                            onClick={() => handleStatusChange(student.id, 'ABSENT')}
-                                                            label="Vắng"
-                                                        />
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-4 text-center">
-                                                    <div className="flex justify-center">
-                                                        <StatusCheckbox
-                                                            status="LATE"
-                                                            currentStatus={record?.status || null}
-                                                            onClick={() => handleStatusChange(student.id, 'LATE')}
-                                                            label="Trễ"
-                                                        />
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-4 text-center">
-                                                    <div className="flex justify-center">
-                                                        <StatusCheckbox
-                                                            status="EXCUSED"
-                                                            currentStatus={record?.status || null}
-                                                            onClick={() => handleStatusChange(student.id, 'EXCUSED')}
-                                                            label="Phép"
-                                                        />
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-4">
-                                                    <input
-                                                        type="text"
-                                                        value={record?.note || ''}
-                                                        onChange={(e) => handleNoteChange(student.id, e.target.value)}
-                                                        placeholder="Nhập ghi chú..."
-                                                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                                                    />
-                                                </td>
-                                            </motion.tr>
-                                        );
-                                    })}
-                                </AnimatePresence>
+                                                    </td>
+                                                </motion.tr>
+                                            );
+                                        })}
+                                    </AnimatePresence>
+                                )}
                             </tbody>
                         </table>
                     </div>

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import ClassList from '@/features/users/pages/classes/list.tsx';
 import ManageStudentsModal from '@/features/users/pages/classes/components/ManageStudentsModal';
-import AttendanceModal from '@/features/users/pages/classes/components/AttendanceModal';
+import AttendanceHistoryTab from '@/features/users/pages/classes/components/AttendanceHistoryTab';
 import ClassLogTab from '@/features/users/pages/classes/components/journals/ClassLogTab';
 import AssignInstructorModal from '@/features/users/pages/classes/components/AssignInstructorModal';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
@@ -417,8 +417,15 @@ export default function ClassesPage() {
 
                 // Only fetch centers if user has GLOBAL scope
                 if (hasGlobalScope) {
-                    const centersRes = await getCentersLite();
-                    setCenters(centersRes.data);
+                    try {
+                        const centersRes = await getCentersLite();
+                        setCenters(centersRes.data);
+                    } catch (error: any) {
+                        // Bỏ qua lỗi 403 - user không có quyền truy cập centers
+                        if (error?.response?.status !== 403) {
+                            console.error('Failed to load centers:', error);
+                        }
+                    }
                 }
 
                 // Fetch student counts and instructors for all classes in parallel
@@ -1220,6 +1227,13 @@ export default function ClassesPage() {
                             <span>Học viên</span>
                         </TabsTrigger>
                         <TabsTrigger
+                            value="logs"
+                            className="flex items-center gap-2 h-9 rounded-md text-gray-700 hover:bg-gray-100 data-[state=active]:bg-gray-900 data-[state=active]:text-white"
+                        >
+                            <History size={16} />
+                            <span>Lịch sử điểm danh</span>
+                        </TabsTrigger>
+                        <TabsTrigger
                             value="instructors"
                             className="flex items-center gap-2 h-9 rounded-md text-gray-700 hover:bg-gray-100 data-[state=active]:bg-gray-900 data-[state=active]:text-white"
                         >
@@ -1239,13 +1253,6 @@ export default function ClassesPage() {
                         >
                             <FileText size={16} />
                             <span>Nhật ký lớp học</span>
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="logs"
-                            className="flex items-center gap-2 h-9 rounded-md text-gray-700 hover:bg-gray-100 data-[state=active]:bg-gray-900 data-[state=active]:text-white"
-                        >
-                            <History size={16} />
-                            <span>Lịch sử điểm danh</span>
                         </TabsTrigger>
                     </TabsList>
 
@@ -1374,24 +1381,9 @@ export default function ClassesPage() {
 
                     {/* Attendance History Tab */}
                     <TabsContent value="logs" className="space-y-4 mt-6">
-                        {/* Attendance history inline */}
                         <div className="bg-white rounded-lg border p-6 shadow-sm">
-                            <h3 className="font-semibold text-lg mb-4">Lịch sử điểm danh</h3>
-                            <div className="border rounded-lg">
-                                <AttendanceModal
-                                    classItem={{
-                                        id: parseInt((selectedClass as any).id),
-                                        name: selectedClass.name,
-                                        programName: (selectedClass as any).program,
-                                        centerName: (selectedClass as any).centerName || '',
-                                        status: selectedClass.status,
-                                    }}
-                                    onClose={() => {}}
-                                />
-                            </div>
+                            <AttendanceHistoryTab classId={parseInt(selectedClass.id)} />
                         </div>
-
-                        {/* Journal moved to its own tab */}
                     </TabsContent>
                 </Tabs>
 
