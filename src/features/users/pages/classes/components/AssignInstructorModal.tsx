@@ -90,23 +90,23 @@ interface AssignInstructorModalProps {
 const formatStudyDays = (days?: StudyDay[]): string => {
     if (!days || days.length === 0) return 'Chưa có lịch';
     const dayMap: Record<StudyDay, string> = {
-        'MONDAY': 'Thứ 2',
-        'TUESDAY': 'Thứ 3',
-        'WEDNESDAY': 'Thứ 4',
-        'THURSDAY': 'Thứ 5',
-        'FRIDAY': 'Thứ 6',
-        'SATURDAY': 'Thứ 7',
-        'SUNDAY': 'Chủ nhật'
+        MONDAY: 'Thứ 2',
+        TUESDAY: 'Thứ 3',
+        WEDNESDAY: 'Thứ 4',
+        THURSDAY: 'Thứ 5',
+        FRIDAY: 'Thứ 6',
+        SATURDAY: 'Thứ 7',
+        SUNDAY: 'Chủ nhật',
     };
-    return days.map(d => dayMap[d]).join(', ');
+    return days.map((d) => dayMap[d]).join(', ');
 };
 
 const formatStudyTime = (time?: StudyTime): string => {
     if (!time) return '';
     const timeMap: Record<StudyTime, string> = {
-        'MORNING': 'Sáng (8h-11h)',
-        'AFTERNOON': 'Chiều (14h-17h)',
-        'EVENING': 'Tối (18h-21h)'
+        MORNING: 'Sáng (8h-11h)',
+        AFTERNOON: 'Chiều (14h-17h)',
+        EVENING: 'Tối (18h-21h)',
     };
     return timeMap[time] || time;
 };
@@ -115,7 +115,9 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
     const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [selectedInstructors, setSelectedInstructors] = useState<string[]>([]);
-    const [instructorDetails, setInstructorDetails] = useState<{ [key: string]: { startDate: string, note: string } }>({});
+    const [instructorDetails, setInstructorDetails] = useState<{ [key: string]: { startDate: string; note: string } }>(
+        {},
+    );
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
@@ -137,7 +139,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                 const apiData: APIClassInstructor[] = response.data.items;
 
                 // Map API data to component format
-                const mappedInstructors: ClassInstructor[] = apiData.map(item => ({
+                const mappedInstructors: ClassInstructor[] = apiData.map((item) => ({
                     id: item.assignmentId.toString(),
                     name: item.lecturer.fullName,
                     email: item.lecturer.email,
@@ -146,7 +148,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                     assigned: item.active,
                     avatar: item.lecturer.avatarUrl || undefined,
                     startDate: item.startDate,
-                    note: item.note || undefined
+                    note: item.note || undefined,
                 }));
 
                 setAssignedInstructorsFromAPI(mappedInstructors);
@@ -179,13 +181,13 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
             const apiData: APIAvailableLecturer[] = response.data.items;
 
             // Map API data to component format
-            const mappedInstructors: Instructor[] = apiData.map(item => ({
+            const mappedInstructors: Instructor[] = apiData.map((item) => ({
                 id: item.id.toString(),
                 name: item.fullName,
                 email: item.email,
                 specialization: '',
                 initial: item.fullName.charAt(0).toUpperCase(),
-                assigned: false
+                assigned: false,
             }));
 
             setInstructors(mappedInstructors);
@@ -205,7 +207,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
     // Fetch enrolled classes for all available instructors when modal opens
     useEffect(() => {
         if (showAssignModal && instructors.length > 0) {
-            instructors.forEach(instructor => {
+            instructors.forEach((instructor) => {
                 if (!lecturerEnrolledClasses[instructor.id]) {
                     fetchLecturerClasses(instructor.id);
                 }
@@ -216,9 +218,9 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
     // Helper function to get time range from StudyTime enum
     const getTimeRange = (studyTime: string): { start: number; end: number } | null => {
         const timeMap: Record<string, { start: number; end: number }> = {
-            'MORNING': { start: 8, end: 11 },      // 8h-11h
-            'AFTERNOON': { start: 14, end: 17 },   // 14h-17h
-            'EVENING': { start: 18, end: 21 },     // 18h-21h
+            MORNING: { start: 8, end: 11 }, // 8h-11h
+            AFTERNOON: { start: 14, end: 17 }, // 14h-17h
+            EVENING: { start: 18, end: 21 }, // 18h-21h
         };
         return timeMap[studyTime] || null;
     };
@@ -227,17 +229,19 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
     const doTimeRangesOverlap = (time1: string, time2: string): boolean => {
         const range1 = getTimeRange(time1);
         const range2 = getTimeRange(time2);
-        
+
         if (!range1 || !range2) return false;
-        
+
         // Two ranges overlap if: start1 < end2 AND start2 < end1
         return range1.start < range2.end && range2.start < range1.end;
     };
 
     // Check if instructor has schedule conflict with the class
-    const checkInstructorScheduleConflict = (instructorId: string): { hasConflict: boolean; conflictMessage?: string } => {
+    const checkInstructorScheduleConflict = (
+        instructorId: string,
+    ): { hasConflict: boolean; conflictMessage?: string } => {
         const enrolledClasses = lecturerEnrolledClasses[instructorId];
-        
+
         if (!enrolledClasses || enrolledClasses.length === 0) {
             return { hasConflict: false };
         }
@@ -250,9 +254,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
             if (!enrolledClass.studyDays || !enrolledClass.studyTime) continue;
 
             // Check if any day overlaps
-            const hasOverlappingDay = classItem.studyDays.some(day => 
-                enrolledClass.studyDays?.includes(day)
-            );
+            const hasOverlappingDay = classItem.studyDays.some((day) => enrolledClass.studyDays?.includes(day));
 
             // Check if time ranges overlap (not just exact match)
             const hasTimeConflict = doTimeRangesOverlap(classItem.studyTime, enrolledClass.studyTime);
@@ -260,7 +262,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
             if (hasOverlappingDay && hasTimeConflict) {
                 return {
                     hasConflict: true,
-                    conflictMessage: `Trùng lịch với lớp "${enrolledClass.name}" tại ${enrolledClass.centerName} (${formatStudyDays(enrolledClass.studyDays)} - ${formatStudyTime(enrolledClass.studyTime)})`
+                    conflictMessage: `Trùng lịch với lớp "${enrolledClass.name}" tại ${enrolledClass.centerName} (${formatStudyDays(enrolledClass.studyDays)} - ${formatStudyTime(enrolledClass.studyTime)})`,
                 };
             }
         }
@@ -270,20 +272,22 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
 
     // Use local state for immediate UI updates
     const assignedInstructors = localAssignedInstructors;
-    const filteredInstructors = instructors.filter(i => {
+    const filteredInstructors = instructors.filter((i) => {
         // Check if instructor is already assigned to this class
-        const isAssignedToClass = assignedInstructorsFromAPI.some(assigned => assigned.id === i.id);
-        return !isAssignedToClass &&
+        const isAssignedToClass = assignedInstructorsFromAPI.some((assigned) => assigned.id === i.id);
+        return (
+            !isAssignedToClass &&
             (searchTerm === '' ||
                 i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                i.email.toLowerCase().includes(searchTerm.toLowerCase()));
+                i.email.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
     });
 
     // Sort instructors: assignable first, conflicting last
     const sortedInstructors = [...filteredInstructors].sort((a, b) => {
         const aConflict = checkInstructorScheduleConflict(a.id).hasConflict;
         const bConflict = checkInstructorScheduleConflict(b.id).hasConflict;
-        
+
         // Non-conflicting instructors come first
         if (aConflict && !bConflict) return 1;
         if (!aConflict && bConflict) return -1;
@@ -301,7 +305,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
         if (assignedInstructors.length >= MAX_ACTIVE_LECTURERS) {
             showErrorToast(
                 'Đã đạt giới hạn giảng viên',
-                `Lớp học chỉ được phân công tối đa ${MAX_ACTIVE_LECTURERS} giảng viên active.`
+                `Lớp học chỉ được phân công tối đa ${MAX_ACTIVE_LECTURERS} giảng viên active.`,
             );
             return;
         }
@@ -338,47 +342,47 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                     centerName: c.centerName,
                     name: c.name,
                     studyDays: c.studyDays,
-                    studyTime: c.studyTime
+                    studyTime: c.studyTime,
                 }));
-            
-            setLecturerEnrolledClasses(prev => ({
+
+            setLecturerEnrolledClasses((prev) => ({
                 ...prev,
-                [lecturerId]: classes
+                [lecturerId]: classes,
             }));
         } catch (error) {
             console.error('Error fetching lecturer classes:', error);
-            setLecturerEnrolledClasses(prev => ({
+            setLecturerEnrolledClasses((prev) => ({
                 ...prev,
-                [lecturerId]: []
+                [lecturerId]: [],
             }));
         }
     };
 
     const handleSelectInstructor = async (instructorId: string) => {
         const isSelected = selectedInstructors.includes(instructorId);
-        
+
         // If deselecting, just remove it
         if (isSelected) {
-            setSelectedInstructors(prev => prev.filter(id => id !== instructorId));
+            setSelectedInstructors((prev) => prev.filter((id) => id !== instructorId));
             return;
         }
-        
+
         // Check for schedule conflict before allowing selection
         const conflictCheck = checkInstructorScheduleConflict(instructorId);
         if (conflictCheck.hasConflict) {
             showErrorToast(
                 'Không thể phân công giảng viên',
-                conflictCheck.conflictMessage || 'Giảng viên có lịch trùng với lớp học này.'
+                conflictCheck.conflictMessage || 'Giảng viên có lịch trùng với lớp học này.',
             );
             return;
         }
-        
+
         // If selecting, check if we still have available slots
         const remainingSlots = MAX_ACTIVE_LECTURERS - assignedInstructors.length;
         if (selectedInstructors.length >= remainingSlots) {
             showErrorToast(
                 'Không thể chọn thêm',
-                `Lớp học chỉ còn ${remainingSlots} slot trống. Bạn đã chọn đủ số lượng giảng viên.`
+                `Lớp học chỉ còn ${remainingSlots} slot trống. Bạn đã chọn đủ số lượng giảng viên.`,
             );
             return;
         }
@@ -393,12 +397,12 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
         if (conflict.hasConflict) {
             showErrorToast(
                 'Xung đột lịch dạy',
-                conflict.conflictMessage || 'Giảng viên đã có lịch dạy trùng với lớp này.'
+                conflict.conflictMessage || 'Giảng viên đã có lịch dạy trùng với lớp này.',
             );
             return;
         }
-        
-        setSelectedInstructors(prev => [...prev, instructorId]);
+
+        setSelectedInstructors((prev) => [...prev, instructorId]);
     };
 
     const handleConfirmAssign = async () => {
@@ -408,35 +412,32 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
 
         try {
             // Prepare batch assignment data
-            const batchItems = selectedInstructors.map(instructorId => {
-                const instructor = instructors.find(inst => inst.id === instructorId);
+            const batchItems = selectedInstructors.map((instructorId) => {
+                const instructor = instructors.find((inst) => inst.id === instructorId);
                 const details = instructorDetails[instructorId] || { startDate: '', note: '' };
                 return {
                     lecturerId: parseInt(instructorId),
                     startDate: details.startDate || new Date().toISOString().split('T')[0],
-                    note: details.note || null
+                    note: details.note || null,
                 };
             });
 
             // Call batch assignment API
             const response = await http.post(`/api/classes/${classItem.id}/lecturers/batch`, {
-                items: batchItems
+                items: batchItems,
             });
 
             if (response.status === 201) {
                 const { created, skipped } = response.data;
 
                 if (created > 0) {
-                    showSuccessToast(
-                        'Phân công thành công',
-                        `Đã phân công ${created} giảng viên cho lớp học.`
-                    );
+                    showSuccessToast('Phân công thành công', `Đã phân công ${created} giảng viên cho lớp học.`);
                 }
 
                 if (skipped && skipped.length > 0) {
                     showErrorToast(
                         'Một số giảng viên đã được phân công',
-                        `Giảng viên có ID ${skipped.join(', ')} đã được phân công trước đó.`
+                        `Giảng viên có ID ${skipped.join(', ')} đã được phân công trước đó.`,
                     );
                 }
 
@@ -445,7 +446,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                 const apiData: APIClassInstructor[] = refreshResponse.data.items;
 
                 // Map API data to component format
-                const mappedInstructors: ClassInstructor[] = apiData.map(item => ({
+                const mappedInstructors: ClassInstructor[] = apiData.map((item) => ({
                     id: item.assignmentId.toString(),
                     name: item.lecturer.fullName,
                     email: item.lecturer.email,
@@ -454,7 +455,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                     assigned: item.active,
                     avatar: item.lecturer.avatarUrl || undefined,
                     startDate: item.startDate,
-                    note: item.note || undefined
+                    note: item.note || undefined,
                 }));
 
                 setAssignedInstructorsFromAPI(mappedInstructors);
@@ -480,35 +481,28 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
             if (error.response?.status === 409) {
                 const errorCode = error.response.data?.code;
                 if (errorCode === 'CLASS_MAX_ACTIVE_LECTURERS_EXCEEDED') {
-                    showErrorToast(
-                        'Không thể phân công thêm',
-                        'Lớp học đã đạt số lượng giảng viên tối đa cho phép.'
-                    );
+                    showErrorToast('Không thể phân công thêm', 'Lớp học đã đạt số lượng giảng viên tối đa cho phép.');
                 } else if (errorCode === 'LECTURER_ALREADY_ASSIGNED') {
                     showErrorToast(
                         'Giảng viên đã được phân công',
-                        'Một hoặc nhiều giảng viên đã được phân công cho lớp học này.'
+                        'Một hoặc nhiều giảng viên đã được phân công cho lớp học này.',
                     );
                 } else {
                     showErrorToast(
                         'Lỗi phân công giảng viên',
-                        'Có lỗi xảy ra khi phân công giảng viên. Vui lòng thử lại.'
+                        'Có lỗi xảy ra khi phân công giảng viên. Vui lòng thử lại.',
                     );
                 }
             } else {
-                showErrorToast(
-                    'Lỗi phân công giảng viên',
-                    'Có lỗi xảy ra khi phân công giảng viên. Vui lòng thử lại.'
-                );
+                showErrorToast('Lỗi phân công giảng viên', 'Có lỗi xảy ra khi phân công giảng viên. Vui lòng thử lại.');
             }
         } finally {
             setIsAssigning(false);
         }
     };
 
-
     const handleRemoveInstructor = (instructorId: string) => {
-        const instructor = assignedInstructorsFromAPI.find(inst => inst.id === instructorId);
+        const instructor = assignedInstructorsFromAPI.find((inst) => inst.id === instructorId);
         if (instructor) {
             setRemoveConfirm(instructor);
         }
@@ -525,12 +519,12 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
 
             showSuccessToast(
                 'Hủy phân công thành công',
-                `Đã hủy phân công giảng viên "${removeConfirm.name}" khỏi lớp học.`
+                `Đã hủy phân công giảng viên "${removeConfirm.name}" khỏi lớp học.`,
             );
 
             // Remove from local state immediately for UI update
             const updatedAssignedInstructors = assignedInstructorsFromAPI.filter(
-                instructor => instructor.id !== removeConfirm.id
+                (instructor) => instructor.id !== removeConfirm.id,
             );
 
             setLocalAssignedInstructors(updatedAssignedInstructors);
@@ -545,32 +539,28 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
             }
 
             // Clear from instructorDetails if exists
-            setInstructorDetails(prev => {
+            setInstructorDetails((prev) => {
                 const newDetails = { ...prev };
                 delete newDetails[removeConfirm.id];
                 return newDetails;
             });
 
             setRemoveConfirm(null);
-
         } catch (error: any) {
             console.error('Error removing instructor:', error);
 
             if (error.response?.status === 404) {
                 showErrorToast(
                     'Không tìm thấy phân công',
-                    'Phân công giảng viên không tồn tại hoặc đã được hủy trước đó.'
+                    'Phân công giảng viên không tồn tại hoặc đã được hủy trước đó.',
                 );
             } else if (error.response?.status === 409) {
                 showErrorToast(
                     'Không thể hủy phân công',
-                    'Phân công đã được hủy trước đó hoặc không thể hủy do ràng buộc hệ thống.'
+                    'Phân công đã được hủy trước đó hoặc không thể hủy do ràng buộc hệ thống.',
                 );
             } else {
-                showErrorToast(
-                    'Lỗi hủy phân công',
-                    'Có lỗi xảy ra khi hủy phân công giảng viên. Vui lòng thử lại.'
-                );
+                showErrorToast('Lỗi hủy phân công', 'Có lỗi xảy ra khi hủy phân công giảng viên. Vui lòng thử lại.');
             }
 
             setRemoveConfirm(null);
@@ -608,7 +598,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                             <X size={20} />
                         </button>
                     </div>
-                    
+
                     {/* Class Information */}
                     <div className="bg-blue-50 rounded-lg px-4 py-3">
                         <div className="grid grid-cols-4 gap-4 text-sm">
@@ -623,14 +613,18 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                 <Calendar size={16} className="text-blue-600" />
                                 <div>
                                     <div className="text-gray-500 text-xs">Ngày học</div>
-                                    <div className="font-medium text-gray-900">{formatStudyDays(classItem.studyDays)}</div>
+                                    <div className="font-medium text-gray-900">
+                                        {formatStudyDays(classItem.studyDays)}
+                                    </div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Clock size={16} className="text-blue-600" />
                                 <div>
                                     <div className="text-gray-500 text-xs">Ca học</div>
-                                    <div className="font-medium text-gray-900">{formatStudyTime(classItem.studyTime) || 'Chưa có'}</div>
+                                    <div className="font-medium text-gray-900">
+                                        {formatStudyTime(classItem.studyTime) || 'Chưa có'}
+                                    </div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -649,9 +643,7 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                     <div className="text-sm text-gray-600">
                         Giảng viên: {assignedInstructors.length}/{MAX_ACTIVE_LECTURERS} người
                         {assignedInstructors.length >= MAX_ACTIVE_LECTURERS && (
-                            <span className="ml-2 text-amber-600 font-medium">
-                                (Đã đạt giới hạn tối đa)
-                            </span>
+                            <span className="ml-2 text-amber-600 font-medium">(Đã đạt giới hạn tối đa)</span>
                         )}
                     </div>
                     <button
@@ -684,7 +676,10 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
 
                     <div className="divide-y">
                         {assignedInstructors.map((instructor) => (
-                            <div key={instructor.id} className="px-6 py-4 grid grid-cols-12 gap-6 items-center hover:bg-gray-50">
+                            <div
+                                key={instructor.id}
+                                className="px-6 py-4 grid grid-cols-12 gap-6 items-center hover:bg-gray-50"
+                            >
                                 {/* Instructor Info */}
                                 <div className="col-span-4 flex items-center gap-3">
                                     <div className="h-10 w-10 rounded-full bg-purple-100 text-purple-700 grid place-items-center text-sm font-medium">
@@ -776,7 +771,8 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                         Có {availableInstructors.length} giảng viên có thể phân công
                                     </span>
                                     <span className="ml-3 text-purple-600 font-medium">
-                                        • Còn lại {MAX_ACTIVE_LECTURERS - assignedInstructors.length}/{MAX_ACTIVE_LECTURERS} slot
+                                        • Còn lại {MAX_ACTIVE_LECTURERS - assignedInstructors.length}/
+                                        {MAX_ACTIVE_LECTURERS} slot
                                     </span>
                                 </div>
                             </div>
@@ -791,8 +787,18 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                     className="w-full px-4 py-2 pl-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                 />
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    <svg
+                                        className="h-4 w-4 text-gray-400"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                        />
                                     </svg>
                                 </div>
                                 {searchTerm && (
@@ -810,13 +816,47 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                             {availableInstructors.length === 0 ? (
                                 <div className="px-6 py-8 text-center">
                                     <div className="text-gray-400 mb-2">
-                                        <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        <svg
+                                            className="mx-auto h-12 w-12"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                            />
                                         </svg>
                                     </div>
-                                    <p className="text-sm text-gray-500">
-                                        {searchTerm ? 'Không tìm thấy giảng viên phù hợp' : 'Không có giảng viên khả dụng'}
+                                    <p className="text-sm font-medium text-gray-900 mb-1">
+                                        {searchTerm
+                                            ? 'Không tìm thấy giảng viên phù hợp'
+                                            : 'Không có giảng viên khả dụng'}
                                     </p>
+                                    {!searchTerm && (
+                                        <div className="mt-3 max-w-md mx-auto">
+                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-left">
+                                                <p className="font-medium text-blue-900 mb-1">💡 Lưu ý:</p>
+                                                <ul className="text-blue-700 space-y-1 text-xs">
+                                                    <li>
+                                                        • Chỉ hiển thị giảng viên thuộc trung tâm{' '}
+                                                        <strong>{classItem.centerName}</strong>
+                                                    </li>
+                                                    <li>
+                                                        • Giảng viên phải có vai trò <strong>LECTURER</strong> được gán
+                                                        cho trung tâm này
+                                                    </li>
+                                                    <li>• Nếu vừa gán vai trò, hãy thử đóng và mở lại modal này</li>
+                                                </ul>
+                                                <p className="mt-2 text-blue-600 font-medium">
+                                                    → Vui lòng kiểm tra phần <strong>Quản lý người dùng</strong> để gán
+                                                    vai trò LECTURER cho giảng viên tại trung tâm này.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                     {searchTerm && (
                                         <button
                                             onClick={() => handleSearchChange('')}
@@ -831,43 +871,46 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                     {availableInstructors.map((instructor) => {
                                         const conflictCheck = checkInstructorScheduleConflict(instructor.id);
                                         const hasConflict = conflictCheck.hasConflict;
-                                        
+
                                         return (
                                             <div key={instructor.id} className={hasConflict ? 'bg-gray-50' : ''}>
                                                 <div className="px-6 py-4 flex items-center gap-6">
                                                     {/* Checkbox */}
                                                     <div className="flex items-center">
                                                         <button
-                                                            onClick={() => !hasConflict && handleSelectInstructor(instructor.id)}
+                                                            onClick={() =>
+                                                                !hasConflict && handleSelectInstructor(instructor.id)
+                                                            }
                                                             disabled={hasConflict}
                                                             className={`h-6 w-6 rounded border-2 flex items-center justify-center transition-colors ${
                                                                 hasConflict
                                                                     ? 'bg-gray-200 border-gray-300 cursor-not-allowed'
                                                                     : selectedInstructors.includes(instructor.id)
-                                                                        ? 'bg-blue-500 border-blue-500 text-white'
-                                                                        : 'border-gray-300 hover:border-blue-400'
+                                                                      ? 'bg-blue-500 border-blue-500 text-white'
+                                                                      : 'border-gray-300 hover:border-blue-400'
                                                             }`}
                                                         >
-                                                            {selectedInstructors.includes(instructor.id) && !hasConflict && (
-                                                                <Check size={14} />
-                                                            )}
-                                                            {hasConflict && (
-                                                                <X size={14} className="text-gray-500" />
-                                                            )}
+                                                            {selectedInstructors.includes(instructor.id) &&
+                                                                !hasConflict && <Check size={14} />}
+                                                            {hasConflict && <X size={14} className="text-gray-500" />}
                                                         </button>
                                                     </div>
 
                                                     {/* Instructor Info */}
                                                     <div className="flex items-center gap-4 flex-1">
-                                                        <div className={`h-10 w-10 rounded-full grid place-items-center text-sm font-medium ${
-                                                            hasConflict 
-                                                                ? 'bg-gray-200 text-gray-500'
-                                                                : 'bg-purple-100 text-purple-700'
-                                                        }`}>
+                                                        <div
+                                                            className={`h-10 w-10 rounded-full grid place-items-center text-sm font-medium ${
+                                                                hasConflict
+                                                                    ? 'bg-gray-200 text-gray-500'
+                                                                    : 'bg-purple-100 text-purple-700'
+                                                            }`}
+                                                        >
                                                             {instructor.initial}
                                                         </div>
                                                         <div className="flex-1">
-                                                            <div className={`text-sm font-medium ${hasConflict ? 'text-gray-500' : 'text-gray-900'}`}>
+                                                            <div
+                                                                className={`text-sm font-medium ${hasConflict ? 'text-gray-500' : 'text-gray-900'}`}
+                                                            >
                                                                 {instructor.name}
                                                                 {hasConflict && (
                                                                     <span className="ml-2 text-xs font-normal text-red-600">
@@ -875,118 +918,178 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <div className="text-xs text-gray-500">{instructor.email}</div>
-                                                            
+                                                            <div className="text-xs text-gray-500">
+                                                                {instructor.email}
+                                                            </div>
+
                                                             {/* Show conflict message */}
                                                             {hasConflict && conflictCheck.conflictMessage && (
                                                                 <div className="mt-1 flex items-start gap-1.5 text-xs text-red-600">
-                                                                    <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
+                                                                    <AlertCircle
+                                                                        size={12}
+                                                                        className="mt-0.5 flex-shrink-0"
+                                                                    />
                                                                     <span>{conflictCheck.conflictMessage}</span>
                                                                 </div>
                                                             )}
-                                                        
-                                                        {/* Show lecturer's current classes */}
-                                                        {lecturerEnrolledClasses[instructor.id] && lecturerEnrolledClasses[instructor.id].length > 0 && (
-                                                            <div className="mt-2 space-y-1.5">
-                                                                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-700">
-                                                                    <GraduationCap size={12} className="flex-shrink-0" />
-                                                                    <span>Đang dạy {lecturerEnrolledClasses[instructor.id].length} lớp khác</span>
-                                                                </div>
-                                                                {lecturerEnrolledClasses[instructor.id].map((enrolledClass, idx) => {
-                                                                    // Check if this class conflicts with the current class
-                                                                    const hasOverlappingDay = classItem.studyDays?.some(day => 
-                                                                        enrolledClass.studyDays?.includes(day)
-                                                                    );
-                                                                    const hasTimeConflict = classItem.studyTime && enrolledClass.studyTime 
-                                                                        ? doTimeRangesOverlap(classItem.studyTime, enrolledClass.studyTime)
-                                                                        : false;
-                                                                    const isConflicting = hasOverlappingDay && hasTimeConflict;
-                                                                    
-                                                                    return (
-                                                                        <div 
-                                                                            key={idx} 
-                                                                            className={`text-xs border rounded px-2 py-1.5 ${
-                                                                                isConflicting 
-                                                                                    ? 'bg-red-50 border-red-300' 
-                                                                                    : 'bg-white border-gray-300'
-                                                                            }`}
-                                                                        >
-                                                                            <div className="flex items-start gap-1.5">
-                                                                                <MapPin size={11} className={`mt-0.5 flex-shrink-0 ${
-                                                                                    isConflicting ? 'text-red-600' : 'text-gray-600'
-                                                                                }`} />
-                                                                                <div className="flex-1 min-w-0">
-                                                                                    <div className="font-medium text-gray-900 truncate">{enrolledClass.name}</div>
-                                                                                    <div className="text-gray-600 mt-0.5">{enrolledClass.centerName}</div>
-                                                                                    <div className="flex items-center gap-2 mt-1 text-gray-500">
-                                                                                        <span className="flex items-center gap-1">
-                                                                                            <Calendar size={10} />
-                                                                                            {formatStudyDays(enrolledClass.studyDays)}
-                                                                                        </span>
-                                                                                        <span>•</span>
-                                                                                        <span className="flex items-center gap-1">
-                                                                                            <Clock size={10} />
-                                                                                            {formatStudyTime(enrolledClass.studyTime)}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                    {isConflicting && (
-                                                                                        <div className="mt-1 flex items-center gap-1 text-red-600 font-medium">
-                                                                                            <AlertCircle size={10} />
-                                                                                            <span>Trùng lịch học</span>
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
+
+                                                            {/* Show lecturer's current classes */}
+                                                            {lecturerEnrolledClasses[instructor.id] &&
+                                                                lecturerEnrolledClasses[instructor.id].length > 0 && (
+                                                                    <div className="mt-2 space-y-1.5">
+                                                                        <div className="flex items-center gap-1.5 text-xs font-medium text-gray-700">
+                                                                            <GraduationCap
+                                                                                size={12}
+                                                                                className="flex-shrink-0"
+                                                                            />
+                                                                            <span>
+                                                                                Đang dạy{' '}
+                                                                                {
+                                                                                    lecturerEnrolledClasses[
+                                                                                        instructor.id
+                                                                                    ].length
+                                                                                }{' '}
+                                                                                lớp khác
+                                                                            </span>
                                                                         </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
+                                                                        {lecturerEnrolledClasses[instructor.id].map(
+                                                                            (enrolledClass, idx) => {
+                                                                                // Check if this class conflicts with the current class
+                                                                                const hasOverlappingDay =
+                                                                                    classItem.studyDays?.some((day) =>
+                                                                                        enrolledClass.studyDays?.includes(
+                                                                                            day,
+                                                                                        ),
+                                                                                    );
+                                                                                const hasTimeConflict =
+                                                                                    classItem.studyTime &&
+                                                                                    enrolledClass.studyTime
+                                                                                        ? doTimeRangesOverlap(
+                                                                                              classItem.studyTime,
+                                                                                              enrolledClass.studyTime,
+                                                                                          )
+                                                                                        : false;
+                                                                                const isConflicting =
+                                                                                    hasOverlappingDay &&
+                                                                                    hasTimeConflict;
+
+                                                                                return (
+                                                                                    <div
+                                                                                        key={idx}
+                                                                                        className={`text-xs border rounded px-2 py-1.5 ${
+                                                                                            isConflicting
+                                                                                                ? 'bg-red-50 border-red-300'
+                                                                                                : 'bg-white border-gray-300'
+                                                                                        }`}
+                                                                                    >
+                                                                                        <div className="flex items-start gap-1.5">
+                                                                                            <MapPin
+                                                                                                size={11}
+                                                                                                className={`mt-0.5 flex-shrink-0 ${
+                                                                                                    isConflicting
+                                                                                                        ? 'text-red-600'
+                                                                                                        : 'text-gray-600'
+                                                                                                }`}
+                                                                                            />
+                                                                                            <div className="flex-1 min-w-0">
+                                                                                                <div className="font-medium text-gray-900 truncate">
+                                                                                                    {enrolledClass.name}
+                                                                                                </div>
+                                                                                                <div className="text-gray-600 mt-0.5">
+                                                                                                    {
+                                                                                                        enrolledClass.centerName
+                                                                                                    }
+                                                                                                </div>
+                                                                                                <div className="flex items-center gap-2 mt-1 text-gray-500">
+                                                                                                    <span className="flex items-center gap-1">
+                                                                                                        <Calendar
+                                                                                                            size={10}
+                                                                                                        />
+                                                                                                        {formatStudyDays(
+                                                                                                            enrolledClass.studyDays,
+                                                                                                        )}
+                                                                                                    </span>
+                                                                                                    <span>•</span>
+                                                                                                    <span className="flex items-center gap-1">
+                                                                                                        <Clock
+                                                                                                            size={10}
+                                                                                                        />
+                                                                                                        {formatStudyTime(
+                                                                                                            enrolledClass.studyTime,
+                                                                                                        )}
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                                {isConflicting && (
+                                                                                                    <div className="mt-1 flex items-center gap-1 text-red-600 font-medium">
+                                                                                                        <AlertCircle
+                                                                                                            size={10}
+                                                                                                        />
+                                                                                                        <span>
+                                                                                                            Trùng lịch
+                                                                                                            học
+                                                                                                        </span>
+                                                                                                    </div>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                );
+                                                                            },
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 {/* Form for selected instructor */}
                                                 {selectedInstructors.includes(instructor.id) && (
-                                                <div className="px-6 py-4 bg-gray-50 border-l-4 border-blue-500">
-                                                    <div className="grid grid-cols-3 gap-6">
-                                                        <div>
-                                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                                Ngày bắt đầu
-                                                            </label>
-                                                            <input
-                                                                type="date"
-                                                                value={instructorDetails[instructor.id]?.startDate || ''}
-                                                                onChange={(e) => setInstructorDetails(prev => ({
-                                                                    ...prev,
-                                                                    [instructor.id]: {
-                                                                        ...prev[instructor.id],
-                                                                        startDate: e.target.value
+                                                    <div className="px-6 py-4 bg-gray-50 border-l-4 border-blue-500">
+                                                        <div className="grid grid-cols-3 gap-6">
+                                                            <div>
+                                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Ngày bắt đầu
+                                                                </label>
+                                                                <input
+                                                                    type="date"
+                                                                    value={
+                                                                        instructorDetails[instructor.id]?.startDate ||
+                                                                        ''
                                                                     }
-                                                                }))}
-                                                                className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                            />
-                                                        </div>
-                                                        <div className="col-span-2">
-                                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                                Ghi chú
-                                                            </label>
-                                                            <input
-                                                                type="text"
-                                                                value={instructorDetails[instructor.id]?.note || ''}
-                                                                onChange={(e) => setInstructorDetails(prev => ({
-                                                                    ...prev,
-                                                                    [instructor.id]: {
-                                                                        ...prev[instructor.id],
-                                                                        note: e.target.value
+                                                                    onChange={(e) =>
+                                                                        setInstructorDetails((prev) => ({
+                                                                            ...prev,
+                                                                            [instructor.id]: {
+                                                                                ...prev[instructor.id],
+                                                                                startDate: e.target.value,
+                                                                            },
+                                                                        }))
                                                                     }
-                                                                }))}
-                                                                className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                                placeholder="Nhập ghi chú cho giảng viên..."
-                                                            />
+                                                                    className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                                />
+                                                            </div>
+                                                            <div className="col-span-2">
+                                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Ghi chú
+                                                                </label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={instructorDetails[instructor.id]?.note || ''}
+                                                                    onChange={(e) =>
+                                                                        setInstructorDetails((prev) => ({
+                                                                            ...prev,
+                                                                            [instructor.id]: {
+                                                                                ...prev[instructor.id],
+                                                                                note: e.target.value,
+                                                                            },
+                                                                        }))
+                                                                    }
+                                                                    className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                                    placeholder="Nhập ghi chú cho giảng viên..."
+                                                                />
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
                                                 )}
                                             </div>
                                         );
@@ -1000,7 +1103,8 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                             <div className="px-4 py-3 border-t bg-gray-50">
                                 <div className="flex items-center justify-between">
                                     <div className="text-sm text-gray-600">
-                                        Hiển thị {startIndex + 1} - {Math.min(endIndex, filteredInstructors.length)} trong số {filteredInstructors.length} giảng viên
+                                        Hiển thị {startIndex + 1} - {Math.min(endIndex, filteredInstructors.length)}{' '}
+                                        trong số {filteredInstructors.length} giảng viên
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button
@@ -1011,14 +1115,15 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                                             Previous
                                         </button>
 
-                                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                                             <button
                                                 key={page}
                                                 onClick={() => handlePageChange(page)}
-                                                className={`px-3 py-1 text-sm border rounded ${currentPage === page
-                                                    ? 'bg-purple-600 text-white border-purple-600'
-                                                    : 'border-gray-300 hover:bg-gray-100'
-                                                    }`}
+                                                className={`px-3 py-1 text-sm border rounded ${
+                                                    currentPage === page
+                                                        ? 'bg-purple-600 text-white border-purple-600'
+                                                        : 'border-gray-300 hover:bg-gray-100'
+                                                }`}
                                             >
                                                 {page}
                                             </button>
@@ -1047,21 +1152,32 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                             <button
                                 onClick={handleConfirmAssign}
                                 disabled={
-                                    selectedInstructors.length === 0 || 
+                                    selectedInstructors.length === 0 ||
                                     isAssigning ||
-                                    selectedInstructors.length > (MAX_ACTIVE_LECTURERS - assignedInstructors.length)
+                                    selectedInstructors.length > MAX_ACTIVE_LECTURERS - assignedInstructors.length
                                 }
                                 className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
                                 title={
-                                    selectedInstructors.length > (MAX_ACTIVE_LECTURERS - assignedInstructors.length)
+                                    selectedInstructors.length > MAX_ACTIVE_LECTURERS - assignedInstructors.length
                                         ? `Chỉ còn ${MAX_ACTIVE_LECTURERS - assignedInstructors.length} slot trống`
                                         : ''
                                 }
                             >
                                 {isAssigning && (
                                     <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            strokeWidth="4"
+                                        ></circle>
+                                        <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                        ></path>
                                     </svg>
                                 )}
                                 Phân công {selectedInstructors.length} giảng viên
@@ -1071,16 +1187,19 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                 </div>
             )}
 
-
             {/* Remove Confirmation Dialog */}
             <ConfirmDialog
                 open={!!removeConfirm}
                 onClose={() => setRemoveConfirm(null)}
                 onConfirm={confirmRemoveInstructor}
-                title="Xác nhận hủy phân công"
-                description={`Bạn có chắc chắn hủy phân công giảng viên này? Thao tác không thể hoàn tác. Hủy vào ngày hiện tại.`}
-                confirmText="Hủy phân công"
-                cancelText="Đóng"
+                title="Xác nhận hủy gán giảng viên"
+                description={
+                    removeConfirm
+                        ? `Bạn có chắc chắn muốn hủy gán giảng viên "${removeConfirm.name}" khỏi lớp học này không?\n\n⚠️ CẢNH BÁO: Thao tác này không thể hoàn tác!`
+                        : ''
+                }
+                confirmText="Xác nhận hủy gán"
+                cancelText="Hủy bỏ"
                 variant="danger"
             />
         </>

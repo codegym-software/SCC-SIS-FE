@@ -26,7 +26,7 @@ const ProgramActions: React.FC<ProgramActionsProps> = ({ onView, onEdit, onDelet
                     {onView && (
                         <DropdownMenuItem onClick={onView}>
                             <Eye size={14} />
-                            <span>Xem chi tiết</span>
+                            <span>Đề cương</span>
                         </DropdownMenuItem>
                     )}
                     {onManageModules && (

@@ -1,4 +1,4 @@
-import { BookOpen, Calendar, Clock, Search } from 'lucide-react';
+import { Clock, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ProgramActions from './components/actions';
 import type { Program as ProgramDto } from '../../../../shared/api/programs';
@@ -143,7 +143,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
             </div>
 
             {/* Header columns */}
-            <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-8 gap-3">
+            <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-8 gap-3 items-center">
                 <div className="col-span-4">Chương trình</div>
                 <div className="col-span-2">Tổng thời lượng</div>
                 <div className="col-span-1">Trạng thái</div>
@@ -174,11 +174,9 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
                                 </div>
                             </div>
                         </div>
-                        <div className="col-span-12 md:col-span-2">
-                            <div className="flex items-center gap-1 text-sm">
-                                <Clock size={14} className="text-gray-500" />
-                                {program.durationHours} giờ
-                            </div>
+                        <div className="col-span-12 md:col-span-2 flex items-center gap-1 text-sm pl-7">
+                            <Clock size={14} className="text-gray-500" />
+                            <span>{program.durationHours} giờ</span>
                         </div>
                         <div className="col-span-6 md:col-span-1">
                             <span

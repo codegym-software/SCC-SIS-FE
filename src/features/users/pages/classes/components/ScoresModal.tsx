@@ -61,15 +61,15 @@ const ScoresModal: React.FC<ScoresModalProps> = ({ classItem, onClose }) => {
         const fetchStudents = async () => {
             try {
                 setIsLoading(true);
-                const response = await http.get(`/api/classes/${classItem.id}/enrollments`);
-                const enrollments = response.data.items || response.data;
+                const response = await http.get(`/api/classes/${classItem.id}/students`);
+                const enrollments = response.data.content || response.data.items || response.data;
                 
                 const studentsData: Student[] = enrollments.map((enrollment: any) => ({
-                    id: enrollment.student.id,
-                    fullName: enrollment.student.fullName,
-                    studentCode: enrollment.student.studentCode,
-                    email: enrollment.student.email,
-                    phone: enrollment.student.phone
+                    id: enrollment.studentId,
+                    fullName: enrollment.studentName,
+                    studentCode: enrollment.studentCode || '',
+                    email: enrollment.studentEmail,
+                    phone: enrollment.phone || ''
                 }));
 
                 setStudents(studentsData);

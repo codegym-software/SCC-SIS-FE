@@ -4,7 +4,7 @@ import { enrollStudent, listClasses, getClassStudents } from '@/shared/api/class
 import { listStudents } from '@/shared/api/students';
 import { useToast } from '@/shared/hooks/useToast';
 import type { StudentDto } from '@/shared/types/student';
-import type { ClassResponse } from '@/shared/types/classes';
+import type { ClassDto } from '@/shared/api/classes';
 
 type StudentEnrolledClass = {
     className: string;
@@ -54,7 +54,6 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 }) => {
     const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [query, setQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [allStudents, setAllStudents] = useState<Student[]>([]);
@@ -77,7 +76,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
             
             // Load all classes to get enrollments
             const classesResponse = await listClasses();
-            const allClasses: ClassResponse[] = classesResponse.data;
+            const allClasses: ClassDto[] = classesResponse.data;
             
             // Map to store each student's enrolled classes
             const studentClassesMap = new Map<number, StudentEnrolledClass[]>();
@@ -111,15 +110,20 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
             }
             
             // Format students with enrolled classes
-            const formattedStudents: Student[] = students.map(student => ({
-                studentId: student.studentId,
-                fullName: student.fullName,
-                email: student.email,
-                phone: student.phone,
-                initial: student.fullName.charAt(0).toUpperCase(),
-                overallStatus: student.overallStatus,
-                enrolledClasses: studentClassesMap.get(student.studentId) || []
-            }));
+            // Hiển thị học viên PENDING và ACTIVE để có thể đăng ký thêm lớp (nếu không trùng lịch)
+            // Loại bỏ học viên DROPPED (nghỉ học) - họ không thể đăng ký lớp mới
+            // Cho phép học viên GRADUATED (tốt nghiệp) đăng ký lại nếu muốn
+            const formattedStudents: Student[] = students
+                .filter(student => student.overallStatus !== 'DROPPED') // Loại bỏ học viên đã nghỉ học
+                .map(student => ({
+                    studentId: student.studentId,
+                    fullName: student.fullName,
+                    email: student.email,
+                    phone: student.phone,
+                    initial: student.fullName.charAt(0).toUpperCase(),
+                    overallStatus: student.overallStatus,
+                    enrolledClasses: studentClassesMap.get(student.studentId) || []
+                }));
             
             setAllStudents(formattedStudents);
         } catch (error: any) {
@@ -181,7 +185,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         return { hasConflict: false };
     };
 
-    // Filter students based on search and status
+    // Filter students based on search
     const filteredStudents = allStudents
         .filter(student => {
             const matchesQuery = 
@@ -189,9 +193,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                 student.email.toLowerCase().includes(query.toLowerCase()) ||
                 student.studentId.toString().includes(query.toLowerCase());
             
-            const matchesStatus = statusFilter === 'Tất cả trạng thái' || student.overallStatus === statusFilter;
-            
-            return matchesQuery && matchesStatus;
+            return matchesQuery;
         })
         .sort((a, b) => {
             // Sort students: those without conflicts first, then those with conflicts
@@ -211,10 +213,21 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     };
 
     const handleSelectAll = () => {
-        if (selectedStudents.length === (candidates ?? []).length) {
+        // Filter out students WITH conflicts (keep only valid ones)
+        const validStudents = filteredStudents.filter(student => {
+            const conflict = checkScheduleConflict(student);
+            return !conflict.hasConflict;
+        });
+
+        // If all valid students are selected, deselect all
+        // Otherwise, select all valid students
+        const validStudentIds = validStudents.map(s => s.studentId);
+        const allValidSelected = validStudentIds.every(id => selectedStudents.includes(id));
+
+        if (allValidSelected && selectedStudents.length > 0) {
             setSelectedStudents([]);
         } else {
-            setSelectedStudents(filteredStudents.map(s => s.studentId));
+            setSelectedStudents(validStudentIds);
         }
     };
 
@@ -291,20 +304,36 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={handleSelectAll}
-                                    className="text-sm text-blue-600 hover:text-blue-700"
+                                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                                 >
-                                    {selectedStudents.length === (candidates ?? []).length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                                    {(() => {
+                                        const allValidSelected = filteredStudents
+                                            .filter(s => !checkScheduleConflict(s).hasConflict)
+                                            .every(s => selectedStudents.includes(s.studentId));
+                                        return allValidSelected && selectedStudents.length > 0 ? 'Bỏ chọn tất cả' : 'Chọn tất cả';
+                                    })()}
                                 </button>
                                 <span className="text-sm text-gray-500">
                                     ({selectedStudents.length} học viên đã chọn)
                                 </span>
                             </div>
-                            {loading && (
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                    <Loader2 size={14} className="animate-spin" />
-                                    Đang tải...
-                                </div>
-                            )}
+                            <div className="text-sm text-gray-500">
+                                {(() => {
+                                    const validCount = filteredStudents.filter(s => !checkScheduleConflict(s).hasConflict).length;
+                                    const conflictCount = filteredStudents.filter(s => checkScheduleConflict(s).hasConflict).length;
+                                    return (
+                                        <>
+                                            <span className="text-green-600 font-medium">{validCount} hợp lệ</span>
+                                            {conflictCount > 0 && (
+                                                <>
+                                                    <span className="mx-2">•</span>
+                                                    <span className="text-orange-600 font-medium">{conflictCount} trùng lịch</span>
+                                                </>
+                                            )}
+                                        </>
+                                    );
+                                })()}
+                            </div>
                         </div>
                     </div>
 
@@ -395,8 +424,8 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                                                     </div>
                                                     {student.overallStatus && (
                                                         <div className="text-right flex-shrink-0">
-                                                            <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
-                                                                {student.overallStatus}
+                                                            <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
+                                                                Đang chờ
                                                             </span>
                                                         </div>
                                                     )}
@@ -438,4 +467,3 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 };
 
 export default AddStudentModal;
-

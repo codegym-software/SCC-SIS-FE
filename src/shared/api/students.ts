@@ -1,6 +1,6 @@
 // src/shared/api/students.ts
 import api from './http';
-import type { StudentDto, CreateStudentDto, UpdateStudentDto } from '../types/student';
+import type { StudentDto, CreateStudentDto, UpdateStudentDto, StudentWithEnrollmentsDto } from '../types/student';
 
 /**
  * Tạo học viên mới
@@ -51,14 +51,41 @@ export const searchStudents = (keyword: string) =>
 
 /**
  * Export danh sách học viên ra file Excel (.xlsx)
- * GET /api/students/export
+ * GET /api/students/export?status={status}
+ * @param status (Optional) Filter by status: STUDYING, GRADUATED, SUSPENDED, ON_LEAVE
  * Returns: Blob (Excel file)
  */
-export const exportStudents = () => 
+export const exportStudents = (status?: string) => 
     api.get('/api/students/export', { 
+        responseType: 'blob',
+        headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+        params: status ? { status } : {}
+    });
+
+/**
+ * Download Excel template for student import
+ * GET /api/students/template
+ * Returns: Blob (Excel file with headers and example row)
+ */
+export const downloadStudentTemplate = async () => {
+    const response = await api.get('/api/students/template', { 
         responseType: 'blob',
         headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
     });
+    
+    // Create download link
+    const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'student_import_template.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+};
 
 /**
  * Import học viên từ file Excel (.xlsx)
@@ -72,3 +99,17 @@ export const importStudentsFromExcel = (file: File) => {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
 };
+
+/**
+ * Lấy thông tin chi tiết học viên với enrollments theo ID
+ * GET /api/students/{id}/enrollments
+ */
+export const getStudentWithEnrollmentsById = (studentId: number) => 
+    api.get<StudentWithEnrollmentsDto>(`/api/students/${studentId}/enrollments`);
+
+/**
+ * Lấy danh sách tất cả học viên với enrollments chi tiết
+ * GET /api/students/with-enrollments
+ */
+export const getAllStudentsWithEnrollments = () => 
+    api.get<StudentWithEnrollmentsDto[]>('/api/students/with-enrollments');
