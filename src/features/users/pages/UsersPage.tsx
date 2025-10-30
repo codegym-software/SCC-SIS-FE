@@ -86,8 +86,11 @@ export default function UsersPage() {
                 setRoles(rolesData)
                 setCenters(centersData)
             } catch (e: any) {
-                console.error('[DROPDOWN LOAD ERR]', e?.response?.status, e?.response?.data)
-                toast.error('Lỗi', 'Không tải được danh sách vai trò/trung tâm')
+                // Bỏ qua lỗi 403 - user không có quyền truy cập
+                if (e?.response?.status !== 403) {
+                    console.error('[DROPDOWN LOAD ERR]', e?.response?.status, e?.response?.data)
+                    toast.error('Lỗi', 'Không tải được danh sách vai trò/trung tâm')
+                }
             }
         })()
     }, [])

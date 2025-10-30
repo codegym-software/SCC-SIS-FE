@@ -1,60 +1,111 @@
 // src/shared/api/attendance.ts
-import api from './http';
+import http from './http';
 
-export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
-export type StudyTime = 'MORNING' | 'AFTERNOON' | 'EVENING';
+// ===== TYPES =====
+export type AttendanceStatus = 'PRESENT' | 'ABSENT'; // Backend chỉ hỗ trợ 2 trạng thái này
+export type SessionStatus = 'NOT_TAKEN' | 'TAKEN';
 
-export type LecturerScheduleDto = {
-    scheduleId: number;
+export interface AttendanceSchedule {
     classId: number;
     className: string;
-    programName: string;
-    room: string;
-    date: string; // yyyy-mm-dd
-    studyTime: StudyTime;
-    timeRange: string;
-    isAttended: boolean; // đã điểm danh chưa
-};
+    attendanceDate: string; // yyyy-mm-dd
+    sessionStatus: SessionStatus;
+}
 
-export type AttendanceRecordDto = {
+export interface AttendanceRecord {
+    enrollmentId?: number;
     studentId: number;
-    studentCode: string;
-    studentName: string;
-    email: string;
-    phone: string;
-    status: AttendanceStatus | null;
-    note: string | null;
-};
+    status: AttendanceStatus;
+    notes?: string;
+    recordId?: number;
+}
 
-export type SaveAttendanceRequest = {
-    scheduleId: number;
+export interface CreateAttendanceSessionRequest {
+    classId: number;
+    teacherId: number;
+    attendanceDate: string;
+    notes?: string;
+    records: AttendanceRecord[];
+}
+
+export interface UpdateAttendanceSessionRequest {
+    notes?: string;
     records: {
-        studentId: number;
+        recordId: number;
         status: AttendanceStatus;
-        note?: string;
+        notes?: string;
     }[];
-};
+}
+
+export interface AttendanceSessionSummary {
+    sessionId: number;
+    attendanceDate: string;
+    totalStudents: number;
+    presentCount: number;
+    absentCount: number;
+}
+
+export interface AttendanceSessionDetail {
+    sessionId: number;
+    classId: number;
+    className: string;
+    teacherId: number;
+    teacherName: string;
+    attendanceDate: string;
+    notes?: string;
+    records: Array<{
+        recordId: number;
+        enrollmentId: number;
+        studentId: number;
+        studentName: string;
+        studentCode: string;
+        status: AttendanceStatus;
+        notes?: string;
+    }>;
+}
+
+// ===== API CALLS =====
 
 /**
- * Lấy lịch giảng dạy của giảng viên trong tuần
- * GET /api/attendance/schedule?startDate=2025-01-13&endDate=2025-01-19
+ * 1. Lấy lịch dạy của giảng viên
+ * GET /api/attendance-schedules?teacher_id={teacherId}&from={from}&to={to}
  */
-export const getLecturerSchedule = (startDate: string, endDate: string) =>
-    api.get<LecturerScheduleDto[]>('/api/attendance/schedule', {
-        params: { startDate, endDate },
+export const getTeacherAttendanceSchedules = (teacherId: number, from: string, to: string) =>
+    http.get<AttendanceSchedule[]>('/api/attendance-schedules', {
+        params: { teacher_id: teacherId, from, to },
     });
 
 /**
- * Lấy danh sách học viên để điểm danh
- * GET /api/attendance/classes/{classId}/students?date=2025-01-15&studyTime=MORNING
+ * 2. Tạo buổi điểm danh
+ * POST /api/attendance-sessions
  */
-export const getAttendanceStudents = (classId: number, date: string, studyTime: StudyTime) =>
-    api.get<AttendanceRecordDto[]>(`/api/attendance/classes/${classId}/students`, {
-        params: { date, studyTime },
-    });
+export const createAttendanceSession = (data: CreateAttendanceSessionRequest) =>
+    http.post('/api/attendance-sessions', data);
 
 /**
- * Lưu điểm danh
- * POST /api/attendance
+ * 3. Lấy danh sách buổi điểm danh của lớp
+ * GET /api/classes/{classId}/attendance-sessions
  */
-export const saveAttendance = (payload: SaveAttendanceRequest) => api.post('/api/attendance', payload);
+export const getClassAttendanceSessions = (classId: number) =>
+    http.get<AttendanceSessionSummary[]>(`/api/classes/${classId}/attendance-sessions`);
+
+/**
+ * 4. Lấy chi tiết buổi điểm danh
+ * GET /api/attendance-sessions/{sessionId}
+ */
+export const getAttendanceSessionDetail = (sessionId: number) =>
+    http.get<AttendanceSessionDetail>(`/api/attendance-sessions/${sessionId}`);
+
+/**
+ * 5. Cập nhật buổi điểm danh
+ * PUT /api/attendance-sessions/{sessionId}
+ */
+export const updateAttendanceSession = (sessionId: number, data: UpdateAttendanceSessionRequest) =>
+    http.put(`/api/attendance-sessions/${sessionId}`, data);
+
+/**
+ * 6. Xóa buổi điểm danh (Soft Delete)
+ * DELETE /api/attendance-sessions/{sessionId}
+ */
+export const deleteAttendanceSession = (sessionId: number) =>
+    http.delete(`/api/attendance-sessions/${sessionId}`);

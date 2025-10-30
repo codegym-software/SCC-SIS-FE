@@ -79,24 +79,26 @@ export default function ConfirmDialog({
                 className={`relative bg-white rounded-2xl shadow-2xl border ${styles.border} max-w-md w-full mx-4 overflow-hidden`}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                    <div className="flex items-center gap-3">
-                        {styles.showIcon && (
-                            <div className={`h-10 w-10 rounded-full ${styles.iconBg} flex items-center justify-center`}>
-                                <styles.IconComponent className={`h-5 w-5 ${styles.icon}`} />
+                <div className="p-6 border-b border-gray-100">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1">
+                            {styles.showIcon && (
+                                <div className={`h-10 w-10 rounded-full ${styles.iconBg} flex items-center justify-center flex-shrink-0`}>
+                                    <styles.IconComponent className={`h-5 w-5 ${styles.icon}`} />
+                                </div>
+                            )}
+                            <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+                                <p className="text-sm text-gray-600 mt-2 whitespace-pre-line leading-relaxed">{description}</p>
                             </div>
-                        )}
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-                            <p className="text-sm text-gray-600 mt-1">{description}</p>
                         </div>
+                        <button
+                            onClick={onClose}
+                            className="h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors flex-shrink-0"
+                        >
+                            <X size={16} className="text-gray-400" />
+                        </button>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
-                    >
-                        <X size={16} className="text-gray-400" />
-                    </button>
                 </div>
 
                 {/* Actions */}

@@ -1192,10 +1192,14 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                 open={!!removeConfirm}
                 onClose={() => setRemoveConfirm(null)}
                 onConfirm={confirmRemoveInstructor}
-                title="Xác nhận hủy phân công"
-                description={`Bạn có chắc chắn hủy phân công giảng viên này? Thao tác không thể hoàn tác. Hủy vào ngày hiện tại.`}
-                confirmText="Hủy phân công"
-                cancelText="Đóng"
+                title="Xác nhận hủy gán giảng viên"
+                description={
+                    removeConfirm
+                        ? `Bạn có chắc chắn muốn hủy gán giảng viên "${removeConfirm.name}" khỏi lớp học này không?\n\n⚠️ CẢNH BÁO: Thao tác này không thể hoàn tác!`
+                        : ''
+                }
+                confirmText="Xác nhận hủy gán"
+                cancelText="Hủy bỏ"
                 variant="danger"
             />
         </>

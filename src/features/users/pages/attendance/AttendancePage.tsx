@@ -1,11 +1,18 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users, BarChart3 } from 'lucide-react';
+import {
+    ChevronLeft,
+    ChevronRight,
+    Calendar as CalendarIcon,
+    Users,
+    BarChart3,
+    ChevronDown,
+    Check,
+    Clock,
+} from 'lucide-react';
 import { useUserProfile } from '@/stores/userProfile';
-import { getLecturerSchedule, type LecturerScheduleDto } from '@/shared/api/attendance';
-
-// Session type matching API
-type Session = LecturerScheduleDto;
+import { getTeacherAttendanceSchedules, getClassAttendanceSessions, type AttendanceSchedule } from '@/shared/api/attendance';
+import { listClasses, type StudyTime } from '@/shared/api/classes';
 
 // Helper functions
 function getMonday(d: Date): Date {
@@ -17,187 +24,244 @@ function getMonday(d: Date): Date {
     return date;
 }
 
+function getFirstDayOfMonth(d: Date): Date {
+    const date = new Date(d.getFullYear(), d.getMonth(), 1);
+    date.setHours(0, 0, 0, 0);
+    return date;
+}
+
+function getLastDayOfMonth(d: Date): Date {
+    const date = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    date.setHours(23, 59, 59, 999);
+    return date;
+}
+
 function formatDate(date: Date): string {
-    return date.toISOString().split('T')[0];
+    // Use local timezone instead of UTC to avoid date shifts
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
-// Mock data generator (fallback khi API lỗi)
-function generateMockSessions(startDate: Date): Session[] {
-    const sessions: Session[] = [];
-    const classes = [
-        { id: 1, name: 'An toàn thông tin', room: 'VPC2-401', program: 'An toàn thông tin 1-3-24(N01)/23CS1' },
-        {
-            id: 2,
-            name: 'Phân tích và thiết kế giải thuật',
-            room: 'VPC2-401',
-            program: 'Phân tích và thiết kế giải thuật-1-3-24(N01)/23CS1',
-        },
-        { id: 3, name: 'Đồ họa máy tính', room: 'VPC2-302', program: 'Đồ họa máy tính-1-3-24(N01)/23CS1' },
-        { id: 4, name: 'Điện toán đám mây', room: 'VPC2-305', program: 'Điện toán đám mây-1-3-24(N01)/23CS1' },
-    ];
+// Không cần mock data nữa - dùng API trực tiếp
 
-    for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-        const d = new Date(startDate);
-        d.setDate(startDate.getDate() + dayOffset);
-        const dateStr = formatDate(d);
-        const dayOfWeek = d.getDay();
+type ViewMode = 'day' | 'week' | 'month';
 
-        if (dayOfWeek === 1) {
-            // Monday
-            sessions.push({
-                scheduleId: parseInt(`${dateStr.replace(/-/g, '')}1`),
-                date: dateStr,
-                studyTime: 'MORNING',
-                timeRange: '07:00 - 09:40 (Tiết 1-3)',
-                classId: classes[0].id,
-                className: classes[0].name,
-                room: classes[0].room,
-                programName: classes[0].program,
-                isAttended: true,
-            });
-            sessions.push({
-                scheduleId: parseInt(`${dateStr.replace(/-/g, '')}2`),
-                date: dateStr,
-                studyTime: 'AFTERNOON',
-                timeRange: '09:45 - 12:25 (Tiết 4-6)',
-                classId: classes[3].id,
-                className: classes[3].name,
-                room: classes[3].room,
-                programName: classes[3].program,
-                isAttended: false,
-            });
-        }
-        if (dayOfWeek === 2) {
-            // Tuesday
-            sessions.push({
-                scheduleId: parseInt(`${dateStr.replace(/-/g, '')}3`),
-                date: dateStr,
-                studyTime: 'MORNING',
-                timeRange: '07:00 - 09:40 (Tiết 1-3)',
-                classId: classes[1].id,
-                className: classes[1].name,
-                room: classes[1].room,
-                programName: classes[1].program,
-                isAttended: true,
-            });
-            sessions.push({
-                scheduleId: parseInt(`${dateStr.replace(/-/g, '')}4`),
-                date: dateStr,
-                studyTime: 'AFTERNOON',
-                timeRange: '09:45 - 12:25 (Tiết 4-6)',
-                classId: classes[2].id,
-                className: classes[2].name,
-                room: classes[2].room,
-                programName: classes[2].program,
-                isAttended: false,
-            });
-        }
-        if (dayOfWeek === 3) {
-            // Wednesday
-            sessions.push({
-                scheduleId: parseInt(`${dateStr.replace(/-/g, '')}5`),
-                date: dateStr,
-                studyTime: 'MORNING',
-                timeRange: '07:00 - 09:40 (Tiết 1-3)',
-                classId: classes[1].id,
-                className: classes[1].name,
-                room: classes[1].room,
-                programName: classes[1].program,
-                isAttended: false,
-            });
-        }
-        if (dayOfWeek === 4) {
-            // Thursday
-            sessions.push({
-                scheduleId: parseInt(`${dateStr.replace(/-/g, '')}6`),
-                date: dateStr,
-                studyTime: 'MORNING',
-                timeRange: '07:00 - 09:40 (Tiết 1-3)',
-                classId: classes[1].id,
-                className: classes[1].name,
-                room: classes[1].room,
-                programName: classes[1].program,
-                isAttended: false,
-            });
-        }
-        if (dayOfWeek === 5) {
-            // Friday
-            sessions.push({
-                scheduleId: parseInt(`${dateStr.replace(/-/g, '')}7`),
-                date: dateStr,
-                studyTime: 'MORNING',
-                timeRange: '07:00 - 09:40 (Tiết 1-3)',
-                classId: classes[1].id,
-                className: classes[1].name,
-                room: classes[1].room,
-                programName: classes[1].program,
-                isAttended: false,
-            });
-        }
-    }
-    return sessions;
-}
+type SessionWithTime = AttendanceSchedule & {
+    studyTime?: StudyTime | null;
+    sessionId?: number | null; // Session ID if attendance already taken
+};
 
-const TIME_SLOTS = [
-    { id: '7:00', label: '7:00' },
-    { id: '8:00', label: '8:00' },
-    { id: '9:00', label: '9:00' },
-    { id: '10:00', label: '10:00' },
-    { id: '11:00', label: '11:00' },
-    { id: '12:00', label: '12:00' },
-    { id: '13:00', label: '13:00' },
-    { id: '14:00', label: '14:00' },
-];
+// Time slot mapping
+const TIME_SLOTS = {
+    MORNING: { start: 8, end: 11, label: '8:00 - 11:00' },
+    AFTERNOON: { start: 14, end: 17, label: '14:00 - 17:00' },
+    EVENING: { start: 18, end: 21, label: '18:00 - 21:00' },
+} as const;
 
 export default function AttendancePage() {
     const { me } = useUserProfile();
     const navigate = useNavigate();
     const isLecturer = me?.roles?.some((r) => r.code === 'LECTURER');
-    const [anchor, setAnchor] = useState<Date>(() => getMonday(new Date()));
+    const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
+    const [viewMode, setViewMode] = useState<ViewMode>('month');
     const [activeTab, setActiveTab] = useState<'schedule' | 'history' | 'stats'>('schedule');
-    const [sessions, setSessions] = useState<Session[]>([]);
+    const [sessions, setSessions] = useState<SessionWithTime[]>([]);
     const [loading, setLoading] = useState(false);
+    const classStudyTimeMapRef = useRef<Map<number, StudyTime | null>>(new Map());
+    const [classesLoaded, setClassesLoaded] = useState(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-    // Fetch schedule khi tuần thay đổi
+    // Fetch classes info to get studyTime
     useEffect(() => {
         if (!isLecturer) return;
+
+        const fetchClassesInfo = async () => {
+            try {
+                const response = await listClasses();
+                const studyTimeMap = new Map<number, StudyTime | null>();
+                response.data.forEach((cls) => {
+                    studyTimeMap.set(cls.classId, cls.studyTime);
+                });
+                classStudyTimeMapRef.current = studyTimeMap;
+                setClassesLoaded(true);
+            } catch (error) {
+                console.error('Failed to fetch classes info:', error);
+                setClassesLoaded(true); // Still proceed even if failed
+            }
+        };
+
+        fetchClassesInfo();
+    }, [isLecturer]);
+
+    // Fetch schedule khi ngày/tuần/tháng thay đổi
+    useEffect(() => {
+        if (!isLecturer || !me?.userId || !classesLoaded) return; // Wait for classes to load
 
         const fetchSchedule = async () => {
             setLoading(true);
             try {
-                const weekEnd = new Date(anchor);
-                weekEnd.setDate(anchor.getDate() + 6);
+                let from: string, to: string;
 
-                const startDate = formatDate(anchor);
-                const endDate = formatDate(weekEnd);
+                if (viewMode === 'day') {
+                    from = to = formatDate(currentDate);
+                } else if (viewMode === 'week') {
+                    const monday = getMonday(currentDate);
+                    const sunday = new Date(monday);
+                    sunday.setDate(monday.getDate() + 6);
+                    from = formatDate(monday);
+                    to = formatDate(sunday);
+                } else {
+                    // month - query for entire calendar display range (including prev/next month days)
+                    const year = currentDate.getFullYear();
+                    const month = currentDate.getMonth();
+                    const firstDay = new Date(year, month, 1);
+                    const firstDayOfWeek = firstDay.getDay();
+                    const daysFromPrevMonth = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+                    const startDate = new Date(year, month, 1 - daysFromPrevMonth);
+                    const endDate = new Date(startDate);
+                    endDate.setDate(startDate.getDate() + 41); // 42 days total
+                    
+                    from = formatDate(startDate);
+                    to = formatDate(endDate);
+                }
 
-                const response = await getLecturerSchedule(startDate, endDate);
-                setSessions(response.data);
+                const response = await getTeacherAttendanceSchedules(me.userId, from, to);
+                
+                // Fetch session IDs for classes that have TAKEN status
+                const uniqueClassIds = [...new Set(response.data.map(s => s.classId))];
+                const sessionIdMap = new Map<string, number>(); // key: classId-date, value: sessionId
+                
+                await Promise.all(
+                    uniqueClassIds.map(async (classId) => {
+                        try {
+                            const sessionsResponse = await getClassAttendanceSessions(classId);
+                            sessionsResponse.data.forEach(session => {
+                                const key = `${classId}-${session.attendanceDate}`;
+                                sessionIdMap.set(key, session.sessionId);
+                            });
+                        } catch (error) {
+                            console.error(`Failed to fetch sessions for class ${classId}:`, error);
+                        }
+                    })
+                );
+                
+                // Enrich sessions with studyTime and sessionId
+                const enrichedSessions: SessionWithTime[] = response.data.map((session) => {
+                    const sessionKey = `${session.classId}-${session.attendanceDate}`;
+                    return {
+                        ...session,
+                        studyTime: classStudyTimeMapRef.current.get(session.classId),
+                        sessionId: sessionIdMap.get(sessionKey) || null,
+                    };
+                });
+                setSessions(enrichedSessions);
             } catch (error) {
                 console.error('Failed to fetch schedule:', error);
-                // Fallback to mock data if API fails
-                setSessions(generateMockSessions(anchor));
+                setSessions([]);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchSchedule();
-    }, [anchor, isLecturer]);
+    }, [currentDate, viewMode, isLecturer, me?.userId, classesLoaded, refreshTrigger]);
 
+    // Auto-refresh when returning to this page (e.g., after editing attendance in another tab)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                // Force refresh by incrementing trigger
+                setRefreshTrigger(prev => prev + 1);
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []);
+
+    const handleNavigate = (offset: number) => {
+        const newDate = new Date(currentDate);
+        if (viewMode === 'day') {
+            newDate.setDate(currentDate.getDate() + offset);
+        } else if (viewMode === 'week') {
+            newDate.setDate(currentDate.getDate() + offset * 7);
+        } else {
+            newDate.setMonth(currentDate.getMonth() + offset);
+        }
+        setCurrentDate(newDate);
+    };
+
+    const handleToday = () => {
+        setCurrentDate(new Date());
+    };
+
+    // Get calendar days for the month
+    const calendarDays = useMemo(() => {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        
+        // First day of month
+        const firstDay = new Date(year, month, 1);
+        // Last day of month
+        const lastDay = new Date(year, month + 1, 0);
+        
+        // Get day of week for first day (0 = Sunday, 1 = Monday, etc.)
+        const firstDayOfWeek = firstDay.getDay();
+        
+        // Calculate how many days from previous month to show
+        const daysFromPrevMonth = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1; // Start from Monday
+        
+        // Start date (might be from previous month)
+        const startDate = new Date(year, month, 1 - daysFromPrevMonth);
+        
+        // Generate 42 days (6 weeks) to fill the calendar
+        const days = [];
+        for (let i = 0; i < 42; i++) {
+            const date = new Date(startDate);
+            date.setDate(startDate.getDate() + i);
+            days.push(date);
+        }
+        
+        return days;
+    }, [currentDate]);
+
+    // Get week days for week view
     const weekDays = useMemo(() => {
+        const monday = getMonday(currentDate);
         return Array.from({ length: 7 }).map((_, i) => {
-            const d = new Date(anchor);
-            d.setDate(anchor.getDate() + i);
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + i);
             return d;
         });
-    }, [anchor]);
+    }, [currentDate]);
 
-    const handleWeekChange = (offset: number) => {
-        const newAnchor = new Date(anchor);
-        newAnchor.setDate(anchor.getDate() + offset * 7);
-        setAnchor(newAnchor);
-    };
+    // Format display title based on view mode
+    const displayTitle = useMemo(() => {
+        if (viewMode === 'day') {
+            return currentDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        } else if (viewMode === 'week') {
+            const monday = weekDays[0];
+            const sunday = weekDays[6];
+            return `${monday.getDate()}/${monday.getMonth() + 1} - ${sunday.getDate()}/${sunday.getMonth() + 1}/${sunday.getFullYear()}`;
+        } else {
+            return `Tháng ${currentDate.getMonth() + 1}-${currentDate.getFullYear()}`;
+        }
+    }, [viewMode, currentDate, weekDays]);
+
+    // Group sessions by date
+    const sessionsByDate = useMemo(() => {
+        const grouped = new Map<string, SessionWithTime[]>();
+        sessions.forEach((session) => {
+            const dateKey = session.attendanceDate;
+            if (!grouped.has(dateKey)) {
+                grouped.set(dateKey, []);
+            }
+            grouped.get(dateKey)!.push(session);
+        });
+        return grouped;
+    }, [sessions]);
 
     if (!isLecturer) {
         return (
@@ -260,25 +324,68 @@ export default function AttendancePage() {
             {/* Schedule tab content */}
             {activeTab === 'schedule' && (
                 <div className="space-y-4">
-                    {/* Month/week navigation */}
-                    <div className="flex items-center justify-between">
+                    {/* View mode selector + Navigation */}
+                    <div className="flex items-center justify-between gap-4">
+                        {/* View mode buttons */}
+                        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                            <button
+                                onClick={() => setViewMode('day')}
+                                className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                                    viewMode === 'day'
+                                        ? 'bg-white text-blue-600 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                Ngày
+                            </button>
+                            <button
+                                onClick={() => setViewMode('week')}
+                                className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                                    viewMode === 'week'
+                                        ? 'bg-white text-blue-600 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                Tuần
+                            </button>
+                            <button
+                                onClick={() => setViewMode('month')}
+                                className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                                    viewMode === 'month'
+                                        ? 'bg-white text-blue-600 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                Tháng
+                            </button>
+                        </div>
+
+                        {/* Navigation */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleToday}
+                                className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            >
+                                Hôm nay
+                            </button>
                         <button
                             className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 flex items-center justify-center"
-                            onClick={() => handleWeekChange(-1)}
-                            title="Tuần trước"
+                                onClick={() => handleNavigate(-1)}
+                                title={viewMode === 'day' ? 'Ngày trước' : viewMode === 'week' ? 'Tuần trước' : 'Tháng trước'}
                         >
                             <ChevronLeft size={16} />
                         </button>
-                        <div className="px-3 py-1 text-sm font-medium">
-                            Tháng {anchor.getMonth() + 1}-{anchor.getFullYear()}
+                            <div className="px-3 py-1 text-sm font-medium min-w-[180px] text-center">
+                                {displayTitle}
                         </div>
                         <button
                             className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 flex items-center justify-center"
-                            onClick={() => handleWeekChange(1)}
-                            title="Tuần sau"
+                                onClick={() => handleNavigate(1)}
+                                title={viewMode === 'day' ? 'Ngày sau' : viewMode === 'week' ? 'Tuần sau' : 'Tháng sau'}
                         >
                             <ChevronRight size={16} />
                         </button>
+                        </div>
                     </div>
 
                     {/* Legend */}
@@ -295,88 +402,360 @@ export default function AttendancePage() {
 
                     {loading && <div className="text-center text-sm text-gray-500 py-4">Đang tải lịch học...</div>}
 
-                    {/* Calendar grid */}
-                    {!loading && (
-                        <div className="bg-white border rounded-lg overflow-hidden">
-                            {/* Header row */}
-                            <div className="grid grid-cols-8 border-b bg-gray-50">
-                                <div className="px-2 py-2 text-xs text-gray-500 flex items-center gap-1">
-                                    <div className="rotate-12">⏰</div>
-                                    <span>GMT+7</span>
-                                </div>
-                                {weekDays.map((d, idx) => {
-                                    const date = d.getDate();
-                                    const month = d.getMonth() + 1;
-                                    const year = d.getFullYear();
-                                    const dayName = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()];
-                                    return (
-                                        <div key={idx} className="px-2 py-2 border-l text-center">
-                                            <div className="text-xs text-gray-600">
-                                                {date}/{month}/{year}
-                                            </div>
-                                            <div className="text-xs font-medium text-gray-900">{dayName}</div>
-                                        </div>
-                                    );
-                                })}
+                    {/* DAY VIEW */}
+                    {!loading && viewMode === 'day' && (
+                        <div className="bg-white border rounded-lg p-4">
+                            <div className="mb-4">
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    {currentDate.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                </h3>
                             </div>
+                            {sessions.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500">Không có buổi học nào trong ngày này</div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {sessions.map((session, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => {
+                                                const params = new URLSearchParams({
+                                                    classId: session.classId.toString(),
+                                                    className: session.className,
+                                                    date: session.attendanceDate,
+                                                });
+                                                if (session.sessionId) {
+                                                    params.set('sessionId', session.sessionId.toString());
+                                                }
+                                                navigate(`/attendance/take?${params.toString()}`);
+                                            }}
+                                            className={`w-full p-4 rounded-lg border-2 text-left hover:shadow-md transition-all ${
+                                                session.sessionStatus === 'TAKEN'
+                                                    ? 'bg-green-50 border-green-300 hover:bg-green-100'
+                                                    : 'bg-orange-50 border-orange-300 hover:bg-orange-100'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <div className="font-semibold text-gray-900 text-base">{session.className}</div>
+                                                    <div className="text-sm mt-1">
+                                                        <span
+                                                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                                                session.sessionStatus === 'TAKEN'
+                                                                    ? 'bg-green-100 text-green-700'
+                                                                    : 'bg-orange-100 text-orange-700'
+                                                            }`}
+                                                        >
+                                                            {session.sessionStatus === 'TAKEN' ? (
+                                                                <>
+                                                                    <Check size={12} />
+                                                                    Đã điểm danh
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Clock size={12} />
+                                                                    Chưa điểm danh
+                                                                </>
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <ChevronDown size={20} className="text-gray-400 rotate-[-90deg]" />
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
-                            {/* Time rows */}
-                            {TIME_SLOTS.map((slot) => (
-                                <div key={slot.id} className="grid grid-cols-8 border-b min-h-[80px]">
-                                    <div className="px-2 py-2 text-xs text-gray-500 border-r bg-gray-50">
-                                        {slot.label}
-                                    </div>
-                                    {weekDays.map((d, dayIdx) => {
-                                        const dateStr = formatDate(d);
-                                        const daySessions = sessions.filter((s) => s.date === dateStr);
-                                        const slotHour = parseInt(slot.id.split(':')[0], 10);
-                                        let relevantSessions: Session[] = [];
-                                        if (slotHour === 7) {
-                                            relevantSessions = daySessions.filter((s) => s.studyTime === 'MORNING');
-                                        } else if (slotHour === 9) {
-                                            relevantSessions = daySessions.filter((s) => s.studyTime === 'AFTERNOON');
-                                        }
-
+                    {/* WEEK VIEW */}
+                    {!loading && viewMode === 'week' && (
+                        <div className="flex gap-4">
+                            {/* Main calendar - Time Grid */}
+                            <div className="flex-1 bg-white border rounded-lg overflow-hidden">
+                                {/* Week header with dates */}
+                                <div className="grid grid-cols-8 border-b bg-gray-50 sticky top-0 z-10">
+                                    {/* Time column header */}
+                                    <div className="px-2 py-3 text-xs text-gray-500 border-r">GMT+7</div>
+                                    
+                                    {/* Day headers */}
+                                    {weekDays.map((day, idx) => {
+                                        const isToday = day.toDateString() === new Date().toDateString();
+                                        const dayName = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'][idx];
+                                        
                                         return (
-                                            <div key={dayIdx} className="border-l p-1 relative">
-                                                {relevantSessions.map((session) => (
-                                                    <button
-                                                        key={session.scheduleId}
-                                                        onClick={() => {
-                                                            const params = new URLSearchParams({
-                                                                scheduleId: session.scheduleId.toString(),
-                                                                classId: session.classId.toString(),
-                                                                className: session.className,
-                                                                date: session.date,
-                                                                timeRange: session.timeRange,
-                                                                room: session.room,
-                                                                programName: session.programName || '',
-                                                            });
-                                                            navigate(`/attendance/take?${params.toString()}`);
-                                                        }}
-                                                        className={`w-full text-left p-2 rounded-md text-xs mb-1 transition-colors ${
-                                                            session.isAttended
-                                                                ? 'bg-green-100 border border-green-300 hover:bg-green-200'
-                                                                : 'bg-orange-100 border border-orange-300 hover:bg-orange-200'
-                                                        }`}
-                                                    >
-                                                        <div className="font-medium text-gray-900 line-clamp-1">
-                                                            {session.className}
-                                                        </div>
-                                                        <div className="text-[10px] text-gray-600">
-                                                            {session.timeRange}
-                                                        </div>
-                                                        <div className="text-[10px] text-gray-500">{session.room}</div>
-                                                        <div className="text-[10px] text-gray-500 line-clamp-1">
-                                                            {session.programName?.split('-')[0]}
-                                                        </div>
-                                                    </button>
-                                                ))}
+                                            <div
+                                                key={idx}
+                                                className={`px-2 py-3 text-center border-l ${
+                                                    isToday ? 'bg-blue-50' : ''
+                                                }`}
+                                            >
+                                                <div className="text-xs text-gray-600 font-medium">{dayName}</div>
+                                                <div
+                                                    className={`text-sm font-semibold mt-1 ${
+                                                        isToday
+                                                            ? 'bg-blue-600 text-white w-7 h-7 rounded-full flex items-center justify-center mx-auto'
+                                                            : 'text-gray-900'
+                                                    }`}
+                                                >
+                                                    {day.getDate()}
+                                                </div>
+                                                <div className="text-[10px] text-gray-500 mt-0.5">
+                                                    {day.toLocaleDateString('vi-VN', { month: 'numeric' })}
+                                                </div>
                                             </div>
                                         );
                                     })}
                                 </div>
-                            ))}
+
+                                {/* Time slots - 3 khung giờ */}
+                                <div className="overflow-auto max-h-[600px]">
+                                    {(['MORNING', 'AFTERNOON', 'EVENING'] as const).map((timeSlot) => {
+                                        const slot = TIME_SLOTS[timeSlot];
+                                        
+                                        return (
+                                            <div key={timeSlot} className="grid grid-cols-8 border-b min-h-[100px]">
+                                                {/* Time label */}
+                                                <div className="px-2 py-3 text-xs text-gray-500 border-r bg-gray-50">
+                                                    <div className="font-semibold text-gray-700 mb-1">
+                                                        {timeSlot === 'MORNING' ? 'Sáng' : timeSlot === 'AFTERNOON' ? 'Chiều' : 'Tối'}
+                                                    </div>
+                                                    <div>{slot.label}</div>
+                                                </div>
+                                                
+                                                {/* Day columns */}
+                                                {weekDays.map((day, dayIdx) => {
+                                                    const dateStr = formatDate(day);
+                                                    const daySessions = sessionsByDate.get(dateStr) || [];
+                                                    // Filter sessions for this time slot
+                                                    const slotSessions = daySessions.filter(
+                                                        (session) => session.studyTime === timeSlot
+                                                    );
+                                                    const isToday = day.toDateString() === new Date().toDateString();
+                                                    
+                                                    return (
+                                                        <div
+                                                            key={dayIdx}
+                                                            className={`border-l p-2 relative ${
+                                                                isToday ? 'bg-blue-50/30' : ''
+                                                            }`}
+                                                        >
+                                                            {/* Display sessions for this time slot */}
+                                                            {slotSessions.length > 0 ? (
+                                                                <div className="space-y-1">
+                                                                    {slotSessions.map((session, sIdx) => (
+                                                                        <button
+                                                                            key={sIdx}
+                                                                            onClick={() => {
+                                                                                const params = new URLSearchParams({
+                                                                                    classId: session.classId.toString(),
+                                                                                    className: session.className,
+                                                                                    date: session.attendanceDate,
+                                                                                });
+                                                                                if (session.sessionId) {
+                                                                                    params.set('sessionId', session.sessionId.toString());
+                                                                                }
+                                                                                navigate(`/attendance/take?${params.toString()}`);
+                                                                            }}
+                                                                            className={`w-full text-left px-2 py-2 rounded text-xs transition-all ${
+                                                                                session.sessionStatus === 'TAKEN'
+                                                                                    ? 'bg-green-500 text-white hover:bg-green-600 shadow-sm'
+                                                                                    : 'bg-orange-500 text-white hover:bg-orange-600 shadow-sm'
+                                                                            }`}
+                                                                        >
+                                                                            <div className="font-medium truncate mb-1">
+                                                                                {session.className}
+                                                                            </div>
+                                                                            <div className="text-[10px] opacity-90 flex items-center gap-1">
+                                                                                {session.sessionStatus === 'TAKEN' ? (
+                                                                                    <>
+                                                                                        <Check size={10} />
+                                                                                        Đã điểm danh
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <>
+                                                                                        <Clock size={10} />
+                                                                                        Chưa điểm danh
+                                                                                    </>
+                                                                                )}
+                                                                            </div>
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Mini Calendar Sidebar */}
+                            <div className="w-64 flex-shrink-0">
+                                <div className="bg-white border rounded-lg p-4">
+                                    {/* Mini calendar header */}
+                                    <div className="flex items-center justify-between mb-4">
+                                        <button
+                                            onClick={() => handleNavigate(-1)}
+                                            className="p-1 hover:bg-gray-100 rounded"
+                                        >
+                                            <ChevronLeft size={16} />
+                                        </button>
+                                        <div className="text-sm font-semibold">
+                                            Tháng {currentDate.getMonth() + 1}-{currentDate.getFullYear()}
+                                        </div>
+                                        <button
+                                            onClick={() => handleNavigate(1)}
+                                            className="p-1 hover:bg-gray-100 rounded"
+                                        >
+                                            <ChevronRight size={16} />
+                                        </button>
+                                    </div>
+
+                                    {/* Mini calendar days header */}
+                                    <div className="grid grid-cols-7 gap-1 mb-2">
+                                        {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((day) => (
+                                            <div key={day} className="text-center text-xs font-medium text-gray-500">
+                                                {day}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Mini calendar dates */}
+                                    <div className="grid grid-cols-7 gap-1">
+                                        {calendarDays.slice(0, 35).map((date, idx) => {
+                                            const isCurrentMonth = date.getMonth() === currentDate.getMonth();
+                                            const isToday = date.toDateString() === new Date().toDateString();
+                                            const isInCurrentWeek = weekDays.some(
+                                                (d) => d.toDateString() === date.toDateString()
+                                            );
+                                            const dateStr = formatDate(date);
+                                            const hasSession = sessionsByDate.has(dateStr);
+
+                                            return (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setCurrentDate(new Date(date))}
+                                                    className={`
+                                                        aspect-square flex items-center justify-center text-xs rounded-full
+                                                        transition-colors relative
+                                                        ${!isCurrentMonth ? 'text-gray-300' : 'text-gray-700'}
+                                                        ${isToday ? 'bg-blue-600 text-white font-bold' : ''}
+                                                        ${isInCurrentWeek && !isToday ? 'bg-blue-100 font-semibold' : ''}
+                                                        ${!isToday && !isInCurrentWeek ? 'hover:bg-gray-100' : ''}
+                                                    `}
+                                                >
+                                                    {date.getDate()}
+                                                    {hasSession && !isToday && (
+                                                        <span className="absolute bottom-0.5 w-1 h-1 bg-green-500 rounded-full"></span>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Legend */}
+                                    <div className="mt-4 pt-4 border-t space-y-2">
+                                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                                            <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                                            <span>Hôm nay</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                                            <div className="w-3 h-3 rounded-full bg-blue-100"></div>
+                                            <span>Tuần hiện tại</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                            <span>Đã điểm danh</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                                            <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                                            <span>Chưa điểm danh</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MONTH VIEW - Calendar Grid */}
+                    {!loading && viewMode === 'month' && (
+                        <div className="bg-white border rounded-lg overflow-hidden">
+                            {/* Calendar Header - Days of week */}
+                            <div className="grid grid-cols-7 bg-gray-50 border-b">
+                                {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'].map((day) => (
+                                    <div key={day} className="px-2 py-3 text-center text-xs font-semibold text-gray-700 border-l first:border-l-0">
+                                        {day}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Calendar Days */}
+                            <div className="grid grid-cols-7">
+                                {calendarDays.map((date, idx) => {
+                                    const dateStr = formatDate(date);
+                                    const daySessions = sessionsByDate.get(dateStr) || [];
+                                    const isCurrentMonth = date.getMonth() === currentDate.getMonth();
+                                    const isToday =
+                                        date.toDateString() === new Date().toDateString();
+
+                                        return (
+                                        <div
+                                            key={idx}
+                                            className={`min-h-[100px] p-2 border-l border-b first:border-l-0 ${
+                                                !isCurrentMonth ? 'bg-gray-50' : 'bg-white'
+                                            }`}
+                                        >
+                                            {/* Date number */}
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span
+                                                    className={`text-sm font-medium ${
+                                                        isToday
+                                                            ? 'bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center'
+                                                            : !isCurrentMonth
+                                                            ? 'text-gray-400'
+                                                            : 'text-gray-900'
+                                                    }`}
+                                                >
+                                                    {date.getDate()}
+                                                </span>
+                                            </div>
+
+                                            {/* Sessions for this day */}
+                                            <div className="space-y-1">
+                                                {daySessions.map((session, sIdx) => (
+                                                    <button
+                                                        key={sIdx}
+                                                        onClick={() => {
+                                                            const params = new URLSearchParams({
+                                                                classId: session.classId.toString(),
+                                                                className: session.className,
+                                                                date: session.attendanceDate,
+                                                            });
+                                                            if (session.sessionId) {
+                                                                params.set('sessionId', session.sessionId.toString());
+                                                            }
+                                                            navigate(`/attendance/take?${params.toString()}`);
+                                                        }}
+                                                        className={`w-full text-left px-2 py-1 rounded text-xs transition-colors ${
+                                                            session.sessionStatus === 'TAKEN'
+                                                                ? 'bg-green-100 border border-green-300 text-green-800 hover:bg-green-200'
+                                                                : 'bg-orange-100 border border-orange-300 text-orange-800 hover:bg-orange-200'
+                                                        }`}
+                                                    >
+                                                        <div className="font-medium truncate">{session.className}</div>
+                                                        <div className="text-[10px] mt-0.5">
+                                                            {session.sessionStatus === 'TAKEN' ? '✓ Đã điểm danh' : '○ Chưa'}
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                         </div>
                     )}
                 </div>
