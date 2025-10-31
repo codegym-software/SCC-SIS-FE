@@ -2,7 +2,8 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { useToast } from '../../../shared/hooks/useToast'
 import { usePermission } from '../../../shared/components/PermissionProvider'
-import { Building2, Eye, MoreHorizontal, Users2, MapPin, Phone, Mail, Globe } from 'lucide-react'
+import { Building2, Eye, MoreHorizontal, Users2, MapPin, Phone, Mail, Globe, Pencil, Power } from 'lucide-react'
+import ConfirmDialog from '../../../shared/components/ConfirmDialog'
 
 // Lấy type từ shared/types (không lấy từ API)
 import type { CenterDto, CreateCenterDto, UpdateCenterDto } from '../../../shared/types/centers'
@@ -59,6 +60,10 @@ export default function CentersPage() {
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái')
     const [openModal, setOpenModal] = useState(false)
     const [editing, setEditing] = useState<Center | null>(null)
+    const [confirmDialog, setConfirmDialog] = useState<{
+        open: boolean
+        center: Center | null
+    }>({ open: false, center: null })
     const [viewingCenter, setViewingCenter] = useState<Center | null>(null)
     const [openMenuId, setOpenMenuId] = useState<number | null>(null)
 
@@ -410,6 +415,16 @@ export default function CentersPage() {
         }
     }
 
+    function handleDisableClick(center: Center) {
+        if (center.active) {
+            // Hiển thị confirm dialog màu đỏ khi vô hiệu hóa
+            setConfirmDialog({ open: true, center })
+        } else {
+            // Kích hoạt không cần confirm
+            toggleDisable(center)
+        }
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-start justify-between gap-4">
@@ -499,42 +514,49 @@ export default function CentersPage() {
                                             {c.active ? 'Hoạt động' : 'Không hoạt động'}
                                         </span>
                                     </div>
-                                    <div className="col-span-6 md:col-span-1 relative">
-                                        <div className="absolute right-0 top-1/2 -translate-y-1/2">
-                                            <div className="relative z-40">
-                                                <button className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center" onClick={() => setOpenMenuId(openMenuId === c.id ? null : c.id)}>
-                                                    <MoreHorizontal size={16} />
-                                                </button>
-                                                {openMenuId === c.id && (
-                                                    <>
-                                                        <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
-                                                        <div className="absolute right-0 mt-1 w-40 rounded-lg border bg-white shadow-lg z-[70]">
-                                                            <button
-                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                                                                onClick={() => { setOpenMenuId(null); setViewingCenter(c) }}
+                                    <div className="col-span-6 md:col-span-1 flex justify-end">
+                                        <div className="relative">
+                                            <button
+                                                className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center"
+                                                onClick={() => setOpenMenuId((prev) => (prev === c.id ? null : c.id))}
+                                            >
+                                                <MoreHorizontal size={16} />
+                                            </button>
+                                            {openMenuId === c.id && (
+                                                <>
+                                                    <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                                                    <div className="absolute right-0 mt-2 w-40 rounded-lg border bg-white shadow-lg z-20">
+                                                        <button
+                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                                                            onClick={() => { setOpenMenuId(null); setViewingCenter(c) }}
+                                                        >
+                                                            <Eye size={14} />
+                                                            <span>Xem chi tiết</span>
+                                                        </button>
+                                                        {can('centers:update') && (
+                                                            <button 
+                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" 
+                                                                onClick={() => { setOpenMenuId(null); openEdit(c) }}
                                                             >
-                                                                <Eye size={14} /> Xem chi tiết
+                                                                <Pencil size={14} />
+                                                                <span>Chỉnh sửa</span>
                                                             </button>
-                                                            {can('centers:update') && (
-                                                                <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => { setOpenMenuId(null); openEdit(c) }}>
-                                                                    Chỉnh sửa
-                                                                </button>
-                                                            )}
-                                                            {can('centers:disable') && (
-                                                                <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => {
+                                                        )}
+                                                        {can('centers:disable') && (
+                                                            <button 
+                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2" 
+                                                                onClick={() => {
                                                                     setOpenMenuId(null)
-                                                                    const action = c.active ? 'Vô hiệu hóa' : 'Kích hoạt'
-                                                                    if (confirm(`${action} ${c.name}?`)) {
-                                                                        toggleDisable(c)
-                                                                    }
-                                                                }}>
-                                                                    {c.active ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
+                                                                    handleDisableClick(c)
+                                                                }}
+                                                            >
+                                                                <Power size={14} />
+                                                                <span>{c.active ? 'Vô hiệu hóa' : 'Kích hoạt'}</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -993,6 +1015,24 @@ export default function CentersPage() {
                     </div>
                 </form>
             </Modal>
+
+            {/* Confirm Dialog for deactivating center */}
+            {confirmDialog.center && (
+                <ConfirmDialog
+                    open={confirmDialog.open}
+                    onClose={() => setConfirmDialog({ open: false, center: null })}
+                    onConfirm={async () => {
+                        if (confirmDialog.center) {
+                            await toggleDisable(confirmDialog.center)
+                        }
+                    }}
+                    title="Xác nhận vô hiệu hóa trung tâm"
+                    description={`Bạn có chắc chắn muốn vô hiệu hóa trung tâm "${confirmDialog.center.name}"?\n\nLưu ý: Tất cả vai trò trung tâm của người dùng tại trung tâm này sẽ bị hủy gán.`}
+                    confirmText="Vô hiệu hóa"
+                    cancelText="Hủy"
+                    variant="danger"
+                />
+            )}
         </div>
     )
 }

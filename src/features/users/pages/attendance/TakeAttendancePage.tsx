@@ -220,8 +220,8 @@ export default function TakeAttendancePage() {
                 showSuccessToast('Thành công', 'Đã lưu điểm danh');
             }
             
-            // Navigate back with viewMode parameter to restore correct view
-            setTimeout(() => navigate(`/attendance?view=${viewMode}`), 500);
+            // Navigate back with viewMode and date parameters to restore correct view and date
+            setTimeout(() => navigate(`/attendance?view=${viewMode}&date=${date}`), 500);
         } catch (error: any) {
             console.error('Error saving attendance:', error);
             console.error('Error response:', error?.response?.data);
@@ -243,7 +243,7 @@ export default function TakeAttendancePage() {
     };
 
     const handleGoBack = () => {
-        navigate(`/attendance?view=${viewMode}`);
+        navigate(`/attendance?view=${viewMode}&date=${date}`);
     };
 
     const StatusCheckbox = ({

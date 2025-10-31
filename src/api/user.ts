@@ -34,3 +34,7 @@ export const getUserRoles = () =>
 // GET /api/user-roles/user/{userId} – Lấy user-roles của user cụ thể với assignmentId
 export const getUserRolesByUserId = (userId: number) =>
     api.get(`/api/user-roles/user/${userId}`);
+
+// GET /api/user-roles/user/{userId}/revoked – Lấy revoked roles của user
+export const getRevokedRolesByUserId = (userId: number) =>
+    api.get(`/api/user-roles/user/${userId}/revoked`);

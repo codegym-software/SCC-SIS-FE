@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { getRoles } from '../../../shared/api/roles'
 import { getCentersLite } from '../../../shared/api/centers'
-import { getUserView, assignRolesBatch, revokeUserRolesBulk, revokeUserRole } from '../../../api/user'
+import { getUserView, assignRolesBatch, revokeUserRolesBulk, revokeUserRole, getRevokedRolesByUserId } from '../../../api/user'
 import { useToast } from '../../../shared/hooks/useToast'
 import type { UserViewDto, UserAssignment } from '../../../shared/types/userView'
 import type { RoleDto } from '../../../shared/types/role'
@@ -13,6 +13,7 @@ const ALL_CENTERS_VALUE = "__ALL__" as const
 interface AssignRoleModalProps {
   userId: number
   onClose: () => void
+  onSuccess?: () => void // Callback after successful role assignment/revocation
 }
 
 interface ExistingAssignment {
@@ -32,7 +33,7 @@ interface DraftAssignment {
   scope?: 'GLOBAL' | 'CENTER'
 }
 
-export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProps) {
+export default function AssignRoleModal({ userId, onClose, onSuccess }: AssignRoleModalProps) {
   const toast = useToast()
   const [roles, setRoles] = useState<RoleDto[]>([])
   const [centers, setCenters] = useState<CenterLiteDto[]>([])
@@ -43,6 +44,8 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
   const [existing, setExisting] = useState<ExistingAssignment[]>([])
   const [marked, setMarked] = useState<Set<number>>(new Set())
   const [drafts, setDrafts] = useState<DraftAssignment[]>([])
+  // Track revoked roles to prevent re-assignment
+  const [revokedRoles, setRevokedRoles] = useState<Array<{ roleId: number; centerId: number | null }>>([])
 
   const [errors, setErrors] = useState<{ global?: string; drafts?: string[] }>({})
 
@@ -51,10 +54,11 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
     const loadData = async () => {
       setLoading(true)
       try {
-        const [userViewRes, rolesRes, centersRes] = await Promise.all([
+        const [userViewRes, rolesRes, centersRes, revokedRes] = await Promise.all([
           getUserView(userId),
           getRoles(true),
-          getCentersLite()
+          getCentersLite(),
+          getRevokedRolesByUserId(userId).catch(() => ({ data: [] })) // Fail silently if no access
         ])
 
         // Chuẩn hóa roles data structure
@@ -96,6 +100,14 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
           setExisting([])
         }
 
+        // ✅ Load revoked roles to prevent re-assignment
+        const revokedData = Array.isArray(revokedRes.data) ? revokedRes.data : []
+        const revokedRolesList = revokedData.map((r: any) => ({
+          roleId: r.role?.roleId || r.roleId,
+          centerId: r.center?.centerId ?? (r.centerId ?? null)
+        }))
+        setRevokedRoles(revokedRolesList)
+
         // Reset state
         setMarked(new Set())
         setDrafts([])
@@ -120,6 +132,24 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
       return true
     }
     return role?.scope === 'GLOBAL'
+  }
+
+  // Helper: check if a role-center combo was revoked (cannot be re-assigned)
+  const isRevoked = (roleId?: number, centerId?: number | null | '__ALL__') => {
+    if (!roleId) return false
+    
+    // For "All Centers" option, check if this role was revoked for any center
+    if (centerId === ALL_CENTERS_VALUE) {
+      // Check if this role was revoked at any specific center
+      return revokedRoles.some(r => r.roleId === roleId && r.centerId !== null)
+    }
+    
+    // For specific center (or null for GLOBAL), check exact match
+    const normalizedCenterId = centerId === null || centerId === undefined ? null : centerId
+    return revokedRoles.some(r => 
+      r.roleId === roleId && 
+      (r.centerId === normalizedCenterId || (r.centerId === null && normalizedCenterId === null))
+    )
   }
 
   // ✅ sửa: toggle theo assignmentId
@@ -151,18 +181,32 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
       if (field === 'roleId') {
         const roleId = value as number
         const isGlobal = isGlobalRole(roleId)
+        const newCenterId = isGlobal ? null : draft.centerId
+
+        // Check if this role-center combo is revoked
+        if (roleId && isRevoked(roleId, newCenterId)) {
+          // Don't allow selecting revoked role
+          toast.error('Lỗi', 'Không thể gán lại vai trò này vì đã từng bị hủy gán trước đó')
+          return draft // Keep current state
+        }
 
         return {
           ...draft,
           roleId: roleId ?? undefined,
           // Auto-set to "All Centers" if global role
-          centerId: isGlobal ? null : draft.centerId,
+          centerId: newCenterId,
           scope: isGlobal ? 'GLOBAL' : 'CENTER'
         }
       }
 
       if (field === 'centerId') {
-        return { ...draft, centerId: value }
+        const newCenterId = value
+        // If role is already selected, check if it's revoked for the new center
+        if (draft.roleId && isRevoked(draft.roleId, newCenterId)) {
+          // Clear the role if it's revoked for this center
+          return { ...draft, centerId: newCenterId, roleId: undefined }
+        }
+        return { ...draft, centerId: newCenterId }
       }
 
       return draft
@@ -284,6 +328,8 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
       setErrors({})
 
       toast.success('Thành công', 'Cập nhật vai trò thành công')
+      // Call onSuccess callback to refresh parent data (e.g., dashboard stats)
+      if (onSuccess) onSuccess()
       onClose()
     } catch (error: any) {
       console.error('[AssignRoleModal] Submit failed:', error)
@@ -439,11 +485,18 @@ export default function AssignRoleModal({ userId, onClose }: AssignRoleModalProp
                                       }`}
                                   >
                                     <option value="">-- Chọn vai trò --</option>
-                                    {roles.map(role => (
-                                      <option key={role.roleId} value={role.roleId}>
-                                        {role.name}
-                                      </option>
-                                    ))}
+                                    {roles.map(role => {
+                                      const isRoleRevoked = isRevoked(role.roleId, draft.centerId)
+                                      return (
+                                        <option 
+                                          key={role.roleId} 
+                                          value={role.roleId}
+                                          disabled={isRoleRevoked}
+                                        >
+                                          {role.name}{isRoleRevoked ? ' (Đã bị hủy gán)' : ''}
+                                        </option>
+                                      )
+                                    })}
                                   </select>
                                 </div>
 
