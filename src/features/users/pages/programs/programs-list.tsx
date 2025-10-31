@@ -2,16 +2,18 @@ import { Clock, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ProgramActions from './components/actions';
 import type { Program as ProgramDto } from '../../../../shared/api/programs';
+import { getCategoryLabel, MAIN_CATEGORIES } from '../../../../shared/constants/categories';
+import { getDeliveryModeLabel } from '../../../../shared/constants/deliveryModes';
 
 type Program = ProgramDto;
 
 interface ProgramsListProps {
     programs: Program[];
     onView: (program: Program) => void;
-    onEdit: (program: Program) => void;
-    onDelete: (program: Program) => void;
     onCreate: () => void;
     onManageModules: (program: Program) => void;
+    onEdit: (program: Program) => void;
+    onDelete: (program: Program) => void;
     currentPage: number;
     itemsPerPage: number;
     onPageChange: (page: number) => void;
@@ -20,10 +22,10 @@ interface ProgramsListProps {
 const ProgramsList: React.FC<ProgramsListProps> = ({
     programs,
     onView,
-    onEdit,
-    onDelete,
     onCreate,
     onManageModules,
+    onEdit,
+    onDelete,
     currentPage,
     itemsPerPage,
     onPageChange,
@@ -31,32 +33,6 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
     const [query, setQuery] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('Tất cả');
     const [statusFilter, setStatusFilter] = useState('Tất cả');
-
-    // Hàm chuyển đổi mã danh mục sang tiếng Việt
-    const getCategoryLabel = (categoryCode: string) => {
-        const categoryMap: { [key: string]: string } = {
-            'PROGRAMMING': 'Lập trình',
-            'WEB': 'Web',
-            'MOBILE': 'Di động',
-            'DATABASE': 'Cơ sở dữ liệu',
-            'DESIGN': 'Thiết kế',
-            'BUSINESS': 'Kinh doanh',
-            'TECHNICAL': 'Kỹ thuật',
-            'OTHER': 'Khác'
-        };
-        return categoryMap[categoryCode] || categoryCode;
-    };
-
-    // Hàm chuyển đổi phương thức học sang tiếng Việt
-    const getDeliveryModeLabel = (deliveryMode: string) => {
-        const modeMap: { [key: string]: string } = {
-            'ONLINE': 'Trực tuyến',
-            'OFFLINE': 'Trực tiếp',
-            'HYBRID': 'Kết hợp',
-            'BLENDED': 'Kết hợp'
-        };
-        return modeMap[deliveryMode] || deliveryMode;
-    };
 
     const filtered = useMemo(() => {
         let result = programs.filter(
@@ -67,7 +43,7 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
         );
 
         if (categoryFilter !== 'Tất cả') {
-            result = result.filter((p) => p.categoryCode === categoryFilter);
+            result = result.filter((p) => getCategoryLabel(p.categoryCode) === categoryFilter);
         }
 
         if (statusFilter !== 'Tất cả') {
@@ -124,10 +100,11 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
                         className="h-9 rounded-md border px-3 text-sm"
                     >
                         <option value="Tất cả">Tất cả danh mục</option>
-                        <option value="Kỹ thuật">Kỹ thuật</option>
-                        <option value="Lập trình">Lập trình</option>
-                        <option value="Thiết kế">Thiết kế</option>
-                        <option value="Kinh doanh">Kinh doanh</option>
+                        {MAIN_CATEGORIES.map((category) => (
+                            <option key={category.value} value={category.label}>
+                                {category.label}
+                            </option>
+                        ))}
                     </select>
                     <select
                         value={statusFilter}
@@ -192,8 +169,8 @@ const ProgramsList: React.FC<ProgramsListProps> = ({
                                 <ProgramActions
                                     onView={() => onView(program)}
                                     onEdit={() => onEdit(program)}
-                                    onDelete={() => onDelete(program)}
                                     onManageModules={() => onManageModules(program)}
+                                    onDelete={() => onDelete(program)}
                                 />
                             </div>
                         </div>

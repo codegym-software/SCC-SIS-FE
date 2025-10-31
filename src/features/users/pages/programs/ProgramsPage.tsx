@@ -9,6 +9,9 @@ import ModuleDetailModal from './components/ModuleDetailModal';
 import ModuleForm from './components/ModuleForm';
 import ProgramModulesManager from './components/ProgramModulesManager';
 
+// Import hooks
+import { useToast } from '../../../../shared/hooks/useToast';
+
 // Import API and types
 import {
     getPrograms,
@@ -48,6 +51,7 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
 }
 
 export default function ProgramsPage() {
+    const toast = useToast();
     const [activeTab, setActiveTab] = useState<'programs' | 'modules'>('programs');
     const [openCreate, setOpenCreate] = useState(false);
     const [openEdit, setOpenEdit] = useState<Program | null>(null);
@@ -131,65 +135,52 @@ export default function ProgramsPage() {
         try {
             setIsSubmitting(true);
 
-            if (openEdit) {
-                // Update existing program
-                const updateData: UpdateProgramDto = {
-                    name: formData.name,
-                    description: formData.description,
-                    durationHours: formData.durationHours,
-                    deliveryMode: formData.deliveryMode,
-                    categoryCode: formData.categoryCode,
-                    isActive: formData.isActive ?? true,
-                };
-                await updateProgram(openEdit.programId, updateData);
-            } else {
-                // Create new program
-                const createData: CreateProgramDto = {
-                    code: formData.code,
-                    name: formData.name,
-                    description: formData.description,
-                    durationHours: formData.durationHours,
-                    deliveryMode: formData.deliveryMode,
-                    categoryCode: formData.categoryCode,
-                    isActive: formData.isActive ?? true,
-                };
-                await createProgram(createData);
-            }
+            // Create new program
+            const createData: CreateProgramDto = {
+                code: formData.code,
+                name: formData.name,
+                description: formData.description,
+                durationHours: formData.durationHours,
+                deliveryMode: formData.deliveryMode,
+                categoryCode: formData.categoryCode,
+                languageCode: formData.languageCode || 'vi',
+                isActive: formData.isActive ?? true,
+            };
+            await createProgram(createData);
 
             // Refresh programs list
             await fetchPrograms();
             setOpenCreate(false);
-            setOpenEdit(null);
-        } catch (error) {
+            
+            // Show success toast
+            toast.success('Tạo thành công!', `Chương trình ${formData.name} đã được thêm vào hệ thống`);
+        } catch (error: any) {
             console.error('Error saving program:', error);
+            console.error('Error response:', error?.response?.data);
+            console.error('Error status:', error?.response?.status);
+            
+            // Show error toast with specific error messages
+            if (error.response?.status === 400) {
+                const apiError = error.response.data;
+                toast.error('Dữ liệu không hợp lệ', apiError.message || 'Vui lòng kiểm tra lại thông tin');
+            } else if (error.response?.status === 409) {
+                toast.error('Trùng lặp dữ liệu', 'Mã chương trình hoặc tên đã tồn tại trong hệ thống');
+            } else {
+                const errorMessage = error.response?.data?.message || error.message || 'Không thể kết nối đến server';
+                toast.error('Lỗi hệ thống', errorMessage);
+            }
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const handleDelete = async (program: Program) => {
-        if (window.confirm(`Bạn có chắc chắn muốn xóa chương trình "${program.name}" không?`)) {
-            try {
-                await deleteProgram(program.programId);
-                // Refresh programs list
-                await fetchPrograms();
-            } catch (error) {
-                console.error('Error deleting program:', error);
-            }
-        }
-    };
-
-    const handleView = (program: Program) => {
+    const handleView = async (program: Program) => {
         setOpenView(program);
-    };
-
-    const handleEdit = (program: Program) => {
-        setOpenEdit(program);
-        setOpenCreate(true);
+        // Fetch modules for this program when opening view modal
+        await fetchModules(program.programId);
     };
 
     const handleCreate = () => {
-        setOpenEdit(null);
         setOpenCreate(true);
     };
 
@@ -197,6 +188,78 @@ export default function ProgramsPage() {
         setOpenCreate(false);
         setOpenEdit(null);
         setOpenView(null);
+    };
+
+    // Edit program
+    const handleEdit = (program: Program) => {
+        setOpenEdit(program);
+    };
+
+    const handleUpdateProgram = async (formData: any) => {
+        if (!openEdit) return;
+
+        try {
+            setIsSubmitting(true);
+
+            const updateData: UpdateProgramDto = {
+                name: formData.name,
+                description: formData.description,
+                durationHours: formData.durationHours,
+                deliveryMode: formData.deliveryMode,
+                categoryCode: formData.categoryCode,
+                languageCode: formData.languageCode || 'vi',
+                isActive: formData.isActive ?? true,
+            };
+
+            await updateProgram(openEdit.programId, updateData);
+
+            // Refresh programs list
+            await fetchPrograms();
+            setOpenEdit(null);
+
+            toast.success('Cập nhật thành công!', `Chương trình ${formData.name} đã được cập nhật`);
+        } catch (error: any) {
+            console.error('Error updating program:', error);
+
+            if (error.response?.status === 400) {
+                toast.error('Dữ liệu không hợp lệ', error.response.data.message || 'Vui lòng kiểm tra lại thông tin');
+            } else if (error.response?.status === 403) {
+                toast.error('Không có quyền', 'Bạn không có quyền chỉnh sửa chương trình');
+            } else if (error.response?.status === 404) {
+                toast.error('Không tìm thấy', 'Chương trình không tồn tại');
+            } else {
+                toast.error('Lỗi hệ thống', error.response?.data?.message || error.message || 'Không thể cập nhật chương trình');
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Delete program
+    const handleDelete = async (program: Program) => {
+        try {
+            await deleteProgram(program.programId);
+
+            // Refresh programs list
+            await fetchPrograms();
+
+            toast.success('Xóa thành công!', `Chương trình ${program.name} đã được xóa`);
+        } catch (error: any) {
+            console.error('Error deleting program:', error);
+
+            if (error.response?.status === 403) {
+                toast.error('Không có quyền', 'Bạn không có quyền xóa chương trình');
+            } else if (error.response?.status === 404) {
+                toast.error('Không tìm thấy', 'Chương trình không tồn tại');
+            } else if (error.response?.status === 409) {
+                toast.error('Không thể xóa', 'Chương trình đang được sử dụng');
+            } else if (error.response?.status === 400) {
+                const message = error.response?.data?.message || 'Yêu cầu không hợp lệ';
+                toast.error('Xóa thất bại', message);
+            } else {
+                toast.error('Lỗi hệ thống', error.response?.data?.message || error.message || 'Không thể xóa chương trình');
+            }
+        }
     };
 
     // Program modules manager
@@ -233,9 +296,11 @@ export default function ProgramsPage() {
                 await updateModule(module.moduleId, { isActive: false });
                 // Refresh modules list
                 await fetchModules();
-            } catch (error) {
+                toast.success('Xóa thành công!', `Module ${module.name} đã được xóa`);
+            } catch (error: any) {
                 console.error('Error deleting module:', error);
-                alert('Có lỗi xảy ra khi xóa module. Vui lòng thử lại.');
+                const errorMessage = error.response?.data?.message || error.message || 'Không thể kết nối đến server';
+                toast.error('Lỗi hệ thống', errorMessage);
             }
         }
     };
@@ -260,6 +325,13 @@ export default function ProgramsPage() {
                     isActive: formData.isActive ?? true,
                 };
                 await updateModule(openModuleEdit.moduleId, updateData);
+                
+                // Refresh modules list
+                await fetchModules();
+                setOpenModuleCreate(false);
+                setOpenModuleEdit(null);
+                
+                toast.success('Cập nhật thành công!', `Module ${formData.name} đã được cập nhật`);
             } else {
                 // Create new module
                 const createData: CreateModuleRequest = {
@@ -277,15 +349,27 @@ export default function ProgramsPage() {
                     notes: formData.notes,
                 };
                 await createModule(createData);
+                
+                // Refresh modules list
+                await fetchModules();
+                setOpenModuleCreate(false);
+                setOpenModuleEdit(null);
+                
+                toast.success('Tạo thành công!', `Module ${formData.name} đã được thêm vào hệ thống`);
             }
-
-            // Refresh modules list
-            await fetchModules();
-            setOpenModuleCreate(false);
-            setOpenModuleEdit(null);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving module:', error);
-            alert('Có lỗi xảy ra khi lưu module. Vui lòng thử lại.');
+            
+            // Show error toast with specific error messages
+            if (error.response?.status === 400) {
+                const apiError = error.response.data;
+                toast.error('Dữ liệu không hợp lệ', apiError.message || 'Vui lòng kiểm tra lại thông tin');
+            } else if (error.response?.status === 409) {
+                toast.error('Trùng lặp dữ liệu', 'Mã module hoặc tên đã tồn tại trong hệ thống');
+            } else {
+                const errorMessage = error.response?.data?.message || error.message || 'Không thể kết nối đến server';
+                toast.error('Lỗi hệ thống', errorMessage);
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -332,10 +416,10 @@ export default function ProgramsPage() {
                 <ProgramsList
                     programs={programs}
                     onView={handleView}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
                     onCreate={handleCreate}
                     onManageModules={handleManageModules}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
                     currentPage={currentPage}
                     itemsPerPage={itemsPerPage}
                     onPageChange={setCurrentPage}
@@ -364,11 +448,24 @@ export default function ProgramsPage() {
                 <ProgramForm
                     open={openCreate}
                     onClose={handleCancel}
-                    editing={openEdit}
+                    editing={null}
                     onSubmit={handleSubmit}
                     onCancel={handleCancel}
                     isSubmitting={isSubmitting}
                 />
+            </Modal>
+
+            <Modal open={!!openEdit} onClose={handleCancel}>
+                {openEdit && (
+                    <ProgramForm
+                        open={!!openEdit}
+                        onClose={handleCancel}
+                        editing={openEdit}
+                        onSubmit={handleUpdateProgram}
+                        onCancel={handleCancel}
+                        isSubmitting={isSubmitting}
+                    />
+                )}
             </Modal>
 
             <Modal open={!!openView} onClose={() => setOpenView(null)}>
@@ -378,10 +475,6 @@ export default function ProgramsPage() {
                         onClose={() => setOpenView(null)}
                         program={openView}
                         modules={modules}
-                        onEdit={() => {
-                            setOpenView(null);
-                            handleEdit(openView);
-                        }}
                     />
                 )}
             </Modal>

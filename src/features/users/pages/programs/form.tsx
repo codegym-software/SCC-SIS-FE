@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { BookOpen, Clock, Calendar, X } from 'lucide-react';
+import { BookOpen, X } from 'lucide-react';
 import type { Program } from '../../../../shared/api/programs';
+import { MAIN_CATEGORIES } from '../../../../shared/constants/categories';
+import { getDeliveryModeOptions } from '../../../../shared/constants/deliveryModes';
 
 interface ProgramFormProps {
     open?: boolean;
@@ -33,15 +35,49 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
             onSubmit={(e) => {
                 e.preventDefault();
                 const form = new FormData(e.currentTarget as HTMLFormElement);
-                const formData = {
+                
+                // Get and validate form data
+                const categoryCode = form.get('categoryCode') as string;
+                const deliveryMode = form.get('deliveryMode') as string;
+                const durationHoursStr = form.get('durationHours') as string;
+                
+                // Validation
+                if (!categoryCode || categoryCode === '') {
+                    alert('Vui lòng chọn danh mục');
+                    return;
+                }
+                
+                if (!deliveryMode || deliveryMode === '') {
+                    alert('Vui lòng chọn hình thức học');
+                    return;
+                }
+                
+                const durationHours = parseInt(durationHoursStr);
+                if (isNaN(durationHours) || durationHours <= 0) {
+                    alert('Thời gian học (giờ) phải là số dương');
+                    return;
+                }
+                
+                const description = form.get('description') as string;
+                
+                // Build form data, excluding undefined fields
+                const formData: any = {
                     code: form.get('code') as string,
                     name: form.get('name') as string,
-                    description: form.get('description') as string,
-                    categoryCode: form.get('categoryCode') as string,
-                    durationHours: parseInt(form.get('durationHours') as string),
-                    deliveryMode: form.get('deliveryMode') as 'ONLINE' | 'OFFLINE' | 'HYBRID',
-                    isActive: form.get('isActive') === 'true',
+                    categoryCode: categoryCode,
+                    languageCode: form.get('languageCode') as string || 'vi',
+                    durationHours: durationHours,
+                    deliveryMode: deliveryMode as 'ONLINE' | 'OFFLINE' | 'HYBRID',
+                    // Keep existing isActive value when editing, default to true when creating
+                    isActive: editing ? editing.isActive : true,
                 };
+                
+                // Only add description if it's not empty
+                if (description && description.trim() !== '') {
+                    formData.description = description.trim();
+                }
+                
+                console.log('Form data before submit:', formData);
                 onSubmit(formData);
             }}
         >
@@ -93,15 +129,16 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                             <label className="block text-xs text-gray-600 mb-1">Danh mục *</label>
                             <select
                                 name="categoryCode"
-                                defaultValue={editing?.categoryCode}
+                                defaultValue={editing?.categoryCode || ''}
                                 required
                                 className={`w-full h-8 rounded-md border px-2 text-xs ${errors.categoryCode ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                             >
-                                <option value="">Chọn danh mục</option>
-                                <option value="IT">IT</option>
-                                <option value="PROGRAMMING">PROGRAMMING</option>
-                                <option value="DESIGN">DESIGN</option>
-                                <option value="BUSINESS">BUSINESS</option>
+                                <option value="">-- Chọn danh mục --</option>
+                                {MAIN_CATEGORIES.map((category) => (
+                                    <option key={category.value} value={category.value}>
+                                        {category.label}
+                                    </option>
+                                ))}
                             </select>
                             {errors.categoryCode && <div className="text-xs text-red-600 mt-1">{errors.categoryCode}</div>}
                         </div>
@@ -123,14 +160,27 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                             <label className="block text-xs text-gray-600 mb-1">Hình thức học *</label>
                             <select
                                 name="deliveryMode"
-                                defaultValue={editing?.deliveryMode ?? 'OFFLINE'}
+                                defaultValue={editing?.deliveryMode || ''}
                                 required
                                 className="w-full h-8 rounded-md border px-2 text-xs"
                             >
-                                <option value="">Chọn hình thức học</option>
-                                <option value="ONLINE">ONLINE</option>
-                                <option value="OFFLINE">OFFLINE</option>
-                                <option value="HYBRID">HYBRID</option>
+                                <option value="">-- Chọn hình thức học --</option>
+                                {getDeliveryModeOptions().map((mode) => (
+                                    <option key={mode.value} value={mode.value}>
+                                        {mode.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs text-gray-600 mb-1">Ngôn ngữ</label>
+                            <select
+                                name="languageCode"
+                                defaultValue={editing?.languageCode ?? 'vi'}
+                                className="w-full h-8 rounded-md border px-2 text-xs"
+                            >
+                                <option value="vi">Tiếng Việt</option>
+                                <option value="en">English</option>
                             </select>
                         </div>
                     </div>
@@ -144,30 +194,6 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                         />
                     </div>
                 </div>
-
-
-                {/* Trạng thái - chỉ hiển thị khi editing */}
-                {editing && (
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                            <div className="h-5 w-5 rounded-lg bg-green-50 text-green-600 grid place-items-center">
-                                <Clock size={12} />
-                            </div>
-                            <h3 className="text-xs font-medium text-gray-900">Trạng thái</h3>
-                        </div>
-                        <div>
-                            <label className="block text-xs text-gray-600 mb-1">Trạng thái chương trình</label>
-                            <select
-                                name="isActive"
-                                defaultValue={editing?.isActive ? 'true' : 'false'}
-                                className="w-full h-8 rounded-md border px-2 text-xs"
-                            >
-                                <option value="true">Đang hoạt động</option>
-                                <option value="false">Tạm dừng</option>
-                            </select>
-                        </div>
-                    </div>
-                )}
             </div>
 
             <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
