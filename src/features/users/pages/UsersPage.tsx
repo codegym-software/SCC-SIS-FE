@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useToast } from '../../../shared/hooks/useToast'
 import { usePermission } from '../../../shared/components/PermissionProvider'
-import { MoreHorizontal, Plus, Search, ChevronDown, Eye, Pencil } from 'lucide-react'
+import { MoreHorizontal, Plus, Search, ChevronDown, Eye, Pencil, Users } from 'lucide-react'
 import CreateUserModal from '../components/CreateUserModal'
 import AssignRoleModal from '../components/AssignRoleModal'
 
@@ -169,8 +169,21 @@ export default function UsersPage() {
 
     // Cards thống kê
     const totalActive = users.filter(u => u.active).length
-    const lecturerCount = roleStats['LECTURER'] ?? 0
-    const academicStaffCount = roleStats['ACADEMIC_STAFF'] ?? 0
+    
+    // Map tất cả vai trò từ roleStats với tên từ roles list
+    const allRoleStats = useMemo(() => {
+        return Object.entries(roleStats)
+            .map(([code, count]) => {
+                const role = roles.find(r => r.code === code)
+                return {
+                    code,
+                    name: role?.name || code,
+                    count: count
+                }
+            })
+            .filter(r => r.count > 0) // Chỉ hiển thị vai trò có người dùng
+            .sort((a, b) => b.count - a.count) // Sắp xếp theo số lượng giảm dần
+    }, [roleStats, roles])
 
     return (
         <div className="space-y-6">
@@ -191,21 +204,53 @@ export default function UsersPage() {
                 )}
             </div>
 
-            {/* Stats */}
-            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[
-                    { label: 'Tổng Người dùng', value: String(users.length) },
-                    { label: 'Đang hoạt động', value: String(totalActive) },
-                    { label: 'Giảng viên', value: String(lecturerCount) },
-                    { label: 'Giáo vụ', value: String(academicStaffCount) },
-                ].map((s) => (
-                    <div key={s.label} className="bg-white border border-gray-200 rounded-2xl p-6">
-                        <p className="text-sm font-medium text-gray-900">{s.label}</p>
-                        <p className={`text-3xl font-bold mt-8 ${s.label === 'Đang hoạt động' ? 'text-[#00a63e]' : 'text-gray-900'}`}>
-                            {s.value}
-                        </p>
+            {/* Stats - Clean & Balanced design */}
+            <section className="space-y-3">
+                {/* Overview cards - Always 2 cards */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-medium text-gray-600 mb-1">Tổng Người dùng</p>
+                                <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+                            </div>
+                            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                                <Users className="w-5 h-5 text-blue-600" />
+                            </div>
+                        </div>
                     </div>
-                ))}
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-medium text-gray-600 mb-1">Đang hoạt động</p>
+                                <p className="text-2xl font-bold text-[#00a63e]">{totalActive}</p>
+                            </div>
+                            <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                                <Users className="w-5 h-5 text-green-600" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Role stats - Horizontal scrollable compact design */}
+                {allRoleStats.length > 0 && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-gray-700 mb-2">Thống kê theo vai trò</p>
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                            {allRoleStats.map((role) => (
+                                <div 
+                                    key={role.code} 
+                                    className="flex-shrink-0 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg px-4 py-2.5 border border-gray-200 min-w-[100px]"
+                                >
+                                    <p className="text-xs font-medium text-gray-600 mb-0.5 truncate" title={role.name}>
+                                        {role.name}
+                                    </p>
+                                    <p className="text-lg font-bold text-gray-900">{role.count}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </section>
 
             {/* Create User Modal */}
@@ -456,7 +501,11 @@ export default function UsersPage() {
                     userId={openAssignRole}
                     onClose={() => {
                         setOpenAssignRole(null)
-                        fetchUsers() // Refresh list after modal closes
+                    }}
+                    onSuccess={async () => {
+                        // Refresh both users list and role stats after successful role assignment/revocation
+                        await fetchUsers()
+                        await fetchRoleStats()
                     }}
                 />
             )}
