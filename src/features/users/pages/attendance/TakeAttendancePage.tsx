@@ -35,6 +35,7 @@ export default function TakeAttendancePage() {
     const classId = useMemo(() => searchParams.get('classId') || '1', [searchParams]);
     const className = useMemo(() => searchParams.get('className') || 'Lớp học', [searchParams]);
     const sessionIdParam = useMemo(() => searchParams.get('sessionId'), [searchParams]); // Check if editing existing session
+    const viewMode = useMemo(() => searchParams.get('viewMode') || 'month', [searchParams]); // Get view mode to return to
     const date = useMemo(() => {
         const urlDate = searchParams.get('date');
         if (!urlDate) {
@@ -217,7 +218,8 @@ export default function TakeAttendancePage() {
                 showSuccessToast('Thành công', 'Đã lưu điểm danh');
             }
             
-            setTimeout(() => navigate('/attendance'), 500);
+            // Navigate back with viewMode parameter to restore correct view
+            setTimeout(() => navigate(`/attendance?view=${viewMode}`), 500);
         } catch (error: any) {
             console.error('Error saving attendance:', error);
             console.error('Error response:', error?.response?.data);
@@ -239,7 +241,7 @@ export default function TakeAttendancePage() {
     };
 
     const handleGoBack = () => {
-        navigate('/attendance');
+        navigate(`/attendance?view=${viewMode}`);
     };
 
     const StatusCheckbox = ({
@@ -309,16 +311,6 @@ export default function TakeAttendancePage() {
                                 </div>
                             </div>
                         </div>
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={handleSubmit}
-                            disabled={isSubmitting}
-                            className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md"
-                        >
-                            <Save size={18} />
-                            <span>{isSubmitting ? 'Đang lưu...' : (isEditMode ? 'Cập nhật điểm danh' : 'Lưu điểm danh')}</span>
-                        </motion.button>
                     </div>
                 </div>
             </motion.div>
