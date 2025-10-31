@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BookOpen, X } from 'lucide-react';
 import type { Program } from '../../../../shared/api/programs';
 import { MAIN_CATEGORIES } from '../../../../shared/constants/categories';
@@ -6,7 +6,6 @@ import { getDeliveryModeOptions } from '../../../../shared/constants/deliveryMod
 
 interface ProgramFormProps {
     open?: boolean;
-    onClose?: () => void;
     editing?: Program | null;
     onSubmit: (formData: any) => void;
     onCancel: () => void;
@@ -15,20 +14,12 @@ interface ProgramFormProps {
 
 const ProgramForm: React.FC<ProgramFormProps> = ({ 
     open = true,
-    onClose,
     editing, 
     onSubmit, 
     onCancel, 
     isSubmitting = false 
 }) => {
     if (!open) return null;
-    
-    const [errors, setErrors] = useState<{
-        name?: string;
-        code?: string;
-        categoryCode?: string;
-        durationHours?: string;
-    }>({});
 
     return (
         <form
@@ -109,10 +100,9 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                                 defaultValue={editing?.code}
                                 required
                                 disabled={!!editing}
-                                className={`w-full h-8 rounded-md border px-2 text-xs ${errors.code ? 'border-red-500 bg-red-50' : 'border-gray-300'} ${editing ? 'bg-gray-100' : ''}`}
+                                className={`w-full h-8 rounded-md border px-2 text-xs border-gray-300 ${editing ? 'bg-gray-100' : ''}`}
                                 placeholder="CNTT-2024"
                             />
-                            {errors.code && <div className="text-xs text-red-600 mt-1">{errors.code}</div>}
                         </div>
                         <div>
                             <label className="block text-xs text-gray-600 mb-1">Tên chương trình *</label>
@@ -120,10 +110,9 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                                 name="name"
                                 defaultValue={editing?.name}
                                 required
-                                className={`w-full h-8 rounded-md border px-2 text-xs ${errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                className="w-full h-8 rounded-md border px-2 text-xs border-gray-300"
                                 placeholder="Công nghệ Thông tin"
                             />
-                            {errors.name && <div className="text-xs text-red-600 mt-1">{errors.name}</div>}
                         </div>
                         <div>
                             <label className="block text-xs text-gray-600 mb-1">Danh mục *</label>
@@ -131,7 +120,7 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                                 name="categoryCode"
                                 defaultValue={editing?.categoryCode || ''}
                                 required
-                                className={`w-full h-8 rounded-md border px-2 text-xs ${errors.categoryCode ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                className="w-full h-8 rounded-md border px-2 text-xs border-gray-300"
                             >
                                 <option value="">-- Chọn danh mục --</option>
                                 {MAIN_CATEGORIES.map((category) => (
@@ -140,7 +129,6 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                                     </option>
                                 ))}
                             </select>
-                            {errors.categoryCode && <div className="text-xs text-red-600 mt-1">{errors.categoryCode}</div>}
                         </div>
                         <div>
                             <label className="block text-xs text-gray-600 mb-1">Thời gian (giờ) *</label>
@@ -150,11 +138,10 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                                 required
                                 type="number"
                                 min="1"
-                                className={`w-full h-8 rounded-md border px-2 text-xs ${errors.durationHours ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                className="w-full h-8 rounded-md border px-2 text-xs border-gray-300"
                                 placeholder="480"
                             />
                             <div className="text-xs text-gray-500 mt-1">Nhập số giờ (VD: 480)</div>
-                            {errors.durationHours && <div className="text-xs text-red-600 mt-1">{errors.durationHours}</div>}
                         </div>
                         <div>
                             <label className="block text-xs text-gray-600 mb-1">Hình thức học *</label>

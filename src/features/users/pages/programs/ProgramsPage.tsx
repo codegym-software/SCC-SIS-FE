@@ -447,7 +447,6 @@ export default function ProgramsPage() {
             <Modal open={openCreate} onClose={handleCancel}>
                 <ProgramForm
                     open={openCreate}
-                    onClose={handleCancel}
                     editing={null}
                     onSubmit={handleSubmit}
                     onCancel={handleCancel}
@@ -459,7 +458,6 @@ export default function ProgramsPage() {
                 {openEdit && (
                     <ProgramForm
                         open={!!openEdit}
-                        onClose={handleCancel}
                         editing={openEdit}
                         onSubmit={handleUpdateProgram}
                         onCancel={handleCancel}
