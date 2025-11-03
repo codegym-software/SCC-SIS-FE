@@ -197,9 +197,9 @@ function AppLayout({ children }: AppLayoutProps) {
             <div className="flex min-h-screen m-0 p-0">
                 {/* Sidebar */}
                 <aside
-                    className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r bg-white hidden md:flex md:flex-col sticky top-0 h-screen overflow-y-auto z-10 transition-all duration-300 relative`}
+                    className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r bg-gradient-to-b from-gray-50 to-white hidden md:flex md:flex-col sticky top-0 h-screen overflow-y-auto z-10 transition-all duration-300 relative shadow-sm`}
                 >
-                    <div className="px-4 py-5 border-b">
+                    <div className="px-4 py-5 border-b border-gray-200">
                         {!sidebarCollapsed && (
                             <>
                                 <div className="text-xs text-gray-500 mb-2">Hệ thống Giáo dục Số</div>
@@ -264,11 +264,18 @@ function AppLayout({ children }: AppLayoutProps) {
                                             to={item.path}
                                             end={item.end}
                                             className={({ isActive }) =>
-                                                `flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'gap-2 px-2'} py-2 rounded-md text-sm ${isActive ? 'bg-gray-100 text-gray-900 font-medium' : 'hover:bg-gray-50'}`
+                                                `flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm transition-all duration-200 ${
+                                                    isActive
+                                                        ? 'bg-blue-50 text-blue-700 font-semibold shadow-sm border-l-4 border-blue-600'
+                                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent'
+                                                }`
                                             }
                                             title={sidebarCollapsed ? item.label : undefined}
                                         >
-                                            <IconComponent size={16} />
+                                            <IconComponent
+                                                size={16}
+                                                className={sidebarCollapsed ? '' : 'flex-shrink-0'}
+                                            />
                                             {!sidebarCollapsed && <span>{item.label}</span>}
                                         </NavLink>
                                     );
@@ -277,7 +284,7 @@ function AppLayout({ children }: AppLayoutProps) {
                         ))}
                     </nav>
 
-                    <div className="mt-auto border-t p-3 sticky bottom-0 bg-white z-10">
+                    <div className="mt-auto border-t border-gray-200 p-3 sticky bottom-0 bg-gray-50 z-10">
                         {bottomMenuItems.map((item) => {
                             const IconComponent = item.icon;
                             return (
@@ -285,11 +292,15 @@ function AppLayout({ children }: AppLayoutProps) {
                                     key={item.id}
                                     to={item.path}
                                     className={({ isActive }) =>
-                                        `block w-full text-left text-sm px-2 py-2 rounded-md flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-2'} ${isActive ? 'bg-gray-100 text-gray-900 font-medium' : 'hover:bg-gray-50'}`
+                                        `block w-full text-left text-sm px-3 py-2.5 rounded-lg flex items-center transition-all duration-200 ${sidebarCollapsed ? 'justify-center' : 'gap-3'} ${
+                                            isActive
+                                                ? 'bg-blue-50 text-blue-700 font-semibold shadow-sm border-l-4 border-blue-600'
+                                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent'
+                                        }`
                                     }
                                     title={sidebarCollapsed ? item.label : undefined}
                                 >
-                                    <IconComponent size={16} />
+                                    <IconComponent size={16} className={sidebarCollapsed ? '' : 'flex-shrink-0'} />
                                     {!sidebarCollapsed && <span>{item.label}</span>}
                                 </NavLink>
                             );
