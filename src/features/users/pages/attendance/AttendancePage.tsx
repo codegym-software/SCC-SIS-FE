@@ -65,7 +65,16 @@ export default function AttendancePage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const isLecturer = me?.roles?.some((r) => r.code === 'LECTURER');
-    const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
+    // Initialize currentDate from URL params or default to today
+    const [currentDate, setCurrentDate] = useState<Date>(() => {
+        const dateParam = searchParams.get('date');
+        if (dateParam) {
+            // Parse date string (YYYY-MM-DD) to Date object
+            const [year, month, day] = dateParam.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+        return new Date();
+    });
     // Initialize viewMode from URL params or default to 'month'
     const [viewMode, setViewMode] = useState<ViewMode>(() => {
         const viewParam = searchParams.get('view');
@@ -173,6 +182,19 @@ export default function AttendancePage() {
         fetchSchedule();
     }, [currentDate, viewMode, isLecturer, me?.userId, classesLoaded, refreshTrigger]);
 
+    // Update currentDate when date param changes in URL
+    useEffect(() => {
+        const dateParam = searchParams.get('date');
+        if (dateParam) {
+            const [year, month, day] = dateParam.split('-').map(Number);
+            const urlDate = new Date(year, month - 1, day);
+            // Only update if different to avoid infinite loops
+            if (urlDate.toDateString() !== currentDate.toDateString()) {
+                setCurrentDate(urlDate);
+            }
+        }
+    }, [searchParams, currentDate]);
+
     // Auto-refresh when returning to this page (e.g., after editing attendance in another tab)
     useEffect(() => {
         const handleVisibilityChange = () => {
@@ -196,10 +218,19 @@ export default function AttendancePage() {
             newDate.setMonth(currentDate.getMonth() + offset);
         }
         setCurrentDate(newDate);
+        // Update URL to reflect date change
+        const params = new URLSearchParams(searchParams);
+        params.set('date', formatDate(newDate));
+        navigate(`/attendance?${params.toString()}`, { replace: true });
     };
 
     const handleToday = () => {
-        setCurrentDate(new Date());
+        const today = new Date();
+        setCurrentDate(today);
+        // Update URL to reflect date change
+        const params = new URLSearchParams(searchParams);
+        params.set('date', formatDate(today));
+        navigate(`/attendance?${params.toString()}`, { replace: true });
     };
 
     // Get calendar days for the month
@@ -334,7 +365,13 @@ export default function AttendancePage() {
                         {/* View mode buttons */}
                         <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
                             <button
-                                onClick={() => setViewMode('day')}
+                                onClick={() => {
+                                    setViewMode('day');
+                                    // Update URL to reflect view mode change
+                                    const params = new URLSearchParams(searchParams);
+                                    params.set('view', 'day');
+                                    navigate(`/attendance?${params.toString()}`, { replace: true });
+                                }}
                                 className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
                                     viewMode === 'day'
                                         ? 'bg-white text-blue-600 shadow-sm'
@@ -344,7 +381,13 @@ export default function AttendancePage() {
                                 Ngày
                             </button>
                             <button
-                                onClick={() => setViewMode('week')}
+                                onClick={() => {
+                                    setViewMode('week');
+                                    // Update URL to reflect view mode change
+                                    const params = new URLSearchParams(searchParams);
+                                    params.set('view', 'week');
+                                    navigate(`/attendance?${params.toString()}`, { replace: true });
+                                }}
                                 className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
                                     viewMode === 'week'
                                         ? 'bg-white text-blue-600 shadow-sm'
@@ -354,7 +397,13 @@ export default function AttendancePage() {
                                 Tuần
                             </button>
                             <button
-                                onClick={() => setViewMode('month')}
+                                onClick={() => {
+                                    setViewMode('month');
+                                    // Update URL to reflect view mode change
+                                    const params = new URLSearchParams(searchParams);
+                                    params.set('view', 'month');
+                                    navigate(`/attendance?${params.toString()}`, { replace: true });
+                                }}
                                 className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
                                     viewMode === 'month'
                                         ? 'bg-white text-blue-600 shadow-sm'
@@ -471,7 +520,7 @@ export default function AttendancePage() {
                                     ))}
                                 </div>
                             )}
-                        </div>
+                                </div>
                     )}
 
                     {/* WEEK VIEW */}
@@ -489,7 +538,7 @@ export default function AttendancePage() {
                                         const isToday = day.toDateString() === new Date().toDateString();
                                         const dayName = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'][idx];
                                         
-                                        return (
+                                    return (
                                             <div
                                                 key={idx}
                                                 className={`px-2 py-3 text-center border-l ${
@@ -508,11 +557,11 @@ export default function AttendancePage() {
                                                 </div>
                                                 <div className="text-[10px] text-gray-500 mt-0.5">
                                                     {day.toLocaleDateString('vi-VN', { month: 'numeric' })}
-                                                </div>
                                             </div>
-                                        );
-                                    })}
-                                </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
 
                                 {/* Time slots - 3 khung giờ */}
                                 <div className="overflow-auto max-h-[600px]">
@@ -527,7 +576,7 @@ export default function AttendancePage() {
                                                         {timeSlot === 'MORNING' ? 'Sáng' : timeSlot === 'AFTERNOON' ? 'Chiều' : 'Tối'}
                                                     </div>
                                                     <div>{slot.label}</div>
-                                                </div>
+                                    </div>
                                                 
                                                 {/* Day columns */}
                                                 {weekDays.map((day, dayIdx) => {
@@ -538,8 +587,8 @@ export default function AttendancePage() {
                                                         (session) => session.studyTime === timeSlot
                                                     );
                                                     const isToday = day.toDateString() === new Date().toDateString();
-                                                    
-                                                    return (
+
+                                        return (
                                                         <div
                                                             key={dayIdx}
                                                             className={`border-l p-2 relative ${
@@ -550,20 +599,20 @@ export default function AttendancePage() {
                                                             {slotSessions.length > 0 ? (
                                                                 <div className="space-y-1">
                                                                     {slotSessions.map((session, sIdx) => (
-                                                                        <button
+                                                    <button
                                                                             key={sIdx}
-                                                                            onClick={() => {
-                                                                                const params = new URLSearchParams({
-                                                                                    classId: session.classId.toString(),
-                                                                                    className: session.className,
+                                                        onClick={() => {
+                                                            const params = new URLSearchParams({
+                                                                classId: session.classId.toString(),
+                                                                className: session.className,
                                                                                     date: session.attendanceDate,
                                                                                     viewMode: viewMode, // Pass current view mode
                                                                                 });
                                                                                 if (session.sessionId) {
                                                                                     params.set('sessionId', session.sessionId.toString());
                                                                                 }
-                                                                                navigate(`/attendance/take?${params.toString()}`);
-                                                                            }}
+                                                            navigate(`/attendance/take?${params.toString()}`);
+                                                        }}
                                                                             className={`w-full text-left px-2 py-2 rounded text-xs transition-all ${
                                                                                 session.sessionStatus === 'TAKEN'
                                                                                     ? 'bg-green-500 text-white hover:bg-green-600 shadow-sm'
@@ -571,8 +620,8 @@ export default function AttendancePage() {
                                                                             }`}
                                                                         >
                                                                             <div className="font-medium truncate mb-1">
-                                                                                {session.className}
-                                                                            </div>
+                                                            {session.className}
+                                                        </div>
                                                                             <div className="text-[10px] opacity-90 flex items-center gap-1">
                                                                                 {session.sessionStatus === 'TAKEN' ? (
                                                                                     <>
@@ -585,10 +634,10 @@ export default function AttendancePage() {
                                                                                         Chưa điểm danh
                                                                                     </>
                                                                                 )}
-                                                                            </div>
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
                                                             ) : null}
                                                         </div>
                                                     );
@@ -659,9 +708,9 @@ export default function AttendancePage() {
                                                         <span className="absolute bottom-0.5 w-1 h-1 bg-green-500 rounded-full"></span>
                                                     )}
                                                 </button>
-                                            );
-                                        })}
-                                    </div>
+                                        );
+                                    })}
+                                </div>
 
                                     {/* Legend */}
                                     <div className="mt-4 pt-4 border-t space-y-2">

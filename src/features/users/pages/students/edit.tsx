@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit, Mail, Phone, MapPin, Calendar, Upload, Image as ImageIcon } from 'lucide-react';
+import { X, Edit, Mail, Phone, MapPin, Upload, Image as ImageIcon } from 'lucide-react';
 import type { StudentUI } from '@/shared/types/student-ui';
 
 interface StudentEditProps {
@@ -117,12 +117,11 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
             newErrors.phone = 'Số điện thoại phải có 10-11 chữ số';
         }
 
-        if (!formData.address || formData.address.trim().length < 5) {
-            newErrors.address = 'Địa chỉ phải có ít nhất 5 ký tự';
-        }
-
-        if (!formData.dateOfBirth || !/^\d{2}\/\d{2}\/\d{4}$/.test(formData.dateOfBirth)) {
-            newErrors.dateOfBirth = 'Ngày sinh phải có định dạng DD/MM/YYYY';
+        // Date validation: type="date" returns YYYY-MM-DD format or empty string
+        // Backend expects YYYY-MM-DD or null, so validation is simpler
+        // Ngày sinh và địa chỉ không bắt buộc (đồng bộ với form tạo)
+        if (formData.dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(formData.dateOfBirth)) {
+            newErrors.dateOfBirth = 'Ngày sinh không hợp lệ';
         }
 
         setErrors(newErrors);
@@ -317,21 +316,18 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
 
                         {/* Ngày sinh */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-900 mb-2">
+                            <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-900 mb-2">
                                 Ngày sinh
                             </label>
-                            <div className="relative">
-                                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="text"
-                                    value={formData.dateOfBirth}
-                                    onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                                    className={`w-full h-9 pl-10 pr-3 rounded-md border text-sm outline-none focus:ring-2 focus:ring-blue-200 ${
-                                        errors.dateOfBirth ? 'border-red-300' : 'border-gray-300'
-                                    }`}
-                                    placeholder="DD/MM/YYYY"
-                                />
-                            </div>
+                            <input
+                                type="date"
+                                id="dateOfBirth"
+                                value={formData.dateOfBirth || ''}
+                                onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                                className={`w-full h-9 px-3 rounded-md border text-sm outline-none focus:ring-2 focus:ring-blue-200 ${
+                                    errors.dateOfBirth ? 'border-red-300' : 'border-gray-300'
+                                }`}
+                            />
                             {errors.dateOfBirth && (
                                 <p className="text-xs text-red-600 mt-1">{errors.dateOfBirth}</p>
                             )}

@@ -118,16 +118,23 @@ export default function CreateStudentModal({ open, onClose, onSuccess }: CreateS
             onClose();
         } catch (error: any) {
             console.error('Error creating student:', error);
-            if (error.response?.status === 400) {
-                const message = error.response?.data?.message || '';
-                if (message.includes('email') || message.includes('Email')) {
-                    setErrors(prev => ({ ...prev, email: 'Email đã tồn tại trong hệ thống' }));
-                    toast.error('Dữ liệu không hợp lệ', 'Email đã tồn tại trong hệ thống');
+            const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi tạo học viên';
+            
+            // Kiểm tra nếu lỗi liên quan đến email trùng (có thể là 400 hoặc các status khác)
+            const isEmailConflict = errorMessage.toLowerCase().includes('email') && 
+                (errorMessage.includes('đã được sử dụng') || errorMessage.includes('đã tồn tại'));
+            
+            if (error.response?.status === 400 || isEmailConflict) {
+                if (isEmailConflict) {
+                    // Hiển thị message từ backend (đã có email cụ thể)
+                    setErrors(prev => ({ ...prev, email: errorMessage }));
+                    toast.error('Email đã tồn tại', errorMessage);
                 } else {
-                    toast.error('Dữ liệu không hợp lệ', message || 'Vui lòng kiểm tra lại thông tin đã nhập');
+                    // Các lỗi validation khác
+                    setErrors({});
+                    toast.error('Dữ liệu không hợp lệ', errorMessage);
                 }
             } else {
-                const errorMessage = error.response?.data?.message || 'Có lỗi xảy ra khi tạo học viên';
                 toast.error('Tạo thất bại', errorMessage);
             }
         } finally {

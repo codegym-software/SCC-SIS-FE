@@ -1523,186 +1523,194 @@ export default function ClassesPage() {
             ) : (
                 /* Kanban Grid View */
                 <div className="space-y-4 bg-gray-50/80 p-2 md:p-3 rounded-xl">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {currentClasses.map((classItem, idx) => {
-                            const theme = getCardThemeByKey(
-                                String((classItem as any).id ?? (classItem as any).name ?? idx),
-                            );
-                            return (
-                                <div
-                                    key={classItem.id}
-                                    className={`rounded-lg border ${theme.border} ${theme.bg} shadow-sm hover:shadow-lg active:shadow-sm active:scale-[0.98] transition-all duration-200 overflow-hidden cursor-pointer`}
-                                    onClick={() => {
-                                        setSelectedClass(classItem);
-                                        setView('detail');
-                                    }}
-                                >
-                                    {/* Card Header */}
-                                    <div className="p-4 space-y-3">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h3 className="font-semibold text-sm line-clamp-1">
-                                                        {classItem.name}
-                                                    </h3>
-                                                    <button
-                                                        className="text-gray-400 hover:text-yellow-500 transition-colors"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                        }}
-                                                    >
-                                                        <Star size={14} />
-                                                    </button>
-                                                </div>
-                                                <p className="text-xs text-gray-500">Cập nhật 3 giờ trước</p>
-                                            </div>
-
-                                            {/* Dropdown Menu */}
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <button
-                                                        className="p-1 hover:bg-gray-100 rounded transition-colors"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                        }}
-                                                    >
-                                                        <MoreVertical size={16} className="text-gray-500" />
-                                                    </button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-40">
-                                                    <DropdownMenuItem
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setOpenEdit(classItem);
-                                                        }}
-                                                        className="flex items-center gap-2 cursor-pointer"
-                                                    >
-                                                        <Edit size={14} />
-                                                        <span>Chỉnh sửa</span>
-                                                    </DropdownMenuItem>
-                                                    {classItem.status !== 'Hoàn thành' && (
-                                                        classItem.status === 'Tạm dừng' ? (
-                                                            <DropdownMenuItem 
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setResumeConfirm(classItem);
-                                                                }}
-                                                                className="flex items-center gap-2 cursor-pointer text-green-600"
-                                                            >
-                                                                <Check size={14} />
-                                                                <span>Khôi phục</span>
-                                                            </DropdownMenuItem>
-                                                        ) : (
-                                                            <DropdownMenuItem 
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setPauseConfirm(classItem);
-                                                                }}
-                                                                className="flex items-center gap-2 cursor-pointer text-orange-600"
-                                                            >
-                                                                <X size={14} />
-                                                                <span>Tạm dừng</span>
-                                                            </DropdownMenuItem>
-                                                        )
-                                                    )}
-                                                    <DropdownMenuItem 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                        }}
-                                                        className="flex items-center gap-2 cursor-pointer text-red-600"
-                                                    >
-                                                        <Trash2 size={14} />
-                                                        <span>Xóa</span>
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-
-                                        {/* Status Badge */}
-                                        <Badge
-                                            variant={
-                                                classItem.status === 'Đang học'
-                                                    ? 'primary'
-                                                    : classItem.status === 'Chuẩn bị'
-                                                      ? 'secondary'
-                                                      : classItem.status === 'Hoàn thành'
-                                                        ? 'success'
-                                                        : 'destructive'
-                                            }
-                                            className="text-xs"
-                                        >
-                                            {classItem.status}
-                                        </Badge>
-
-                                        {/* Description */}
-                                        <p className="text-xs text-gray-600 line-clamp-2 min-h-[32px]">
-                                            {classItem.description || 'Không có mô tả'}
-                                        </p>
-
-                                        {/* Progress */}
-                                        <div className="space-y-1">
-                                            <div className="flex items-center justify-between text-xs">
-                                                <span className="text-gray-500">Học viên</span>
-                                                <span className="font-medium">
-                                                    {classItem.students} / {classItem.maxStudents}
-                                                </span>
-                                            </div>
-                                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
-                                                    style={{
-                                                        width: `${Math.min(100, (classItem.students / classItem.maxStudents) * 100)}%`,
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Meta Info */}
-                                        <div className="space-y-2 pt-2 border-t border-gray-100">
-                                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                <Calendar size={12} className="text-gray-400" />
-                                                <span>{classItem.startDate}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                <ClipboardList size={12} className="text-gray-400" />
-                                                <span className="line-clamp-1">{classItem.program}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                <Users size={12} className="text-gray-400" />
-                                                <span>
-                                                    {classItem.instructors?.length || 0} giảng viên
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Instructors */}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                        <div className="flex items-center justify-center gap-2 pt-4">
-                            <button
-                                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
-                                className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Trước
-                            </button>
-                            <span className="text-sm text-gray-600">
-                                Trang {currentPage} / {totalPages}
-                            </span>
-                            <button
-                                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages}
-                                className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Sau
-                            </button>
+                    {currentClasses.length === 0 ? (
+                        <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
+                            <div className="text-sm text-gray-500">Chưa có lớp học</div>
                         </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {currentClasses.map((classItem, idx) => {
+                                const theme = getCardThemeByKey(
+                                    String((classItem as any).id ?? (classItem as any).name ?? idx),
+                                );
+                                return (
+                                    <div
+                                        key={classItem.id}
+                                        className={`rounded-lg border ${theme.border} ${theme.bg} shadow-sm hover:shadow-lg active:shadow-sm active:scale-[0.98] transition-all duration-200 overflow-hidden cursor-pointer`}
+                                        onClick={() => {
+                                            setSelectedClass(classItem);
+                                            setView('detail');
+                                        }}
+                                    >
+                                        {/* Card Header */}
+                                        <div className="p-4 space-y-3">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <h3 className="font-semibold text-sm line-clamp-1">
+                                                            {classItem.name}
+                                                        </h3>
+                                                        <button
+                                                            className="text-gray-400 hover:text-yellow-500 transition-colors"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                            }}
+                                                        >
+                                                            <Star size={14} />
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500">Cập nhật 3 giờ trước</p>
+                                                </div>
+
+                                                {/* Dropdown Menu */}
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <button
+                                                            className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                            }}
+                                                        >
+                                                            <MoreVertical size={16} className="text-gray-500" />
+                                                        </button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-40">
+                                                        <DropdownMenuItem
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setOpenEdit(classItem);
+                                                            }}
+                                                            className="flex items-center gap-2 cursor-pointer"
+                                                        >
+                                                            <Edit size={14} />
+                                                            <span>Chỉnh sửa</span>
+                                                        </DropdownMenuItem>
+                                                        {classItem.status !== 'Hoàn thành' && (
+                                                            classItem.status === 'Tạm dừng' ? (
+                                                                <DropdownMenuItem 
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setResumeConfirm(classItem);
+                                                                    }}
+                                                                    className="flex items-center gap-2 cursor-pointer text-green-600"
+                                                                >
+                                                                    <Check size={14} />
+                                                                    <span>Khôi phục</span>
+                                                                </DropdownMenuItem>
+                                                            ) : (
+                                                                <DropdownMenuItem 
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setPauseConfirm(classItem);
+                                                                    }}
+                                                                    className="flex items-center gap-2 cursor-pointer text-orange-600"
+                                                                >
+                                                                    <X size={14} />
+                                                                    <span>Tạm dừng</span>
+                                                                </DropdownMenuItem>
+                                                            )
+                                                        )}
+                                                        <DropdownMenuItem 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                            }}
+                                                            className="flex items-center gap-2 cursor-pointer text-red-600"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                            <span>Xóa</span>
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+
+                                            {/* Status Badge */}
+                                            <Badge
+                                                variant={
+                                                    classItem.status === 'Đang học'
+                                                        ? 'primary'
+                                                        : classItem.status === 'Chuẩn bị'
+                                                          ? 'secondary'
+                                                          : classItem.status === 'Hoàn thành'
+                                                            ? 'success'
+                                                            : 'destructive'
+                                                }
+                                                className="text-xs"
+                                            >
+                                                {classItem.status}
+                                            </Badge>
+
+                                            {/* Description */}
+                                            <p className="text-xs text-gray-600 line-clamp-2 min-h-[32px]">
+                                                {classItem.description || 'Không có mô tả'}
+                                            </p>
+
+                                            {/* Progress */}
+                                            <div className="space-y-1">
+                                                <div className="flex items-center justify-between text-xs">
+                                                    <span className="text-gray-500">Học viên</span>
+                                                    <span className="font-medium">
+                                                        {classItem.students} / {classItem.maxStudents}
+                                                    </span>
+                                                </div>
+                                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
+                                                        style={{
+                                                            width: `${Math.min(100, (classItem.students / classItem.maxStudents) * 100)}%`,
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Meta Info */}
+                                            <div className="space-y-2 pt-2 border-t border-gray-100">
+                                                <div className="flex items-center gap-2 text-xs text-gray-600">
+                                                    <Calendar size={12} className="text-gray-400" />
+                                                    <span>{classItem.startDate}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-gray-600">
+                                                    <ClipboardList size={12} className="text-gray-400" />
+                                                    <span className="line-clamp-1">{classItem.program}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-gray-600">
+                                                    <Users size={12} className="text-gray-400" />
+                                                    <span>
+                                                        {classItem.instructors?.length || 0} giảng viên
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Instructors */}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            </div>
+
+                            {/* Pagination */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-center gap-2 pt-4">
+                                    <button
+                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                        className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Trước
+                                    </button>
+                                    <span className="text-sm text-gray-600">
+                                        Trang {currentPage} / {totalPages}
+                                    </span>
+                                    <button
+                                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage === totalPages}
+                                        className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Sau
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             )}

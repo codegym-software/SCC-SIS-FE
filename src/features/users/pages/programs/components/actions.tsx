@@ -5,17 +5,17 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '../../../../../components/ui/dropdown-menu';
-import { Edit, Eye, Trash, MoreHorizontal, ListOrdered } from 'lucide-react';
+import { Eye, MoreHorizontal, ListOrdered, Pencil, Trash2 } from 'lucide-react';
 import React from 'react';
 
 interface ProgramActionsProps {
     onView?: () => void;
+    onManageModules?: () => void;
     onEdit?: () => void;
     onDelete?: () => void;
-    onManageModules?: () => void;
 }
 
-const ProgramActions: React.FC<ProgramActionsProps> = ({ onView, onEdit, onDelete, onManageModules }) => {
+const ProgramActions: React.FC<ProgramActionsProps> = ({ onView, onManageModules, onEdit, onDelete }) => {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger className="h-8 w-8 rounded-md border bg-white hover:bg-gray-50 inline-flex items-center justify-center">
@@ -26,7 +26,13 @@ const ProgramActions: React.FC<ProgramActionsProps> = ({ onView, onEdit, onDelet
                     {onView && (
                         <DropdownMenuItem onClick={onView}>
                             <Eye size={14} />
-                            <span>Đề cương</span>
+                            <span>Xem chi tiết</span>
+                        </DropdownMenuItem>
+                    )}
+                    {onEdit && (
+                        <DropdownMenuItem onClick={onEdit}>
+                            <Pencil size={14} />
+                            <span>Chỉnh sửa</span>
                         </DropdownMenuItem>
                     )}
                     {onManageModules && (
@@ -35,16 +41,10 @@ const ProgramActions: React.FC<ProgramActionsProps> = ({ onView, onEdit, onDelet
                             <span>Sắp xếp modules</span>
                         </DropdownMenuItem>
                     )}
-                    {onEdit && (
-                        <DropdownMenuItem onClick={onEdit}>
-                            <Edit size={14} />
-                            <span>Chỉnh sửa</span>
-                        </DropdownMenuItem>
-                    )}
                     {onDelete && (
-                        <DropdownMenuItem onClick={onDelete} className="text-red-600">
-                            <Trash size={14} />
-                            <span>Xóa chương trình</span>
+                        <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-600">
+                            <Trash2 size={14} />
+                            <span>Xóa</span>
                         </DropdownMenuItem>
                     )}
                 </DropdownMenuGroup>

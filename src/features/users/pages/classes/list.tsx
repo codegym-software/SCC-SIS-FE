@@ -36,17 +36,24 @@ const ClassList: React.FC<ClassListProps> = ({
                     </div>
                 </div>
 
-                <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-10 gap-3">
-                    <div className="col-span-2">Lớp học</div>
-                    <div className="col-span-2">Trung tâm</div>
-                    <div className="col-span-2">Thời gian</div>
-                    <div className="col-span-2">Chương trình</div>
-                    <div className="col-span-1">Phòng học</div>
-                    <div className="col-span-1">Trạng thái</div>
-                </div>
+                {classes.length > 0 && (
+                    <div className="px-3 py-2 border-b text-xs text-gray-500 grid grid-cols-10 gap-3">
+                        <div className="col-span-2">Lớp học</div>
+                        <div className="col-span-2">Trung tâm</div>
+                        <div className="col-span-2">Thời gian</div>
+                        <div className="col-span-2">Chương trình</div>
+                        <div className="col-span-1">Phòng học</div>
+                        <div className="col-span-1">Trạng thái</div>
+                    </div>
+                )}
 
                 <div className="divide-y">
-                    {classes.map((c) => (
+                    {classes.length === 0 ? (
+                        <div className="px-3 py-12 text-center">
+                            <div className="text-sm text-gray-500">Chưa có lớp học</div>
+                        </div>
+                    ) : (
+                        classes.map((c) => (
                         <div
                             key={c.id}
                             className="px-3 py-3 grid grid-cols-10 gap-3 items-center border-t first:border-t-0 cursor-pointer hover:bg-gray-50"
@@ -100,10 +107,12 @@ const ClassList: React.FC<ClassListProps> = ({
                                 </span>
                             </div>
                         </div>
-                    ))}
+                        ))
+                    )}
                 </div>
 
                 {/* Pagination */}
+                {classes.length > 0 && (
                 <div className="px-3 py-3 border-t flex items-center justify-between text-sm text-gray-500">
                     <div>
                         Hiển thị {(currentPage - 1) * 6 + 1} - {Math.min(currentPage * 6, totalClasses)} trong số{' '}
@@ -137,6 +146,7 @@ const ClassList: React.FC<ClassListProps> = ({
                         </button>
                     </div>
                 </div>
+                )}
             </section>
         </>
     );

@@ -27,6 +27,24 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         return () => clearTimeout(timeout);
     }, []);
 
+    // Lắng nghe event từ http interceptor để hiển thị toast lỗi mạng
+    React.useEffect(() => {
+        const handleNetworkError = (event: CustomEvent) => {
+            show({
+                title: event.detail?.message || 'Không thể kết nối đến máy chủ',
+                description: event.detail?.description || 'Vui lòng kiểm tra kết nối mạng hoặc thử lại sau.',
+                variant: 'error',
+                durationMs: 5000,
+            });
+        };
+
+        window.addEventListener('backend-network-error', handleNetworkError as EventListener);
+
+        return () => {
+            window.removeEventListener('backend-network-error', handleNetworkError as EventListener);
+        };
+    }, [show]);
+
     const value = useMemo(() => ({ show }), [show]);
 
     return (

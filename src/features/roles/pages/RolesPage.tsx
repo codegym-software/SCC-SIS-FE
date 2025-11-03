@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { Shield, Settings, Plus, MoreHorizontal, Eye, Pencil, Trash2 } from 'lucide-react'
+import { Plus, MoreHorizontal, Eye, Pencil, Trash2 } from 'lucide-react'
 import { getRoles, deleteRole, getPermissionGroups } from '../api'
 import { useToast } from '../../../shared/hooks/useToast'
 import type { Role, PermissionGroup, Permission } from '../model/types'
@@ -272,9 +272,6 @@ export default function RolesPage() {
                                                     <div className="text-sm font-medium">{permission.name}</div>
                                                     <div className="text-xs text-gray-500">
                                                         Code: {permission.code}
-                                                    </div>
-                                                    <div className="text-xs text-gray-400 mt-1">
-                                                        ID: {permission.permissionId}
                                                     </div>
                                                 </div>
                                             </div>

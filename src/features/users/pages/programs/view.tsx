@@ -2,6 +2,8 @@ import React from 'react';
 import { BookOpen, Clock, X, FolderOpen } from 'lucide-react';
 import type { Program } from '../../../../shared/api/programs';
 import type { ModuleResponse } from '../../../../shared/types/module';
+import { getCategoryLabel } from '../../../../shared/constants/categories';
+import { getDeliveryModeLabel } from '../../../../shared/constants/deliveryModes';
 
 type Module = ModuleResponse;
 
@@ -10,40 +12,13 @@ interface ProgramViewProps {
     onClose?: () => void;
     program: Program;
     modules: Module[];
-    onEdit?: () => void;
 }
 
-const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program, modules, onEdit }) => {
+const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program, modules }) => {
     if (!open) return null;
     const programModules = modules
         .filter((m) => m.programId === program.programId)
         .sort((a, b) => a.sequenceOrder - b.sequenceOrder);
-
-    // Hàm chuyển đổi danh mục sang tiếng Việt
-    const getCategoryLabel = (categoryCode: string) => {
-        const categoryMap: { [key: string]: string } = {
-            'PROGRAMMING': 'Lập trình',
-            'WEB': 'Web',
-            'MOBILE': 'Di động',
-            'DATABASE': 'Cơ sở dữ liệu',
-            'DESIGN': 'Thiết kế',
-            'BUSINESS': 'Kinh doanh',
-            'TECHNICAL': 'Kỹ thuật',
-            'OTHER': 'Khác'
-        };
-        return categoryMap[categoryCode] || categoryCode;
-    };
-
-    // Hàm chuyển đổi phương thức học sang tiếng Việt
-    const getDeliveryModeLabel = (deliveryMode: string) => {
-        const modeMap: { [key: string]: string } = {
-            'ONLINE': 'Trực tuyến',
-            'OFFLINE': 'Trực tiếp',
-            'HYBRID': 'Kết hợp',
-            'BLENDED': 'Kết hợp'
-        };
-        return modeMap[deliveryMode] || deliveryMode;
-    };
 
     return (
         <div>
@@ -159,11 +134,6 @@ const ProgramView: React.FC<ProgramViewProps> = ({ open = true, onClose, program
                 <button className="h-9 px-3 rounded-md border bg-white hover:bg-gray-50" onClick={onClose}>
                     Đóng
                 </button>
-                {onEdit && (
-                    <button className="h-9 px-3 rounded-md bg-gray-900 text-white hover:bg-black" onClick={onEdit}>
-                        Chỉnh sửa
-                    </button>
-                )}
             </div>
         </div>
     );
