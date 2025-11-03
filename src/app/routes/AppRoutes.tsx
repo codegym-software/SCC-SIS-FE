@@ -6,6 +6,7 @@ import CentersPage from '../../features/centers/pages/CentersPage';
 import ProgramsPage from '../../features/users/pages/programs/ProgramsPage';
 import ClassesPage from '../../features/users/pages/classes/ClassesPage.tsx';
 import StudentProfilePage from '../../features/users/pages/students/StudentProfilePage';
+import StudentDetailPage from '../../features/users/pages/students/StudentDetailPage';
 import SettingsPage from '../../features/users/pages/settings/SettingsPage';
 import MyClassesPage from '../../features/students/pages/my-classes/MyClassesPage';
 import ProtectedRoute from './ProtectedRoute';
@@ -22,6 +23,7 @@ export default function AppRoutes() {
             <Route path="/programs" element={<ProgramsPage />} />
             <Route path="/classes" element={<ClassesPage />} />
             <Route path="/students" element={<StudentProfilePage />} />
+            <Route path="/students/:id" element={<StudentDetailPage />} />
             <Route
                 path="/attendance"
                 element={
