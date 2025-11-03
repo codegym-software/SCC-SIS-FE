@@ -255,7 +255,8 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                 );
 
             case 'attendance':
-                return <StudentAttendanceTab student={student} />;
+                return <div className="p-4 text-center text-gray-500">Tính năng điểm danh đang được phát triển</div>;
+            // return <StudentAttendanceTab student={student} />;
 
             case 'scores':
                 return (
