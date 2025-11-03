@@ -50,15 +50,15 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
     // Function để tính overall status từ enrollments
     const calculateOverallStatus = (enrollments: StudentEnrollment[]): 'Đang chờ' | 'Đang học' | 'Nghỉ học' => {
         if (enrollments.length === 0) return 'Đang chờ';
-        
-        const hasActive = enrollments.some(e => e.status === 'ACTIVE');
-        const hasSuspended = enrollments.some(e => e.status === 'SUSPENDED');
-        const hasDropped = enrollments.some(e => e.status === 'DROPPED');
-        
+
+        const hasActive = enrollments.some((e) => e.status === 'ACTIVE');
+        const hasSuspended = enrollments.some((e) => e.status === 'SUSPENDED');
+        const hasDropped = enrollments.some((e) => e.status === 'DROPPED');
+
         if (hasActive) return 'Đang học';
         if (hasSuspended) return 'Đang chờ';
         if (hasDropped) return 'Nghỉ học';
-        
+
         return 'Đang chờ';
     };
 
@@ -195,9 +195,11 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                                     <CheckCircle size={16} className="text-green-500" />
                                     <span
                                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                            calculateOverallStatus(student.enrollments) === 'Đang học' ? 'bg-green-50 text-green-700' :
-                                            calculateOverallStatus(student.enrollments) === 'Đang chờ' ? 'bg-yellow-50 text-yellow-700' :
-                                            'bg-red-50 text-red-700'
+                                            calculateOverallStatus(student.enrollments) === 'Đang học'
+                                                ? 'bg-green-50 text-green-700'
+                                                : calculateOverallStatus(student.enrollments) === 'Đang chờ'
+                                                  ? 'bg-yellow-50 text-yellow-700'
+                                                  : 'bg-red-50 text-red-700'
                                         }`}
                                     >
                                         {calculateOverallStatus(student.enrollments)}
@@ -205,9 +207,7 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <BookOpen size={16} className="text-gray-500" />
-                                    <span className="text-sm">
-                                        {student.enrollments.length} lớp học
-                                    </span>
+                                    <span className="text-sm">{student.enrollments.length} lớp học</span>
                                 </div>
                             </div>
                         </div>
@@ -330,18 +330,13 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                 return (
                     <div className="space-y-4">
                         {/* Class Selector - Scrollable horizontal list */}
-                        {isLoadingEnrollments ? (
-                            <div className="text-center py-4">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                                <p className="text-sm text-gray-600 mt-2">Đang tải danh sách lớp học...</p>
-                            </div>
-                        ) : enrollments.length > 0 ? (
+                        {student.enrollments && student.enrollments.length > 0 ? (
                             <div>
                                 <label className="block text-sm font-medium text-gray-900 mb-3">
                                     Lớp học đã đăng ký
                                 </label>
                                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                                    {enrollments.map((enrollment) => (
+                                    {student.enrollments.map((enrollment) => (
                                         <button
                                             key={enrollment.classId}
                                             onClick={() =>
@@ -402,9 +397,7 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                     </div>
                     <div>
                         <h2 className="text-lg font-semibold text-gray-900">Hồ sơ Học viên - {student.name}</h2>
-                        <p className="text-sm text-gray-500">
-                            {student.studentId} • {student.class}
-                        </p>
+                        <p className="text-sm text-gray-500">{student.studentId}</p>
                     </div>
                 </div>
                 <button className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100" onClick={onClose}>
