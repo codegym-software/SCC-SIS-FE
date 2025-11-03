@@ -18,6 +18,7 @@ import { listClasses } from '@/shared/api/classes';
 import { getClassStudents } from '@/shared/api/classes';
 import { useToast } from '@/shared/hooks/useToast';
 import ClassLogTab from '@/features/users/pages/classes/components/journals/ClassLogTab';
+import StudentAttendanceTab from './components/StudentAttendanceTab';
 import type { EnrollmentResponse } from '@/shared/types/classes';
 import type { StudentEnrollment } from '@/shared/types/student';
 import type { StudentUI } from '@/shared/types/student-ui';
@@ -254,34 +255,7 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                 );
 
             case 'attendance':
-                return (
-                    <div className="space-y-6">
-                        {/* Attendance Statistics */}
-                        <div className="grid grid-cols-4 gap-4">
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-gray-900">20</div>
-                                <div className="text-xs text-gray-500">Tổng buổi</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-green-600">18</div>
-                                <div className="text-xs text-gray-500">Có mặt</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-red-600">1</div>
-                                <div className="text-xs text-gray-500">Vắng</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-blue-600">90%</div>
-                                <div className="text-xs text-gray-500">Tỷ lệ</div>
-                            </div>
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-gray-600 h-2 rounded-full" style={{ width: '90%' }}></div>
-                        </div>
-                    </div>
-                );
+                return <StudentAttendanceTab student={student} />;
 
             case 'scores':
                 return (
@@ -333,7 +307,7 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                         {student.enrollments && student.enrollments.length > 0 ? (
                             <div>
                                 <label className="block text-sm font-medium text-gray-900 mb-3">
-                                    Lớp học đã đăng ký
+                                    Chọn lớp học để xem nhật ký
                                 </label>
                                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                                     {student.enrollments.map((enrollment) => (
@@ -345,7 +319,7 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                                                     name: enrollment.className,
                                                     programName: enrollment.programName,
                                                     centerName: '',
-                                                    status: 'ACTIVE',
+                                                    status: enrollment.status,
                                                 })
                                             }
                                             className={`flex-shrink-0 px-4 py-3 rounded-lg border-2 transition-all ${
@@ -361,6 +335,9 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                                                 <div className="text-xs text-gray-500 mt-1">
                                                     {enrollment.programName}
                                                 </div>
+                                                <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${getEnrollmentStatusColor(enrollment.status)}`}>
+                                                    {getEnrollmentStatusText(enrollment.status)}
+                                                </span>
                                             </div>
                                         </button>
                                     ))}
