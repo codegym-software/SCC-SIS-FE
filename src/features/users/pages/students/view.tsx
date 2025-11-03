@@ -14,12 +14,12 @@ import {
     BarChart3,
     FileText,
 } from 'lucide-react';
-import { listClasses } from '@/shared/api/classes';
-import { getClassStudents } from '@/shared/api/classes';
+// import { listClasses } from '@/shared/api/classes';
+// import { getClassStudents } from '@/shared/api/classes';
 import { useToast } from '@/shared/hooks/useToast';
 import ClassLogTab from '@/features/users/pages/classes/components/journals/ClassLogTab';
-import StudentAttendanceTab from './components/StudentAttendanceTab';
-import type { EnrollmentResponse } from '@/shared/types/classes';
+// import StudentAttendanceTab from './components/StudentAttendanceTab';
+// import type { EnrollmentResponse } from '@/shared/types/classes';
 import type { StudentEnrollment } from '@/shared/types/student';
 import type { StudentUI } from '@/shared/types/student-ui';
 
@@ -335,7 +335,9 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                                                 <div className="text-xs text-gray-500 mt-1">
                                                     {enrollment.programName}
                                                 </div>
-                                                <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${getEnrollmentStatusColor(enrollment.status)}`}>
+                                                <span
+                                                    className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${getEnrollmentStatusColor(enrollment.status)}`}
+                                                >
                                                     {getEnrollmentStatusText(enrollment.status)}
                                                 </span>
                                             </div>
