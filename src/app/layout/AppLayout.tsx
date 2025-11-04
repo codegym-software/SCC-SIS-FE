@@ -12,7 +12,6 @@ import {
     ChevronLeft,
     ChevronRight,
     ClipboardCheck,
-    FileText,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { keycloak } from '../../keycloak';
@@ -118,12 +117,6 @@ function AppLayout({ children }: AppLayoutProps) {
                             label: 'Quản lý Điểm danh',
                             path: '/attendance',
                             icon: ClipboardCheck,
-                        },
-                        {
-                            id: 'exams',
-                            label: 'Quản lý Điểm thi',
-                            path: '/exams',
-                            icon: FileText,
                         },
                         {
                             id: 'classes',
