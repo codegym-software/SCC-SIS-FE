@@ -1,22 +1,39 @@
+'use client';
+
 import * as React from 'react';
-
 import { cn } from '@/lib/utils';
+import { cva, type VariantProps } from 'class-variance-authority';
 
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+// Define input size variants
+const inputVariants = cva(
+  `
+    w-full bg-background border border-input bg-background text-foreground shadow-xs shadow-black/5 transition-[color,box-shadow] 
+    text-foreground placeholder:text-muted-foreground/80 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] 
+    focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 [&[readonly]]:opacity-70 aria-invalid:border-destructive
+    aria-invalid:border-destructive/60 aria-invalid:ring-destructive/10 dark:aria-invalid:border-destructive dark:aria-invalid:ring-destructive/20
+  `,
+  {
+    variants: {
+      variant: {
+        sm: 'px-2.5 py-2.5 text-xs rounded-md',
+        md: 'px-3 py-3 text-[0.8125rem] leading-(--text-sm--line-height) rounded-md',
+        lg: 'px-4 py-4 text-sm rounded-md',
+      },
+    },
+    defaultVariants: {
+      variant: 'md',
+    },
+  },
+);
 
-const Input = React.forwardRef<HTMLInputElement, InputProps>(({ className, type, ...props }, ref) => {
-    return (
-        <input
-            type={type}
-            className={cn(
-                'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                className,
-            )}
-            ref={ref}
-            {...props}
-        />
-    );
-});
-Input.displayName = 'Input';
+function Input({
+  className,
+  variant,
+  type = 'text',
+  ...props
+}: React.ComponentProps<'input'> & VariantProps<typeof inputVariants>) {
+  return <input type={type} data-slot="input" className={cn(inputVariants({ variant }), className)} {...props} />;
+}
 
-export { Input };
+export { Input, inputVariants };
+

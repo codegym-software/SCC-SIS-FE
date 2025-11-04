@@ -2,7 +2,6 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import type { ExamResultResponse } from '@/shared/api/exams';
 
 interface ViewExamResultModalProps {
@@ -11,9 +10,12 @@ interface ViewExamResultModalProps {
 }
 
 const ViewExamResultModal: React.FC<ViewExamResultModalProps> = ({ examResult, onClose }) => {
+    const passCount = examResult.studentScores.filter((s) => s.status === 'PASS').length;
+    const failCount = examResult.studentScores.filter((s) => s.status === 'FAIL').length;
+
     return (
         <Dialog open onOpenChange={onClose}>
-            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Chi tiết đợt nhập điểm</DialogTitle>
                 </DialogHeader>
@@ -42,14 +44,21 @@ const ViewExamResultModal: React.FC<ViewExamResultModalProps> = ({ examResult, o
                             <p className="font-medium">{new Date(examResult.createdAt).toLocaleDateString('vi-VN')}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500">Cập nhật lần cuối</p>
-                            <p className="font-medium">{new Date(examResult.updatedAt).toLocaleDateString('vi-VN')}</p>
+                            <p className="text-sm text-gray-500">Thống kê</p>
+                            <div className="flex gap-2 mt-1">
+                                <Badge variant="success" className="bg-green-100 text-green-800">
+                                    Đạt: {passCount}
+                                </Badge>
+                                <Badge variant="destructive" className="bg-red-100 text-red-800">
+                                    Không đạt: {failCount}
+                                </Badge>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Scores Table */}
+                    {/* Student Scores Table */}
                     <div>
-                        <h3 className="text-lg font-semibold mb-3">Điểm học viên</h3>
+                        <h3 className="text-lg font-semibold mb-4">Danh sách điểm thi ({examResult.studentScores.length} học viên)</h3>
                         <div className="border rounded-lg">
                             <Table>
                                 <TableHeader>
@@ -59,7 +68,7 @@ const ViewExamResultModal: React.FC<ViewExamResultModalProps> = ({ examResult, o
                                         <TableHead>Họ và tên</TableHead>
                                         <TableHead className="text-center">Điểm LT</TableHead>
                                         <TableHead className="text-center">Điểm TH</TableHead>
-                                        <TableHead className="text-center">Điểm TK</TableHead>
+                                        <TableHead className="text-center">Điểm tổng</TableHead>
                                         <TableHead className="text-center">Kết quả</TableHead>
                                         <TableHead>Ghi chú</TableHead>
                                     </TableRow>
@@ -70,15 +79,9 @@ const ViewExamResultModal: React.FC<ViewExamResultModalProps> = ({ examResult, o
                                             <TableCell>{index + 1}</TableCell>
                                             <TableCell>{score.studentCode}</TableCell>
                                             <TableCell>{score.fullName}</TableCell>
-                                            <TableCell className="text-center">
-                                                {score.theoryScore.toFixed(1)}
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                {score.practicalScore.toFixed(1)}
-                                            </TableCell>
-                                            <TableCell className="text-center font-semibold">
-                                                {score.finalScore.toFixed(2)}
-                                            </TableCell>
+                                            <TableCell className="text-center">{score.theoryScore}</TableCell>
+                                            <TableCell className="text-center">{score.practicalScore}</TableCell>
+                                            <TableCell className="text-center font-medium">{score.finalScore}</TableCell>
                                             <TableCell className="text-center">
                                                 <Badge
                                                     variant={score.status === 'PASS' ? 'success' : 'destructive'}
@@ -91,48 +94,12 @@ const ViewExamResultModal: React.FC<ViewExamResultModalProps> = ({ examResult, o
                                                     {score.status === 'PASS' ? 'Đạt' : 'Không đạt'}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="text-sm text-gray-600">{score.note || '-'}</TableCell>
+                                            <TableCell className="text-gray-600">{score.note || '-'}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
                         </div>
-                    </div>
-
-                    {/* Summary */}
-                    <div className="flex gap-4 p-4 bg-gray-50 rounded-lg">
-                        <div className="flex-1 text-center">
-                            <p className="text-sm text-gray-500">Tổng số học viên</p>
-                            <p className="text-2xl font-bold">{examResult.studentScores.length}</p>
-                        </div>
-                        <div className="flex-1 text-center">
-                            <p className="text-sm text-gray-500">Đạt</p>
-                            <p className="text-2xl font-bold text-green-600">
-                                {examResult.studentScores.filter((s) => s.status === 'PASS').length}
-                            </p>
-                        </div>
-                        <div className="flex-1 text-center">
-                            <p className="text-sm text-gray-500">Không đạt</p>
-                            <p className="text-2xl font-bold text-red-600">
-                                {examResult.studentScores.filter((s) => s.status === 'FAIL').length}
-                            </p>
-                        </div>
-                        <div className="flex-1 text-center">
-                            <p className="text-sm text-gray-500">Tỷ lệ đạt</p>
-                            <p className="text-2xl font-bold text-blue-600">
-                                {(
-                                    (examResult.studentScores.filter((s) => s.status === 'PASS').length /
-                                        examResult.studentScores.length) *
-                                    100
-                                ).toFixed(1)}
-                                %
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex justify-end">
-                        <Button onClick={onClose}>Đóng</Button>
                     </div>
                 </div>
             </DialogContent>
@@ -141,3 +108,4 @@ const ViewExamResultModal: React.FC<ViewExamResultModalProps> = ({ examResult, o
 };
 
 export default ViewExamResultModal;
+

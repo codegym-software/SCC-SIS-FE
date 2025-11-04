@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { updateExamResult, type ExamResultResponse, type StudentScoreInput } from '@/shared/api/exams';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { updateExamResult, type StudentScoreInput, type ExamResultResponse } from '@/shared/api/exams';
 import { toast } from 'sonner';
 
 interface EditExamResultModalProps {
@@ -23,21 +23,19 @@ interface ScoreRow {
 }
 
 const EditExamResultModal: React.FC<EditExamResultModalProps> = ({ examResult, onClose, onSuccess }) => {
-    const [examDate, setExamDate] = useState<string>('');
+    const [examDate, setExamDate] = useState<string>(examResult.examDate);
     const [scoreRows, setScoreRows] = useState<ScoreRow[]>([]);
     const [submitting, setSubmitting] = useState(false);
 
+    // Initialize score rows from exam result
     useEffect(() => {
-        // Initialize form with existing data
-        setExamDate(examResult.examDate);
-
-        const rows: ScoreRow[] = examResult.studentScores.map((s) => ({
-            studentId: s.studentId,
-            studentCode: s.studentCode,
-            fullName: s.fullName,
-            theoryScore: s.theoryScore.toString(),
-            practicalScore: s.practicalScore.toString(),
-            note: s.note || '',
+        const rows: ScoreRow[] = examResult.studentScores.map((score) => ({
+            studentId: score.studentId,
+            studentCode: score.studentCode,
+            fullName: score.fullName,
+            theoryScore: score.theoryScore.toString(),
+            practicalScore: score.practicalScore.toString(),
+            note: score.note || '',
         }));
         setScoreRows(rows);
     }, [examResult]);
@@ -97,92 +95,106 @@ const EditExamResultModal: React.FC<EditExamResultModalProps> = ({ examResult, o
         <Dialog open onOpenChange={onClose}>
             <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Chỉnh sửa đợt nhập điểm</DialogTitle>
+                    <DialogTitle>Cập nhật điểm</DialogTitle>
                 </DialogHeader>
 
                 <div className="space-y-6">
                     {/* Info Section */}
-                    <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <p className="text-sm text-gray-500">Lớp</p>
-                            <p className="font-medium">{examResult.className}</p>
+                            <Label>Lớp</Label>
+                            <Input value={examResult.className} disabled />
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500">Module</p>
-                            <p className="font-medium">{examResult.moduleName}</p>
+                            <Label>Module</Label>
+                            <Input value={examResult.moduleName} disabled />
+                        </div>
+                        <div>
+                            <Label>Ngày thi</Label>
+                            <Input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} />
+                        </div>
+                        <div>
+                            <Label>Người tạo</Label>
+                            <Input value={examResult.creatorName} disabled />
                         </div>
                     </div>
 
-                    {/* Editable Date */}
-                    <div>
-                        <Label>Ngày thi</Label>
-                        <Input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} />
-                    </div>
-
-                    {/* Editable Scores Table */}
-                    <div>
-                        <Label className="mb-2 block">Điểm học viên</Label>
-                        <div className="border rounded-lg">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[50px]">STT</TableHead>
-                                        <TableHead>Mã HV</TableHead>
-                                        <TableHead>Họ và tên</TableHead>
-                                        <TableHead className="w-[120px]">Điểm LT</TableHead>
-                                        <TableHead className="w-[120px]">Điểm TH</TableHead>
-                                        <TableHead className="w-[200px]">Ghi chú</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {scoreRows.map((row, index) => (
-                                        <TableRow key={row.studentId}>
-                                            <TableCell>{index + 1}</TableCell>
-                                            <TableCell>{row.studentCode}</TableCell>
-                                            <TableCell>{row.fullName}</TableCell>
-                                            <TableCell>
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    max="10"
-                                                    step="0.1"
-                                                    value={row.theoryScore}
-                                                    onChange={(e) =>
-                                                        handleScoreChange(row.studentId, 'theoryScore', e.target.value)
-                                                    }
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    max="10"
-                                                    step="0.1"
-                                                    value={row.practicalScore}
-                                                    onChange={(e) =>
-                                                        handleScoreChange(
-                                                            row.studentId,
-                                                            'practicalScore',
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Input
-                                                    value={row.note}
-                                                    onChange={(e) =>
-                                                        handleScoreChange(row.studentId, 'note', e.target.value)
-                                                    }
-                                                    placeholder="Ghi chú..."
-                                                />
-                                            </TableCell>
+                    {/* Student Scores Table */}
+                    {scoreRows.length > 0 && (
+                        <div>
+                            <Label className="mb-2 block">Danh sách học viên ({scoreRows.length} học viên)</Label>
+                            <div className="mb-2 p-3 bg-blue-50 rounded text-sm text-blue-700">
+                                <strong>Công thức tính điểm:</strong> Điểm tổng = Lý thuyết × 30% + Thực hành × 70% |{' '}
+                                <strong>Đạt:</strong> ≥ 5.0 điểm
+                            </div>
+                            <div className="border rounded-lg">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[50px]">STT</TableHead>
+                                            <TableHead>Mã HV</TableHead>
+                                            <TableHead>Họ và tên</TableHead>
+                                            <TableHead className="w-[120px]">Điểm LT (0-10)</TableHead>
+                                            <TableHead className="w-[120px]">Điểm TH (0-10)</TableHead>
+                                            <TableHead className="w-[200px]">Ghi chú</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {scoreRows.map((row, index) => (
+                                            <TableRow key={row.studentId}>
+                                                <TableCell>{index + 1}</TableCell>
+                                                <TableCell>{row.studentCode}</TableCell>
+                                                <TableCell>{row.fullName}</TableCell>
+                                                <TableCell>
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        max="10"
+                                                        step="0.1"
+                                                        value={row.theoryScore}
+                                                        onChange={(e) =>
+                                                            handleScoreChange(
+                                                                row.studentId,
+                                                                'theoryScore',
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        placeholder="0-10"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        max="10"
+                                                        step="0.1"
+                                                        value={row.practicalScore}
+                                                        onChange={(e) =>
+                                                            handleScoreChange(
+                                                                row.studentId,
+                                                                'practicalScore',
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        placeholder="0-10"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Input
+                                                        value={row.note}
+                                                        onChange={(e) =>
+                                                            handleScoreChange(row.studentId, 'note', e.target.value)
+                                                        }
+                                                        placeholder="Ghi chú..."
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Actions */}
                     <div className="flex justify-end gap-2">
@@ -190,7 +202,7 @@ const EditExamResultModal: React.FC<EditExamResultModalProps> = ({ examResult, o
                             Hủy
                         </Button>
                         <Button onClick={handleSubmit} disabled={submitting}>
-                            {submitting ? 'Đang lưu...' : 'Cập nhật'}
+                            {submitting ? 'Đang lưu...' : 'Cập nhật điểm'}
                         </Button>
                     </div>
                 </div>
@@ -200,3 +212,4 @@ const EditExamResultModal: React.FC<EditExamResultModalProps> = ({ examResult, o
 };
 
 export default EditExamResultModal;
+

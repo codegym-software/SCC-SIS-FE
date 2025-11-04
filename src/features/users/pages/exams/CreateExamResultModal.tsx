@@ -6,13 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { createExamResult, type StudentScoreInput } from '@/shared/api/exams';
-import { getClassById } from '@/shared/api/classes';
+import { createGradeEntry, type CreateGradeEntryRequest } from '@/shared/api/grade-entries';
+import { getClassById, getMyLecturerClasses, type ClassDto } from '@/shared/api/classes';
 import { getModulesByProgram } from '@/shared/api/modules';
-import { getStudentsByClassId } from '@/shared/api/class-students';
+import { getClassStudents } from '@/shared/api/classes';
+import type { EnrollmentResponse } from '@/shared/types/classes';
 import { toast } from 'sonner';
 
 interface CreateExamResultModalProps {
-    classId: number;
     onClose: () => void;
     onSuccess: () => void;
 }
@@ -35,33 +36,74 @@ interface ScoreRow extends Student {
     note: string;
 }
 
-const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ classId, onClose, onSuccess }) => {
+const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, onSuccess }) => {
+    const [classes, setClasses] = useState<ClassDto[]>([]);
+    const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+    const [selectedClassName, setSelectedClassName] = useState<string>('');
     const [programName, setProgramName] = useState<string>('');
     const [modules, setModules] = useState<Module[]>([]);
 
     const [selectedSemester, setSelectedSemester] = useState<number | null>(null);
     const [selectedModule, setSelectedModule] = useState<number | null>(null);
+    const [selectedModuleName, setSelectedModuleName] = useState<string>('');
     const [examDate, setExamDate] = useState<string>('');
     const [scoreRows, setScoreRows] = useState<ScoreRow[]>([]);
 
     const [submitting, setSubmitting] = useState(false);
+    const [loadingStudents, setLoadingStudents] = useState(false);
+    const [loadingClasses, setLoadingClasses] = useState(false);
 
-    // Load class info and modules
+    // Load classes when modal opens
     useEffect(() => {
-        loadClassInfo();
-    }, [classId]);
+        loadClasses();
+        // Set current date as default
+        const today = new Date().toISOString().split('T')[0];
+        setExamDate(today);
+    }, []);
+
+    // Load class info and modules when class is selected
+    useEffect(() => {
+        if (selectedClassId) {
+            loadClassInfo();
+        } else {
+            // Reset when class is deselected
+            setSelectedClassName('');
+            setProgramName('');
+            setModules([]);
+            setSelectedSemester(null);
+            setSelectedModule(null);
+            setSelectedModuleName('');
+            setScoreRows([]);
+        }
+    }, [selectedClassId]);
 
     // Load students when module selected
     useEffect(() => {
-        if (selectedModule) {
+        if (selectedModule && selectedClassId) {
             loadStudents();
         }
-    }, [selectedModule]);
+    }, [selectedModule, selectedClassId]);
+
+    const loadClasses = async () => {
+        try {
+            setLoadingClasses(true);
+            const response = await getMyLecturerClasses();
+            setClasses(response.data);
+        } catch (error) {
+            console.error('Error loading classes:', error);
+            toast.error('Không thể tải danh sách lớp');
+        } finally {
+            setLoadingClasses(false);
+        }
+    };
 
     const loadClassInfo = async () => {
+        if (!selectedClassId) return;
+        
         try {
-            const response = await getClassById(classId);
+            const response = await getClassById(selectedClassId);
             const classData = response.data;
+            setSelectedClassName(classData.name || '');
             setProgramName(classData.programName || 'N/A');
 
             // Load modules from program
@@ -74,21 +116,88 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ classId, 
     };
 
     const loadStudents = async () => {
+        if (!selectedClassId) return;
+        
         try {
-            const response = await getStudentsByClassId(classId);
-            const studentData = response.data || [];
+            setLoadingStudents(true);
+            console.log('[CreateExamResultModal] Loading students for class:', selectedClassId);
+            
+            // Load ALL students (not filtering by status) - similar to ManageStudentsModal
+            const response = await getClassStudents(selectedClassId, {
+                page: 0,
+                size: 1000,
+            });
+            
+            console.log('[CreateExamResultModal] API Response:', response);
+            console.log('[CreateExamResultModal] Response data:', response.data);
+            
+            // Handle Spring Page response structure
+            let enrollments: EnrollmentResponse[] = [];
+            if (response.data) {
+                if (Array.isArray(response.data)) {
+                    // If it's already an array
+                    enrollments = response.data;
+                } else if (response.data.content && Array.isArray(response.data.content)) {
+                    // If it's a Spring Page object with content property
+                    enrollments = response.data.content;
+                } else {
+                    console.warn('[CreateExamResultModal] Unexpected response structure:', response.data);
+                }
+            }
+
+            console.log('[CreateExamResultModal] All enrollments:', enrollments);
+            console.log('[CreateExamResultModal] All enrollments length:', enrollments.length);
+            console.log('[CreateExamResultModal] Enrollment statuses:', enrollments.map(e => ({ studentId: e.studentId, status: e.status })));
+
+            // Filter to only ACTIVE enrollments (students currently studying)
+            const activeEnrollments = enrollments.filter((e) => e.status === 'ACTIVE');
+
+            console.log('[CreateExamResultModal] Active enrollments:', activeEnrollments);
+            console.log('[CreateExamResultModal] Active enrollments length:', activeEnrollments.length);
+
+            if (activeEnrollments.length === 0) {
+                if (enrollments.length === 0) {
+                    toast.warning('Lớp này chưa có học viên nào');
+                } else {
+                    toast.warning(`Lớp này có ${enrollments.length} học viên nhưng không có học viên nào đang học (ACTIVE)`);
+                }
+                setScoreRows([]);
+                return;
+            }
 
             // Initialize score rows
-            const rows: ScoreRow[] = studentData.map((s: Student) => ({
-                ...s,
-                theoryScore: '',
-                practicalScore: '',
-                note: '',
-            }));
+            const rows: ScoreRow[] = activeEnrollments.map((enrollment) => {
+                const studentId = enrollment.studentId;
+                if (!studentId) {
+                    console.error('[CreateExamResultModal] Enrollment missing studentId:', enrollment);
+                    return null;
+                }
+                
+                // Format studentCode: SV + 3 digits (e.g., SV009, SV005)
+                // EnrollmentResponse doesn't have studentCode, so generate it from studentId
+                const formattedCode = `SV${String(studentId).padStart(3, '0')}`;
+                // EnrollmentResponse has studentName field
+                const studentName = enrollment.studentName || `Student ${studentId}`;
+                
+                return {
+                    studentId: studentId,
+                    studentCode: formattedCode,
+                    fullName: studentName,
+                    theoryScore: '',
+                    practicalScore: '',
+                    note: '',
+                };
+            }).filter((row): row is ScoreRow => row !== null);
+            
+            console.log('[CreateExamResultModal] Score rows:', rows);
             setScoreRows(rows);
-        } catch (error) {
-            console.error('Error loading students:', error);
-            toast.error('Không thể tải danh sách học viên');
+        } catch (error: any) {
+            console.error('[CreateExamResultModal] Error loading students:', error);
+            console.error('[CreateExamResultModal] Error response:', error?.response);
+            toast.error(error?.response?.data?.message || 'Không thể tải danh sách học viên. Vui lòng thử lại.');
+            setScoreRows([]);
+        } finally {
+            setLoadingStudents(false);
         }
     };
 
@@ -98,13 +207,18 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ classId, 
 
     const handleSubmit = async () => {
         // Validation
+        if (!selectedClassId) {
+            toast.error('Vui lòng chọn lớp');
+            return;
+        }
+        
         if (!selectedModule || !examDate) {
             toast.error('Vui lòng chọn module và ngày thi');
             return;
         }
 
         // Validate scores
-        const studentScores: StudentScoreInput[] = [];
+        const gradeRecords: Array<{ studentId: number; theoryScore: number; practiceScore: number }> = [];
         for (const row of scoreRows) {
             const theory = parseFloat(row.theoryScore);
             const practical = parseFloat(row.practicalScore);
@@ -119,22 +233,28 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ classId, 
                 return;
             }
 
-            studentScores.push({
+            // Backend và frontend đều làm việc với thang điểm 0-10
+            // Không cần chuyển đổi
+            gradeRecords.push({
                 studentId: row.studentId,
                 theoryScore: theory,
-                practicalScore: practical,
-                note: row.note || undefined,
+                practiceScore: practical,
             });
         }
 
         try {
             setSubmitting(true);
-            await createExamResult({
-                classId,
+            
+            // Use new API
+            const createRequest: CreateGradeEntryRequest = {
+                classId: selectedClassId,
                 moduleId: selectedModule,
-                examDate,
-                studentScores,
-            });
+                semester: selectedSemester || undefined,
+                entryDate: examDate,
+                gradeRecords: gradeRecords,
+            };
+            
+            await createGradeEntry(createRequest);
             toast.success('Nhập điểm thành công');
             onSuccess();
         } catch (error: any) {
@@ -164,6 +284,37 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ classId, 
                     {/* Form Section */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
+                            <Label>Lớp *</Label>
+                            <Select
+                                value={selectedClassId?.toString() || ''}
+                                onValueChange={(val) => {
+                                    const classId = parseInt(val);
+                                    const selectedClass = classes.find(c => c.classId === classId);
+                                    setSelectedClassId(classId);
+                                    setSelectedClassName(selectedClass ? `${selectedClass.name} (${selectedClass.programName})` : '');
+                                    setSelectedSemester(null);
+                                    setSelectedModule(null);
+                                    setSelectedModuleName('');
+                                    setScoreRows([]);
+                                }}
+                                disabled={loadingClasses}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Chọn lớp">
+                                        {selectedClassName || 'Chọn lớp'}
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {classes.map((c) => (
+                                        <SelectItem key={c.classId} value={c.classId.toString()}>
+                                            {c.name} ({c.programName})
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div>
                             <Label>Chương trình</Label>
                             <Input value={programName} disabled />
                         </div>
@@ -175,10 +326,15 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ classId, 
                                 onValueChange={(val) => {
                                     setSelectedSemester(parseInt(val));
                                     setSelectedModule(null);
+                                    setSelectedModuleName('');
+                                    setScoreRows([]);
                                 }}
+                                disabled={!selectedClassId}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Chọn kỳ học" />
+                                    <SelectValue placeholder="Chọn kỳ học">
+                                        {selectedSemester ? `Kỳ ${selectedSemester}` : 'Chọn kỳ học'}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {semesters.map((sem) => (
@@ -194,11 +350,19 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ classId, 
                             <Label>Module</Label>
                             <Select
                                 value={selectedModule?.toString() || ''}
-                                onValueChange={(val) => setSelectedModule(parseInt(val))}
-                                disabled={!selectedSemester}
+                                onValueChange={(val) => {
+                                    const moduleId = parseInt(val);
+                                    const selectedModuleData = filteredModules.find(m => m.moduleId === moduleId);
+                                    setSelectedModule(moduleId);
+                                    setSelectedModuleName(selectedModuleData?.name || '');
+                                    setScoreRows([]);
+                                }}
+                                disabled={!selectedSemester || !selectedClassId}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Chọn module" />
+                                    <SelectValue placeholder="Chọn module">
+                                        {selectedModuleName || 'Chọn module'}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {filteredModules.map((m) => (
@@ -217,9 +381,19 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ classId, 
                     </div>
 
                     {/* Student Scores Table */}
-                    {selectedModule && scoreRows.length > 0 && (
+                    {selectedModule && loadingStudents && (
+                        <div className="text-center py-8 text-gray-500">
+                            <p>Đang tải danh sách học viên...</p>
+                        </div>
+                    )}
+
+                    {selectedModule && !loadingStudents && scoreRows.length > 0 && (
                         <div>
-                            <Label className="mb-2 block">Danh sách học viên</Label>
+                            <Label className="mb-2 block">Danh sách học viên ({scoreRows.length} học viên)</Label>
+                            <div className="mb-2 p-3 bg-blue-50 rounded text-sm text-blue-700">
+                                <strong>Công thức tính điểm:</strong> Điểm tổng = Lý thuyết × 30% + Thực hành × 70% |{' '}
+                                <strong>Đạt:</strong> ≥ 5.0 điểm
+                            </div>
                             <div className="border rounded-lg">
                                 <Table>
                                     <TableHeader>
@@ -227,8 +401,8 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ classId, 
                                             <TableHead className="w-[50px]">STT</TableHead>
                                             <TableHead>Mã HV</TableHead>
                                             <TableHead>Họ và tên</TableHead>
-                                            <TableHead className="w-[120px]">Điểm LT</TableHead>
-                                            <TableHead className="w-[120px]">Điểm TH</TableHead>
+                                            <TableHead className="w-[120px]">Điểm LT (0-10)</TableHead>
+                                            <TableHead className="w-[120px]">Điểm TH (0-10)</TableHead>
                                             <TableHead className="w-[200px]">Ghi chú</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -252,7 +426,7 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ classId, 
                                                                 e.target.value,
                                                             )
                                                         }
-                                                        placeholder="0.0"
+                                                        placeholder="0-10"
                                                     />
                                                 </TableCell>
                                                 <TableCell>
@@ -269,7 +443,7 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ classId, 
                                                                 e.target.value,
                                                             )
                                                         }
-                                                        placeholder="0.0"
+                                                        placeholder="0-10"
                                                     />
                                                 </TableCell>
                                                 <TableCell>
@@ -294,7 +468,7 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ classId, 
                         <Button variant="outline" onClick={onClose} disabled={submitting}>
                             Hủy
                         </Button>
-                        <Button onClick={handleSubmit} disabled={submitting || !selectedModule}>
+                        <Button onClick={handleSubmit} disabled={submitting || !selectedClassId || !selectedModule}>
                             {submitting ? 'Đang lưu...' : 'Lưu điểm'}
                         </Button>
                     </div>
