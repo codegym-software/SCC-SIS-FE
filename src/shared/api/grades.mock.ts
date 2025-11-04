@@ -469,3 +469,25 @@ export const updateGradeRecords = async (
 
     console.log('✅ Mock: Updated grade records', records);
 };
+
+export const deleteGradeEntry = async (
+    classId: number,
+    moduleId: number,
+    entryDate: string,
+): Promise<void> => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Find and remove the grade entry
+    const entryIndex = mockGradeEntries.findIndex(
+        (e) => e.classId === classId && e.moduleId === moduleId && e.entryDate === entryDate,
+    );
+    if (entryIndex === -1) throw new Error('Grade entry not found');
+
+    const entry = mockGradeEntries[entryIndex];
+    mockGradeEntries.splice(entryIndex, 1);
+
+    // Remove grade records
+    delete mockGradeRecordsData[entry.gradeEntryId];
+
+    console.log('✅ Mock: Deleted grade entry', { classId, moduleId, entryDate });
+};

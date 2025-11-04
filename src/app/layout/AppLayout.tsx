@@ -12,8 +12,8 @@ import {
     ChevronLeft,
     ChevronRight,
     ClipboardCheck,
+    FileText,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { keycloak } from '../../keycloak';
 import { NavLink } from 'react-router-dom';
 import { useUserProfile } from '../../stores/userProfile';
@@ -35,7 +35,7 @@ type MenuItem = {
     id: string;
     label: string;
     path: string;
-    icon: LucideIcon;
+    icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
     end?: boolean;
 };
 
@@ -117,6 +117,12 @@ function AppLayout({ children }: AppLayoutProps) {
                             label: 'Quản lý Điểm danh',
                             path: '/attendance',
                             icon: ClipboardCheck,
+                        },
+                        {
+                            id: 'exams',
+                            label: 'Quản lý Điểm thi',
+                            path: '/exams',
+                            icon: FileText,
                         },
                         {
                             id: 'classes',

@@ -1,14 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, AlertCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { getGradeEntryDetail, updateGradeRecords } from '@/shared/api/grades.mock';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { getGradeEntryDetail, updateGradeRecords, deleteGradeEntry } from '@/shared/api/grades.mock';
 import type { GradeEntryDetail } from '@/shared/types/grades';
+import { toast } from 'sonner';
 
 interface GradeInput {
     gradeRecordId: number;
@@ -25,6 +34,8 @@ export function GradeEntryPage() {
     const [gradeInputs, setGradeInputs] = useState<Record<number, GradeInput>>({});
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         loadGradeEntry();
@@ -112,6 +123,24 @@ export function GradeEntryPage() {
         }
     };
 
+    const handleDelete = async () => {
+        if (!gradeEntry) return;
+
+        try {
+            setDeleting(true);
+            setError(null);
+            await deleteGradeEntry(gradeEntry.classId, gradeEntry.moduleId, gradeEntry.entryDate);
+            toast.success('Đã xóa đợt nhập điểm thành công');
+            navigate('/grades');
+        } catch (err) {
+            setError('Không thể xóa đợt nhập điểm. Vui lòng thử lại.');
+            console.error('Error deleting grade entry:', err);
+        } finally {
+            setDeleting(false);
+            setShowDeleteDialog(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
@@ -143,10 +172,21 @@ export function GradeEntryPage() {
                         </p>
                     </div>
                 </div>
-                <Button onClick={handleSave} disabled={saving} className="gap-2">
-                    <Save className="h-4 w-4" />
-                    {saving ? 'Đang lưu...' : 'Lưu điểm'}
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="destructive"
+                        onClick={() => setShowDeleteDialog(true)}
+                        disabled={deleting}
+                        className="gap-2"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                        Xóa đợt nhập điểm
+                    </Button>
+                    <Button onClick={handleSave} disabled={saving} className="gap-2">
+                        <Save className="h-4 w-4" />
+                        {saving ? 'Đang lưu...' : 'Lưu điểm'}
+                    </Button>
+                </div>
             </div>
 
             {/* Info Card */}
@@ -280,6 +320,27 @@ export function GradeEntryPage() {
                     </Table>
                 </CardContent>
             </Card>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Xác nhận xóa đợt nhập điểm</DialogTitle>
+                        <DialogDescription>
+                            Bạn có chắc chắn muốn xóa đợt nhập điểm này không? Hành động này sẽ xóa toàn bộ điểm đã nhập
+                            và không thể hoàn tác.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={deleting}>
+                            Hủy
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+                            {deleting ? 'Đang xóa...' : 'Xóa'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

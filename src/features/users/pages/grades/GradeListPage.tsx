@@ -1,18 +1,42 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit, Eye } from 'lucide-react';
+import { Edit, Eye, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { getClassGradeEntries, mockModules, mockStudents, createGradeEntry } from '@/shared/api/grades.mock';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    getClassGradeEntries,
+    mockModules,
+    mockStudents,
+    createGradeEntry,
+    deleteGradeEntry,
+} from '@/shared/api/grades.mock';
 import type { GradeEntry } from '@/shared/types/grades';
+import { toast } from 'sonner';
 
 export function GradeListPage() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [gradeEntries, setGradeEntries] = useState<GradeEntry[]>([]);
     const [modules] = useState(mockModules);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [deletingEntry, setDeletingEntry] = useState<GradeEntry | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     // Mock classId - trong thực tế sẽ lấy từ user context hoặc params
     const classId = 1;
@@ -76,6 +100,29 @@ export function GradeListPage() {
         }
     };
 
+    const handleDeleteClick = (entry: GradeEntry) => {
+        setDeletingEntry(entry);
+        setShowDeleteDialog(true);
+    };
+
+    const handleDelete = async () => {
+        if (!deletingEntry) return;
+
+        try {
+            setDeleting(true);
+            await deleteGradeEntry(deletingEntry.classId, deletingEntry.moduleId, deletingEntry.entryDate);
+            toast.success('Đã xóa đợt nhập điểm thành công');
+            await loadGradeEntries();
+        } catch (err) {
+            toast.error('Không thể xóa đợt nhập điểm. Vui lòng thử lại.');
+            console.error('Error deleting grade entry:', err);
+        } finally {
+            setDeleting(false);
+            setShowDeleteDialog(false);
+            setDeletingEntry(null);
+        }
+    };
+
     return (
         <div className="container mx-auto py-6 space-y-6">
             {/* Header */}
@@ -90,8 +137,34 @@ export function GradeListPage() {
             {/* Grade Entries Table */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Bảng điểm lớp FULLSTACK-JS-K01</CardTitle>
-                    <CardDescription>Danh sách các bảng điểm theo module</CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Bảng điểm lớp FULLSTACK-JS-K01</CardTitle>
+                            <CardDescription>Danh sách các bảng điểm theo module</CardDescription>
+                        </div>
+                        {gradeEntries.length > 0 && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="destructive" size="sm" className="gap-2">
+                                        <Trash2 className="h-4 w-4" />
+                                        Xóa đợt nhập điểm
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {gradeEntries.map((entry) => (
+                                        <DropdownMenuItem
+                                            key={entry.gradeEntryId}
+                                            onClick={() => handleDeleteClick(entry)}
+                                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Xóa: {entry.moduleName}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -161,6 +234,28 @@ export function GradeListPage() {
                     </Table>
                 </CardContent>
             </Card>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Xác nhận xóa đợt nhập điểm</DialogTitle>
+                        <DialogDescription>
+                            Bạn có chắc chắn muốn xóa đợt nhập điểm{' '}
+                            <strong>{deletingEntry?.moduleName}</strong> không? Hành động này sẽ xóa toàn bộ điểm đã
+                            nhập và không thể hoàn tác.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={deleting}>
+                            Hủy
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+                            {deleting ? 'Đang xóa...' : 'Xóa'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
