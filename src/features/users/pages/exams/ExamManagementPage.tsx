@@ -207,7 +207,7 @@ const ExamManagementPage: React.FC = () => {
             <Card className="p-4">
                 <div className="flex items-center gap-4">
                     <Filter className="w-5 h-5 text-gray-400" />
-                    <div className="grid grid-cols-4 gap-4 flex-1">
+                    <div className="grid grid-cols-3 gap-4 flex-1">
                         <Select
                             value={selectedClass?.toString() || ''}
                             onValueChange={(val) => {
@@ -271,7 +271,7 @@ const ExamManagementPage: React.FC = () => {
                 </div>
             </Card>
 
-            {/* Results Table */}
+            {/* Exam Results Table */}
             {!selectedClass ? (
                 <Card className="p-8 text-center text-gray-500">
                     <p>Vui lòng chọn lớp để xem danh sách đợt nhập điểm</p>

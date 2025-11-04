@@ -2,9 +2,11 @@ import { useState, useRef } from 'react';
 import { X, Upload, FileDown, Edit2, Save, Download } from 'lucide-react';
 import { importStudentsFromExcel, downloadStudentTemplate } from '@/shared/api/students';
 import { useToast } from '@/shared/hooks/useToast';
-import * as XLSX from 'xlsx';
+// import * as XLSX from 'xlsx'; // TODO: Replace with secure Excel parser
+// Temporary: XLSX package removed due to vulnerability. Keep a null stub and guard usages.
+const XLSX: any = null;
 
-type Props = { open: boolean; onClose: () => void; onSuccess: () => void; };
+type Props = { open: boolean; onClose: () => void; onSuccess: () => void };
 
 type ExcelRow = {
     [key: string]: string | number;
@@ -39,14 +41,21 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
         info('Đang đọc file...', selectedFile.name);
 
         try {
+            if (!XLSX) {
+                info(
+                    'Xem trước Excel tạm thời bị tắt',
+                    'Gói XLSX đã được gỡ để vá bảo mật. Vẫn có thể import trực tiếp file.',
+                );
+                return;
+            }
             const arrayBuffer = await selectedFile.arrayBuffer();
             const workbook = XLSX.read(arrayBuffer, { type: 'array' });
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
-            
+
             // Convert to JSON
             const jsonData: ExcelRow[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-            
+
             if (jsonData.length === 0) {
                 error('File rỗng', 'File Excel không có dữ liệu');
                 return;
@@ -57,7 +66,7 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
             const cols = Object.keys(firstRow);
             setHeaders(cols);
             setExcelData(jsonData);
-            setEditedData(jsonData.map(row => ({ ...row }))); // Deep copy
+            setEditedData(jsonData.map((row) => ({ ...row }))); // Deep copy
             setShowEditor(true);
             success('Đã đọc file thành công', `Tìm thấy ${jsonData.length} dòng dữ liệu`);
         } catch (err) {
@@ -78,22 +87,26 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
 
     const handleExportEditedExcel = () => {
         try {
+            if (!XLSX) {
+                info('Xuất Excel tạm thời bị tắt', 'Gói XLSX đã được gỡ để vá bảo mật.');
+                return;
+            }
             // Create workbook
             const workbook = XLSX.utils.book_new();
-            
+
             // Convert edited data to worksheet
             const worksheet = XLSX.utils.json_to_sheet(editedData);
-            
+
             // Add worksheet to workbook
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-            
+
             // Generate file name
             const fileName = file?.name.replace(/\.(xlsx|xls)$/i, '') || 'edited_students';
             const exportFileName = `${fileName}_edited.xlsx`;
-            
+
             // Write file
             XLSX.writeFile(workbook, exportFileName);
-            
+
             success('Đã xuất file', `File đã được lưu với tên: ${exportFileName}`);
         } catch (err) {
             console.error('Error exporting Excel:', err);
@@ -103,22 +116,30 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
 
     const handleSaveAndContinue = () => {
         try {
+            if (!XLSX) {
+                info('Lưu Excel tạm thời bị tắt', 'Gói XLSX đã được gỡ để vá bảo mật.');
+                return;
+            }
             // Create workbook from edited data
             const workbook = XLSX.utils.book_new();
             const worksheet = XLSX.utils.json_to_sheet(editedData);
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-            
+
             // Convert workbook to blob
             const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
-            const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            
+            const blob = new Blob([excelBuffer], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+
             // Create new File from blob
             const fileName = file?.name || 'students.xlsx';
-            const editedFile = new File([blob], fileName, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            
+            const editedFile = new File([blob], fileName, {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+
             // Update file reference
             setFile(editedFile);
-            
+
             success('Đã lưu thay đổi', 'Dữ liệu đã được cập nhật. Bạn có thể import ngay.');
         } catch (err) {
             console.error('Error saving edited data:', err);
@@ -136,12 +157,20 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
         let fileToImport = file;
         if (showEditor && editedData.length > 0) {
             try {
-                const workbook = XLSX.utils.book_new();
-                const worksheet = XLSX.utils.json_to_sheet(editedData);
-                XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-                const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
-                const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                fileToImport = new File([blob], file.name, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                if (!XLSX) {
+                    // Fall back to original file when XLSX disabled
+                } else {
+                    const workbook = XLSX.utils.book_new();
+                    const worksheet = XLSX.utils.json_to_sheet(editedData);
+                    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+                    const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+                    const blob = new Blob([excelBuffer], {
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    });
+                    fileToImport = new File([blob], file.name, {
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    });
+                }
             } catch (err) {
                 console.error('Error creating file from edited data:', err);
                 error('Lỗi', 'Không thể tạo file từ dữ liệu đã chỉnh sửa. Đang sử dụng file gốc.');
@@ -154,12 +183,12 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
             // Call import API with the file
             const response = await importStudentsFromExcel(fileToImport);
             const created = response.data;
-            
+
             setImporting(false);
-            
+
             success('Import hoàn tất', `Đã tạo thành công ${created.length} học viên`);
             onSuccess();
-            
+
             // Reset state
             setFile(null);
             setExcelData([]);
@@ -178,7 +207,7 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
 
     const handleCloseEditor = () => {
         setShowEditor(false);
-        setEditedData(excelData.map(row => ({ ...row }))); // Reset to original
+        setEditedData(excelData.map((row) => ({ ...row }))); // Reset to original
     };
 
     const handleRemoveFile = () => {
@@ -198,12 +227,16 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
         <div className="fixed inset-0 z-50">
             <div className="fixed inset-0 bg-black/50" onClick={onClose} />
             <div className="fixed inset-0 flex items-center justify-center p-4">
-                <div className={`bg-white rounded-xl shadow-lg w-full ${showEditor ? 'max-w-7xl' : 'max-w-2xl'} relative max-h-[90vh] flex flex-col`}>
+                <div
+                    className={`bg-white rounded-xl shadow-lg w-full ${showEditor ? 'max-w-7xl' : 'max-w-2xl'} relative max-h-[90vh] flex flex-col`}
+                >
                     <div className="p-6 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900">Import Học viên từ Excel</h2>
                             <p className="text-sm text-gray-500 mt-1">
-                                {showEditor ? 'Xem và chỉnh sửa dữ liệu trước khi import' : 'Tải mẫu Excel, điền dữ liệu và upload để tạo nhiều hồ sơ cùng lúc.'}
+                                {showEditor
+                                    ? 'Xem và chỉnh sửa dữ liệu trước khi import'
+                                    : 'Tải mẫu Excel, điền dữ liệu và upload để tạo nhiều hồ sơ cùng lúc.'}
                             </p>
                         </div>
                         <button className="text-gray-400 hover:text-gray-600" onClick={onClose}>
@@ -299,7 +332,10 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
                                             <span className="text-gray-600">Đang xử lý...</span>
                                         </div>
                                         <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                            <div className="h-full bg-blue-600 rounded-full animate-pulse" style={{ width: '100%' }} />
+                                            <div
+                                                className="h-full bg-blue-600 rounded-full animate-pulse"
+                                                style={{ width: '100%' }}
+                                            />
                                         </div>
                                     </div>
                                 )}
@@ -338,8 +374,9 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
                                     {/* Warning */}
                                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                                         <p className="text-sm text-yellow-800">
-                                            💡 <strong>Lưu ý:</strong> Bạn có thể chỉnh sửa dữ liệu trực tiếp trong bảng. 
-                                            Sau khi hoàn tất, bấm "Lưu và tiếp tục" ở footer để cập nhật, hoặc "Xuất file đã sửa" để tải về máy.
+                                            💡 <strong>Lưu ý:</strong> Bạn có thể chỉnh sửa dữ liệu trực tiếp trong
+                                            bảng. Sau khi hoàn tất, bấm "Lưu và tiếp tục" ở footer để cập nhật, hoặc
+                                            "Xuất file đã sửa" để tải về máy.
                                         </p>
                                     </div>
 
@@ -369,11 +406,20 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
                                                                 {rowIndex + 1}
                                                             </td>
                                                             {headers.map((header, colIndex) => (
-                                                                <td key={colIndex} className="px-3 py-1 border-r border-gray-200 last:border-r-0">
+                                                                <td
+                                                                    key={colIndex}
+                                                                    className="px-3 py-1 border-r border-gray-200 last:border-r-0"
+                                                                >
                                                                     <input
                                                                         type="text"
                                                                         value={row[header] || ''}
-                                                                        onChange={(e) => handleCellChange(rowIndex, header, e.target.value)}
+                                                                        onChange={(e) =>
+                                                                            handleCellChange(
+                                                                                rowIndex,
+                                                                                header,
+                                                                                e.target.value,
+                                                                            )
+                                                                        }
                                                                         className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                                         placeholder={`Nhập ${header.toLowerCase()}...`}
                                                                     />

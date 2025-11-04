@@ -13,6 +13,7 @@ import {
     ChevronRight,
     ClipboardCheck,
     FileText,
+    BookText,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { keycloak } from '../../keycloak';
@@ -200,11 +201,11 @@ function AppLayout({ children }: AppLayoutProps) {
     ];
 
     return (
-        <div className="min-h-screen bg-white text-gray-900 m-0 p-0">
+        <div className="min-h-screen bg-gray-50 text-gray-900 m-0 p-0">
             <div className="flex min-h-screen m-0 p-0">
                 {/* Sidebar */}
                 <aside
-                    className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r bg-gradient-to-b from-gray-50 to-white hidden md:flex md:flex-col sticky top-0 h-screen overflow-y-auto z-10 transition-all duration-300 relative shadow-sm`}
+                    className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r bg-white hidden md:flex md:flex-col sticky top-0 h-screen overflow-y-auto z-10 transition-all duration-300 relative shadow-md`}
                 >
                     <div className="px-4 py-5 border-b border-gray-200">
                         {!sidebarCollapsed && (
@@ -291,7 +292,7 @@ function AppLayout({ children }: AppLayoutProps) {
                         ))}
                     </nav>
 
-                    <div className="mt-auto border-t border-gray-200 p-3 sticky bottom-0 bg-gray-50 z-10">
+                    <div className="mt-auto border-t border-gray-200 p-3 sticky bottom-0 bg-white z-10">
                         {bottomMenuItems.map((item) => {
                             const IconComponent = item.icon;
                             return (
@@ -324,8 +325,8 @@ function AppLayout({ children }: AppLayoutProps) {
                 </aside>
 
                 {/* Main */}
-                <div className="flex-1 flex flex-col min-h-screen">
-                    <main className="flex-1 w-full min-h-screen p-6">{children}</main>
+                <div className="flex-1 flex flex-col min-h-screen bg-gray-50">
+                    <main className="flex-1 w-full min-h-screen p-6 bg-gray-50">{children}</main>
                 </div>
             </div>
         </div>
