@@ -307,11 +307,11 @@ function AppLayout({ children }: AppLayoutProps) {
                         })}
                         <button
                             onClick={() => keycloak.logout({ redirectUri: window.location.origin })}
-                            className={`mt-2 w-full text-left text-sm px-2 py-2 rounded-md hover:bg-gray-50 flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-2'}`}
+                            className={`mt-2 w-full text-left text-sm px-2 py-2 rounded-md flex items-center transition-all duration-200 hover:bg-gray-100 hover:text-gray-700 hover:scale-[1.02] hover:shadow-sm ${sidebarCollapsed ? 'justify-center' : 'gap-2'}`}
                             title={sidebarCollapsed ? 'Đăng xuất' : undefined}
                         >
-                            <LogOut size={16} />
-                            {!sidebarCollapsed && <span>Đăng xuất</span>}
+                            <LogOut size={16} className="transition-colors duration-200" />
+                            {!sidebarCollapsed && <span className="transition-colors duration-200">Đăng xuất</span>}
                         </button>
                     </div>
                 </aside>
