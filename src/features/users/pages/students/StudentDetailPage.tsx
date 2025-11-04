@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
     User,
@@ -17,15 +17,7 @@ import { getStudentWithEnrollmentsById } from '@/shared/api/students';
 import type { StudentUI } from '@/shared/types/student-ui';
 import type { StudentEnrollment, StudentWithEnrollmentsDto } from '@/shared/types/student';
 import ClassLogTab from '@/features/users/pages/classes/components/journals/ClassLogTab';
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-    return (
-        <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">{title}</h4>
-            {children}
-        </div>
-    );
-}
+import StudentAttendanceTab from './components/StudentAttendanceTab';
 
 export default function StudentDetailPage() {
     const navigate = useNavigate();
@@ -142,27 +134,28 @@ export default function StudentDetailPage() {
     ] as const;
 
     return (
-        <div className="space-y-4">
+        <div className="h-screen flex flex-col bg-gray-50">
             {/* Header */}
-            <div className="bg-white rounded-xl border shadow-sm p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <button onClick={() => navigate(-1)} className="p-2 rounded-lg border hover:bg-gray-50">
-                        <ArrowLeft size={16} />
+            <div className="bg-white border-b shadow-sm px-6 py-4 flex-shrink-0">
+                <div className="flex items-center gap-4">
+                    <button onClick={() => navigate(-1)} className="p-2 rounded-lg border hover:bg-gray-50 transition-colors">
+                        <ArrowLeft size={18} />
                     </button>
-                    <div className="h-10 w-10 rounded-full bg-blue-50 text-blue-600 grid place-items-center">
-                        <User size={18} />
+                    <div className="h-12 w-12 rounded-full bg-blue-50 text-blue-600 grid place-items-center flex-shrink-0">
+                        <User size={20} />
                     </div>
-                    <div>
-                        <div className="text-base font-semibold text-gray-900">{student.name}</div>
-                        <div className="text-xs text-gray-500">{student.studentId}</div>
+                    <div className="flex-1 min-w-0">
+                        <div className="text-lg font-semibold text-gray-900 truncate">{student.name}</div>
+                        <div className="text-sm text-gray-500">{student.studentId}</div>
                     </div>
                 </div>
             </div>
 
-            {/* Tabs */}
-            <div className="bg-white rounded-xl border shadow-sm">
-                <div className="px-4 py-2 border-b">
-                    <div className="flex gap-1">
+            {/* Tabs and Content */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Tabs Navigation */}
+                <div className="bg-white border-b px-6 flex-shrink-0">
+                    <div className="flex gap-1 overflow-x-auto">
                         {tabs.map((t) => {
                             const Icon = t.icon;
                             const isActive = activeTab === (t.id as typeof activeTab);
@@ -170,192 +163,277 @@ export default function StudentDetailPage() {
                                 <button
                                     key={t.id}
                                     onClick={() => setActiveTab(t.id as typeof activeTab)}
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                                    className={`flex items-center gap-2 px-4 py-3 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
                                 >
-                                    <Icon size={14} />
+                                    <Icon size={16} />
                                     {t.label}
                                 </button>
                             );
                         })}
                     </div>
                 </div>
-                <div className="px-4 py-4">
-                    {activeTab === 'info' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Section title="Thông tin cá nhân">
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-3">
-                                        <Mail size={16} className="text-gray-500" />
-                                        <span className="text-sm">{student.email}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <Phone size={16} className="text-gray-500" />
-                                        <span className="text-sm">{student.phone}</span>
-                                    </div>
-                                    {student.address && (
-                                        <div className="flex items-center gap-3">
-                                            <MapPin size={16} className="text-gray-500" />
-                                            <span className="text-sm">{student.address}</span>
-                                        </div>
-                                    )}
-                                    {student.dob && (
-                                        <div className="flex items-center gap-3">
-                                            <Calendar size={16} className="text-gray-500" />
-                                            <span className="text-sm">Sinh: {student.dob}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </Section>
-                            <Section title="Thông tin học tập">
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-3">
-                                        <Calendar size={16} className="text-gray-500" />
-                                        <span className="text-sm">Đăng ký: {student.registrationDate}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <CheckCircle size={16} className="text-green-500" />
-                                        <span
-                                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${calculateOverallStatus(student.enrollments) === 'Đang học' ? 'bg-green-50 text-green-700' : calculateOverallStatus(student.enrollments) === 'Đang chờ' ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'}`}
-                                        >
-                                            {calculateOverallStatus(student.enrollments)}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <BookOpen size={16} className="text-gray-500" />
-                                        <span className="text-sm">{student.enrollments.length} lớp học</span>
-                                    </div>
-                                </div>
-                            </Section>
-                        </div>
-                    )}
 
-                    {activeTab === 'classes' && (
-                        <div className="space-y-3">
-                            {student.enrollments.length === 0 ? (
-                                <div className="text-center py-10 text-gray-500">Chưa đăng ký lớp học nào</div>
-                            ) : (
-                                student.enrollments.map((enrollment) => (
-                                    <div
-                                        key={enrollment.enrollmentId}
-                                        className="border rounded-lg p-4 flex items-start justify-between"
-                                    >
-                                        <div>
-                                            <div className="font-medium text-gray-900">{enrollment.className}</div>
-                                            <div className="text-sm text-gray-500">{enrollment.programName}</div>
-                                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                                                <span>Đăng ký: {enrollment.enrolledAt}</span>
-                                                {enrollment.leftAt && <span>Kết thúc: {enrollment.leftAt}</span>}
+                {/* Tab Content */}
+                <div className="flex-1 overflow-y-auto bg-gray-50">
+                    <div className="max-w-7xl mx-auto px-6 py-6">
+                        {activeTab === 'info' && (
+                            <div className="bg-white rounded-xl border shadow-sm p-8">
+                                <h4 className="text-xl font-semibold text-gray-900 mb-8 pb-4 border-b">
+                                    Thông tin học viên
+                                </h4>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    {/* Thông tin cá nhân */}
+                                    <div>
+                                        <h5 className="text-base font-semibold text-gray-800 mb-6">
+                                            Thông tin cá nhân
+                                        </h5>
+                                        <div className="space-y-6">
+                                            <div className="flex items-start gap-4">
+                                                <div className="mt-1 flex-shrink-0">
+                                                    <Mail size={20} className="text-gray-400" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm font-medium text-gray-600 mb-2">Email</div>
+                                                    <div className="text-base text-gray-900 break-words">{student.email}</div>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <span
-                                            className={`px-2 py-1 rounded-full text-xs font-medium ${getEnrollmentStatusColor(enrollment.status)}`}
-                                        >
-                                            {getEnrollmentStatusText(enrollment.status)}
-                                        </span>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    )}
-
-                    {activeTab === 'attendance' && (
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-4 gap-4">
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-gray-900">20</div>
-                                    <div className="text-xs text-gray-500">Tổng buổi</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-green-600">18</div>
-                                    <div className="text-xs text-gray-500">Có mặt</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-red-600">1</div>
-                                    <div className="text-xs text-gray-500">Vắng</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-blue-600">90%</div>
-                                    <div className="text-xs text-gray-500">Tỷ lệ</div>
-                                </div>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div className="bg-gray-600 h-2 rounded-full" style={{ width: '90%' }} />
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'scores' && (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b">
-                                        <th className="text-left py-2">Module</th>
-                                        <th className="text-left py-2">Loại thi</th>
-                                        <th className="text-left py-2">Lý thuyết</th>
-                                        <th className="text-left py-2">Thực hành</th>
-                                        <th className="text-left py-2">Tổng kết</th>
-                                        <th className="text-left py-2">Ngày thi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="border-b">
-                                        <td className="py-2">JAVA101 (Java Cơ bản)</td>
-                                        <td className="py-2">Giữa kỳ</td>
-                                        <td className="py-2">8.5</td>
-                                        <td className="py-2">9.0</td>
-                                        <td className="py-2 font-bold">8.8</td>
-                                        <td className="py-2">2024-12-20</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-
-                    {activeTab === 'logs' && (
-                        <div className="space-y-4">
-                            {student.enrollments && student.enrollments.length > 0 ? (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-900 mb-3">
-                                        Lớp học đã đăng ký
-                                    </label>
-                                    <div className="flex gap-3 overflow-x-auto pb-2">
-                                        {student.enrollments.map((enrollment) => (
-                                            <button
-                                                key={enrollment.classId}
-                                                onClick={() =>
-                                                    setSelectedClass({
-                                                        classId: enrollment.classId,
-                                                        name: enrollment.className,
-                                                        programName: enrollment.programName,
-                                                        centerName: '',
-                                                        status: 'ACTIVE',
-                                                    })
-                                                }
-                                                className={`flex-shrink-0 px-4 py-3 rounded-lg border-2 transition-all ${selectedClass?.classId === enrollment.classId ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300'}`}
-                                            >
-                                                <div className="text-left">
-                                                    <div className="text-sm font-medium text-gray-900">
-                                                        {enrollment.className}
+                                            <div className="flex items-start gap-4">
+                                                <div className="mt-1 flex-shrink-0">
+                                                    <Phone size={20} className="text-gray-400" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm font-medium text-gray-600 mb-2">Số điện thoại</div>
+                                                    <div className="text-base text-gray-900">{student.phone}</div>
+                                                </div>
+                                            </div>
+                                            {student.address && (
+                                                <div className="flex items-start gap-4">
+                                                    <div className="mt-1 flex-shrink-0">
+                                                        <MapPin size={20} className="text-gray-400" />
                                                     </div>
-                                                    <div className="text-xs text-gray-500 mt-1">
-                                                        {enrollment.programName}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-sm font-medium text-gray-600 mb-2">Địa chỉ</div>
+                                                        <div className="text-base text-gray-900 break-words">{student.address}</div>
                                                     </div>
                                                 </div>
-                                            </button>
-                                        ))}
+                                            )}
+                                            {student.dob && (
+                                                <div className="flex items-start gap-4">
+                                                    <div className="mt-1 flex-shrink-0">
+                                                        <Calendar size={20} className="text-gray-400" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-sm font-medium text-gray-600 mb-2">Ngày sinh</div>
+                                                        <div className="text-base text-gray-900">{student.dob}</div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {student.gender && (
+                                                <div className="flex items-start gap-4">
+                                                    <div className="mt-1 flex-shrink-0">
+                                                        <User size={20} className="text-gray-400" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-sm font-medium text-gray-600 mb-2">Giới tính</div>
+                                                        <div className="text-base text-gray-900">
+                                                            {student.gender === 'MALE' ? 'Nam' : student.gender === 'FEMALE' ? 'Nữ' : student.gender === 'OTHER' ? 'Khác' : student.gender}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {student.nationalIdNo && (
+                                                <div className="flex items-start gap-4">
+                                                    <div className="mt-1 flex-shrink-0">
+                                                        <Calendar size={20} className="text-gray-400" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-sm font-medium text-gray-600 mb-2">CMND/CCCD</div>
+                                                        <div className="text-base text-gray-900">{student.nationalIdNo}</div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Thông tin học tập */}
+                                    <div>
+                                        <h5 className="text-base font-semibold text-gray-800 mb-6">
+                                            Thông tin học tập
+                                        </h5>
+                                        <div className="space-y-6">
+                                            <div className="flex items-start gap-4">
+                                                <div className="mt-1 flex-shrink-0">
+                                                    <Calendar size={20} className="text-gray-400" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm font-medium text-gray-600 mb-2">Ngày đăng ký</div>
+                                                    <div className="text-base text-gray-900">{student.registrationDate}</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-start gap-4">
+                                                <div className="mt-1 flex-shrink-0">
+                                                    <CheckCircle size={20} className="text-green-500" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm font-medium text-gray-600 mb-2">Trạng thái</div>
+                                                    <span
+                                                        className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium ${calculateOverallStatus(student.enrollments) === 'Đang học' ? 'bg-green-50 text-green-700' : calculateOverallStatus(student.enrollments) === 'Đang chờ' ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'}`}
+                                                    >
+                                                        {calculateOverallStatus(student.enrollments)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-start gap-4">
+                                                <div className="mt-1 flex-shrink-0">
+                                                    <BookOpen size={20} className="text-gray-400" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm font-medium text-gray-600 mb-2">Số lớp học</div>
+                                                    <div className="text-base text-gray-900 font-semibold">{student.enrollments.length} lớp học</div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="text-center py-8 bg-gray-50 rounded-lg">Chưa có lớp học</div>
-                            )}
+                            </div>
+                        )}
 
-                            {selectedClass && (
-                                <div className="mt-4">
-                                    <ClassLogTab selectedClass={selectedClass} readOnly={true} />
+                        {activeTab === 'classes' && (
+                            <div className="space-y-4">
+                                {student.enrollments.length === 0 ? (
+                                    <div className="bg-white rounded-xl border shadow-sm p-12 text-center">
+                                        <BookOpen size={48} className="mx-auto text-gray-300 mb-3" />
+                                        <p className="text-sm text-gray-600">Chưa đăng ký lớp học nào</p>
+                                    </div>
+                                ) : (
+                                    student.enrollments.map((enrollment) => (
+                                        <div
+                                            key={enrollment.enrollmentId}
+                                            className="bg-white rounded-xl border shadow-sm p-5 hover:shadow-md transition-shadow"
+                                        >
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <h5 className="text-base font-semibold text-gray-900">{enrollment.className}</h5>
+                                                        <span
+                                                            className={`px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${getEnrollmentStatusColor(enrollment.status)}`}
+                                                        >
+                                                            {getEnrollmentStatusText(enrollment.status)}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-600 mb-3">{enrollment.programName}</p>
+                                                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                                                        <span className="flex items-center gap-1">
+                                                            <Calendar size={14} />
+                                                            Đăng ký: {enrollment.enrolledAt}
+                                                        </span>
+                                                        {enrollment.leftAt && (
+                                                            <span className="flex items-center gap-1">
+                                                                <Calendar size={14} />
+                                                                Kết thúc: {enrollment.leftAt}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'attendance' && (
+                            <div className="bg-white rounded-xl border shadow-sm p-6">
+                                <StudentAttendanceTab student={student} />
+                            </div>
+                        )}
+
+                        {activeTab === 'scores' && (
+                            <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                                <div className="p-6 border-b">
+                                    <h4 className="text-base font-semibold text-gray-900">Bảng điểm</h4>
                                 </div>
-                            )}
-                        </div>
-                    )}
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="text-left py-3 px-6 font-medium text-gray-700">Module</th>
+                                                <th className="text-left py-3 px-6 font-medium text-gray-700">Loại thi</th>
+                                                <th className="text-left py-3 px-6 font-medium text-gray-700">Lý thuyết</th>
+                                                <th className="text-left py-3 px-6 font-medium text-gray-700">Thực hành</th>
+                                                <th className="text-left py-3 px-6 font-medium text-gray-700">Tổng kết</th>
+                                                <th className="text-left py-3 px-6 font-medium text-gray-700">Ngày thi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            <tr className="hover:bg-gray-50">
+                                                <td className="py-3 px-6 text-gray-900">JAVA101 (Java Cơ bản)</td>
+                                                <td className="py-3 px-6 text-gray-600">Giữa kỳ</td>
+                                                <td className="py-3 px-6 text-gray-900">8.5</td>
+                                                <td className="py-3 px-6 text-gray-900">9.0</td>
+                                                <td className="py-3 px-6 font-semibold text-gray-900">8.8</td>
+                                                <td className="py-3 px-6 text-gray-600">2024-12-20</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'logs' && (
+                            <div className="space-y-6">
+                                {student.enrollments && student.enrollments.length > 0 ? (
+                                    <>
+                                        <div className="bg-white rounded-xl border shadow-sm p-6">
+                                            <label className="block text-sm font-semibold text-gray-900 mb-4">
+                                                Chọn lớp học để xem nhật ký
+                                            </label>
+                                            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                                                {student.enrollments.map((enrollment) => (
+                                                    <button
+                                                        key={enrollment.classId}
+                                                        onClick={() =>
+                                                            setSelectedClass({
+                                                                classId: enrollment.classId,
+                                                                name: enrollment.className,
+                                                                programName: enrollment.programName,
+                                                                centerName: '',
+                                                                status: enrollment.status,
+                                                            })
+                                                        }
+                                                        className={`flex-shrink-0 px-4 py-3 rounded-lg border-2 transition-all ${selectedClass?.classId === enrollment.classId ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300'}`}
+                                                    >
+                                                        <div className="text-left">
+                                                            <div className="text-sm font-medium text-gray-900">
+                                                                {enrollment.className}
+                                                            </div>
+                                                            <div className="text-xs text-gray-500 mt-1">
+                                                                {enrollment.programName}
+                                                            </div>
+                                                            <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs ${getEnrollmentStatusColor(enrollment.status)}`}>
+                                                                {getEnrollmentStatusText(enrollment.status)}
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {selectedClass && (
+                                            <div className="bg-white rounded-xl border shadow-sm p-6">
+                                                <ClassLogTab selectedClass={selectedClass} readOnly={true} />
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="bg-white rounded-xl border shadow-sm p-12 text-center">
+                                        <FileText size={48} className="mx-auto text-gray-300 mb-3" />
+                                        <p className="text-sm text-gray-600">Chưa có lớp học</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
