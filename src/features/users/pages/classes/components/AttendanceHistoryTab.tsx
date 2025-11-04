@@ -18,7 +18,7 @@ interface AttendanceHistoryTabProps {
 
 const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) => {
     const { success: showSuccessToast, error: showErrorToast } = useToast();
-
+    
     // States
     const [sessions, setSessions] = useState<AttendanceSessionSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -26,17 +26,15 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
-
+    
     // Filter states
     const currentDate = new Date();
     const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1); // 1-12
     const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
-
+    
     // Edit states
     const [editNotes, setEditNotes] = useState('');
-    const [editRecords, setEditRecords] = useState<Map<number, { status: AttendanceStatus; notes?: string }>>(
-        new Map(),
-    );
+    const [editRecords, setEditRecords] = useState<Map<number, { status: AttendanceStatus; notes?: string }>>(new Map());
 
     // Fetch sessions list
     const fetchSessions = useCallback(async () => {
@@ -44,8 +42,8 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
             setIsLoading(true);
             const response = await getClassAttendanceSessions(classId);
             // Sort by date descending (newest first)
-            const sorted = response.data.sort(
-                (a, b) => new Date(b.attendanceDate).getTime() - new Date(a.attendanceDate).getTime(),
+            const sorted = response.data.sort((a, b) => 
+                new Date(b.attendanceDate).getTime() - new Date(a.attendanceDate).getTime()
             );
             setSessions(sorted);
         } catch (error) {
@@ -78,13 +76,16 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
             const response = await getAttendanceSessionDetail(sessionId);
             setSelectedSession(response.data);
             setEditNotes(response.data.notes || '');
-
+            
             // Initialize edit records
             const recordsMap = new Map(
-                response.data.records.map((r) => [r.recordId, { status: r.status, notes: r.notes }]),
+                response.data.records.map(r => [
+                    r.recordId,
+                    { status: r.status, notes: r.notes }
+                ])
             );
             setEditRecords(recordsMap);
-
+            
             setIsModalOpen(true);
             setIsEditMode(false);
         } catch (error) {
@@ -98,7 +99,7 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
         if (!selectedSession) return;
 
         try {
-            const records = selectedSession.records.map((r) => {
+            const records = selectedSession.records.map(r => {
                 const editRecord = editRecords.get(r.recordId);
                 return {
                     recordId: r.recordId,
@@ -138,7 +139,7 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
 
     // Update record status
     const updateRecordStatus = (recordId: number, status: AttendanceStatus) => {
-        setEditRecords((prev) => {
+        setEditRecords(prev => {
             const newMap = new Map(prev);
             const current = newMap.get(recordId) || { status: 'PRESENT' };
             newMap.set(recordId, { ...current, status });
@@ -148,7 +149,7 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
 
     // Update record notes
     const updateRecordNotes = (recordId: number, notes: string) => {
-        setEditRecords((prev) => {
+        setEditRecords(prev => {
             const newMap = new Map(prev);
             const current = newMap.get(recordId) || { status: 'PRESENT' };
             newMap.set(recordId, { ...current, notes });
@@ -164,7 +165,7 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
 
     // Filter sessions by month/year
     const filteredSessions = useMemo(() => {
-        return sessions.filter((session) => {
+        return sessions.filter(session => {
             const [year, month] = session.attendanceDate.split('-');
             return parseInt(month) === selectedMonth && parseInt(year) === selectedYear;
         });
@@ -172,7 +173,7 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
 
     // Get available years from sessions
     const availableYears = useMemo(() => {
-        const years = new Set(sessions.map((s) => parseInt(s.attendanceDate.split('-')[0])));
+        const years = new Set(sessions.map(s => parseInt(s.attendanceDate.split('-')[0])));
         return Array.from(years).sort((a, b) => b - a);
     }, [sessions]);
 
@@ -197,7 +198,7 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
             {/* Header with Filters */}
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <h3 className="text-lg font-semibold text-gray-900">Lịch sử điểm danh</h3>
-
+                
                 {/* Month/Year Filters */}
                 <div className="flex items-center gap-3">
                     {/* Month Selector */}
@@ -207,16 +208,13 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
                             onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
                             className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
                         >
-                            {months.map((month) => (
+                            {months.map(month => (
                                 <option key={month.value} value={month.value}>
                                     {month.label}
                                 </option>
                             ))}
                         </select>
-                        <ChevronDown
-                            size={16}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                        />
+                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
 
                     {/* Year Selector */}
@@ -227,7 +225,7 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
                             className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
                         >
                             {availableYears.length > 0 ? (
-                                availableYears.map((year) => (
+                                availableYears.map(year => (
                                     <option key={year} value={year}>
                                         Năm {year}
                                     </option>
@@ -236,10 +234,7 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
                                 <option value={selectedYear}>Năm {selectedYear}</option>
                             )}
                         </select>
-                        <ChevronDown
-                            size={16}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                        />
+                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
                 </div>
             </div>
@@ -248,8 +243,7 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
             {!isLoading && sessions.length > 0 && (
                 <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
                     <span className="text-sm text-blue-800">
-                        <span className="font-semibold">{filteredSessions.length}</span> buổi điểm danh trong Tháng{' '}
-                        {selectedMonth}/{selectedYear}
+                        <span className="font-semibold">{filteredSessions.length}</span> buổi điểm danh trong Tháng {selectedMonth}/{selectedYear}
                     </span>
                 </div>
             )}
@@ -264,19 +258,21 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
                 <div className="bg-gray-50 rounded-lg p-12 text-center">
                     <Calendar size={48} className="mx-auto text-gray-400 mb-3" />
                     <p className="text-gray-600 font-medium mb-1">
-                        {sessions.length === 0
-                            ? 'Chưa có buổi điểm danh nào'
-                            : `Không có buổi điểm danh nào trong Tháng ${selectedMonth}/${selectedYear}`}
+                        {sessions.length === 0 
+                            ? 'Chưa có buổi điểm danh nào' 
+                            : `Không có buổi điểm danh nào trong Tháng ${selectedMonth}/${selectedYear}`
+                        }
                     </p>
                     <p className="text-sm text-gray-500">
                         {sessions.length === 0
                             ? 'Điểm danh sẽ xuất hiện ở đây sau khi bạn tạo buổi đầu tiên'
-                            : 'Hãy chọn tháng/năm khác để xem lịch sử điểm danh'}
+                            : 'Hãy chọn tháng/năm khác để xem lịch sử điểm danh'
+                        }
                     </p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredSessions.map((session) => (
+                    {filteredSessions.map(session => (
                         <div
                             key={session.sessionId}
                             onClick={() => handleViewSession(session.sessionId)}
@@ -453,16 +449,18 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
                                     <tbody className="divide-y divide-gray-200">
                                         {selectedSession.records.map((record, index) => {
                                             const editRecord = editRecords.get(record.recordId);
-                                            const currentStatus = isEditMode
-                                                ? editRecord?.status || record.status
+                                            const currentStatus = isEditMode 
+                                                ? (editRecord?.status || record.status)
                                                 : record.status;
                                             const currentNotes = isEditMode
                                                 ? (editRecord?.notes ?? record.notes ?? '')
-                                                : record.notes || '';
+                                                : (record.notes || '');
 
                                             return (
                                                 <tr key={record.recordId} className="hover:bg-gray-50">
-                                                    <td className="px-4 py-3 text-sm text-gray-900">{index + 1}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">
+                                                        {index + 1}
+                                                    </td>
                                                     <td className="px-4 py-3 text-sm font-medium text-gray-900">
                                                         {record.studentCode}
                                                     </td>
@@ -475,9 +473,7 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
                                                                 type="radio"
                                                                 name={`status-${record.recordId}`}
                                                                 checked={currentStatus === 'PRESENT'}
-                                                                onChange={() =>
-                                                                    updateRecordStatus(record.recordId, 'PRESENT')
-                                                                }
+                                                                onChange={() => updateRecordStatus(record.recordId, 'PRESENT')}
                                                                 className="w-5 h-5 border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
                                                             />
                                                         ) : currentStatus === 'PRESENT' ? (
@@ -490,9 +486,7 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
                                                                 type="radio"
                                                                 name={`status-${record.recordId}`}
                                                                 checked={currentStatus === 'ABSENT'}
-                                                                onChange={() =>
-                                                                    updateRecordStatus(record.recordId, 'ABSENT')
-                                                                }
+                                                                onChange={() => updateRecordStatus(record.recordId, 'ABSENT')}
                                                                 className="w-5 h-5 border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer"
                                                             />
                                                         ) : currentStatus === 'ABSENT' ? (
@@ -504,9 +498,7 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
                                                             <input
                                                                 type="text"
                                                                 value={currentNotes}
-                                                                onChange={(e) =>
-                                                                    updateRecordNotes(record.recordId, e.target.value)
-                                                                }
+                                                                onChange={(e) => updateRecordNotes(record.recordId, e.target.value)}
                                                                 placeholder="Ghi chú..."
                                                                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                             />
@@ -530,11 +522,11 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
             {/* Delete Confirmation */}
             {deleteConfirmId && (
                 <ConfirmDialog
-                    open={true}
+                    isOpen={true}
                     onClose={() => setDeleteConfirmId(null)}
                     onConfirm={() => handleDelete(deleteConfirmId)}
                     title="Xóa buổi điểm danh"
-                    description="Bạn có chắc chắn muốn xóa buổi điểm danh này không? Hành động này không thể hoàn tác."
+                    message="Bạn có chắc chắn muốn xóa buổi điểm danh này không? Hành động này không thể hoàn tác."
                 />
             )}
         </div>

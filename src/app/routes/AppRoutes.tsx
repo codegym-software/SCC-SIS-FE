@@ -12,7 +12,6 @@ import MyClassesPage from '../../features/students/pages/my-classes/MyClassesPag
 import ProtectedRoute from './ProtectedRoute';
 import AttendancePage from '../../features/users/pages/attendance/AttendancePage';
 import TakeAttendancePage from '../../features/users/pages/attendance/TakeAttendancePage';
-import ExamManagementPage from '../../features/users/pages/exams/ExamManagementPage';
 
 export default function AppRoutes() {
     return (
@@ -38,14 +37,6 @@ export default function AppRoutes() {
                 element={
                     <ProtectedRoute allowedRoles={['LECTURER']}>
                         <TakeAttendancePage />
-                    </ProtectedRoute>
-                }
-            />
-            <Route
-                path="/exams"
-                element={
-                    <ProtectedRoute allowedRoles={['LECTURER']}>
-                        <ExamManagementPage />
                     </ProtectedRoute>
                 }
             />
