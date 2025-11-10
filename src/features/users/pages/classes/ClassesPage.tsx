@@ -1443,12 +1443,14 @@ export default function ClassesPage() {
                         <p className="text-xs text-gray-500">Quản lý thông tin lớp học và danh sách học viên</p>
                     </div>
                 </div>
-                <button
-                    onClick={() => setOpenCreate(true)}
-                    className="inline-flex items-center gap-2 rounded-md bg-black text-white text-sm px-4 py-2 hover:bg-gray-800 transition-all duration-300"
-                >
-                    + Thêm Mới
-                </button>
+                {!isLecturer && (
+                    <button
+                        onClick={() => setOpenCreate(true)}
+                        className="inline-flex items-center gap-2 rounded-md bg-black text-white text-sm px-4 py-2 hover:bg-gray-800 transition-all duration-300"
+                    >
+                        + Thêm Mới
+                    </button>
+                )}
             </div>
 
             {/* Search, Filter and View Toggle */}

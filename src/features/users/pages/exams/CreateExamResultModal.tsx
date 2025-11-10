@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { createExamResult, type StudentScoreInput } from '@/shared/api/exams';
 import { createGradeEntry, type CreateGradeEntryRequest } from '@/shared/api/grade-entries';
@@ -278,6 +278,9 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, 
             <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Nhập điểm</DialogTitle>
+                    <DialogDescription>
+                        Nhập điểm lý thuyết và thực hành cho học viên trong lớp đã chọn
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, AlertCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, AlertCircle, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ import {
 import { getGradeEntryDetail, updateGradeRecords, deleteGradeEntry } from '@/shared/api/grades.mock';
 import type { GradeEntryDetail } from '@/shared/types/grades';
 import { toast } from 'sonner';
+import ImportGradesModal from './components/ImportGradesModal';
 
 interface GradeInput {
     gradeRecordId: number;
@@ -36,6 +37,7 @@ export function GradeEntryPage() {
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [openImport, setOpenImport] = useState(false);
 
     useEffect(() => {
         loadGradeEntry();
@@ -173,6 +175,10 @@ export function GradeEntryPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button onClick={() => setOpenImport(true)} className="gap-2">
+                        <Upload className="h-4 w-4" />
+                        Import từ Excel
+                    </Button>
                     <Button
                         variant="destructive"
                         onClick={() => setShowDeleteDialog(true)}
@@ -341,6 +347,21 @@ export function GradeEntryPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Import Grades Modal */}
+            {gradeEntry && (
+                <ImportGradesModal
+                    open={openImport}
+                    onClose={() => setOpenImport(false)}
+                    onSuccess={async () => {
+                        await loadGradeEntry();
+                        setOpenImport(false);
+                    }}
+                    classId={gradeEntry.classId}
+                    moduleId={gradeEntry.moduleId}
+                    entryDate={gradeEntry.entryDate}
+                />
+            )}
         </div>
     );
 }

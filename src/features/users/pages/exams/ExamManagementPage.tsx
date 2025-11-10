@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Filter, Edit, Trash2 } from 'lucide-react';
+import { Plus, Filter, Edit, Trash2, Download, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,6 +26,7 @@ import {
     updateGradeRecords,
     getStudentGrades,
     getGradeEntries,
+    exportGrades,
     type UpdateGradeRecordsRequest,
     type StudentGradesResponse,
     type GradeRecordResponse,
@@ -36,6 +37,7 @@ import type { ModuleResponse } from '@/shared/api/modules';
 import { getClassStudents } from '@/shared/api/classes';
 import { toast } from 'sonner';
 import CreateExamResultModal from './CreateExamResultModal';
+import ImportExamGradesModal from './components/ImportExamGradesModal';
 
 interface ClassOption {
     classId: number;
@@ -72,6 +74,7 @@ const ExamManagementPage: React.FC = () => {
 
     // Modal state
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
 
     // Edit state - track which row is being edited
     const [editingRow, setEditingRow] = useState<{
@@ -89,6 +92,10 @@ const ExamManagementPage: React.FC = () => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [studentsMap, setStudentsMap] = useState<Map<number, { studentCode: string; fullName: string }>>(new Map());
+    
+    // Import state
+    const [importEntryDate, setImportEntryDate] = useState<string>('');
+    const [exporting, setExporting] = useState(false);
 
     // Load classes khi mount
     useEffect(() => {
@@ -163,6 +170,7 @@ const ExamManagementPage: React.FC = () => {
     }, [selectedClass, selectedSemester, selectedModule]);
 
     // Filter results khi thay đổi filter
+    // Chỉ filter khi đã chọn cả module và ngày
     useEffect(() => {
         applyFilters();
     }, [examResults, selectedDate, selectedModule]);
@@ -344,17 +352,19 @@ const ExamManagementPage: React.FC = () => {
     };
 
     const applyFilters = () => {
+        // Chỉ hiển thị kết quả khi đã chọn cả module và ngày
+        if (!selectedModule || !selectedDate) {
+            setFilteredResults([]);
+            return;
+        }
+
         let filtered = [...examResults];
 
         // Filter by module (should already be filtered by API, but double check)
-        if (selectedModule) {
-            filtered = filtered.filter((r) => r.moduleId === selectedModule);
-        }
+        filtered = filtered.filter((r) => r.moduleId === selectedModule);
 
-        // Filter by exam date
-        if (selectedDate) {
-            filtered = filtered.filter((r) => r.examDate === selectedDate);
-        }
+        // Filter by exam date (bắt buộc)
+        filtered = filtered.filter((r) => r.examDate === selectedDate);
 
         setFilteredResults(filtered);
     };
@@ -572,6 +582,35 @@ const ExamManagementPage: React.FC = () => {
         }
     };
 
+    const handleExport = async () => {
+        if (!selectedClass || !selectedSemester || !selectedModule || !selectedDate) {
+            toast.error('Vui lòng chọn đầy đủ thông tin để export');
+            return;
+        }
+
+        try {
+            setExporting(true);
+            await exportGrades(selectedClass, selectedSemester, selectedModule, selectedDate);
+            toast.success('Export điểm thành công');
+        } catch (error: any) {
+            console.error('Error exporting grades:', error);
+            toast.error(error.response?.data?.message || 'Không thể export điểm');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handleImportSuccess = () => {
+        // Reload data after successful import
+        if (selectedClass && selectedSemester) {
+            if (selectedModule) {
+                loadStudentGrades(selectedClass, selectedSemester, selectedModule);
+            } else {
+                loadStudentGrades(selectedClass, selectedSemester);
+            }
+        }
+    };
+
 
     // Get unique exam dates for filter (từ examDate = entryDate)
     // Lọc bỏ các giá trị rỗng và đảm bảo format đúng (ISO date: YYYY-MM-DD)
@@ -599,10 +638,31 @@ const ExamManagementPage: React.FC = () => {
                     <h1 className="text-2xl font-bold">Quản lý Điểm thi</h1>
                     <p className="text-sm text-gray-500">Tạo và quản lý các đợt nhập điểm cho học viên</p>
                 </div>
-                <Button onClick={() => setShowCreateModal(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nhập điểm
-                </Button>
+                <div className="flex gap-2">
+                    {selectedClass && selectedSemester && selectedModule && (
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowImportModal(true)}
+                        >
+                            <Upload className="w-4 h-4 mr-2" />
+                            Import
+                        </Button>
+                    )}
+                    {selectedClass && selectedSemester && selectedModule && selectedDate && (
+                        <Button
+                            variant="outline"
+                            onClick={handleExport}
+                            disabled={exporting}
+                        >
+                            <Download className="w-4 h-4 mr-2" />
+                            {exporting ? 'Đang export...' : 'Export'}
+                        </Button>
+                    )}
+                    <Button onClick={() => setShowCreateModal(true)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Nhập điểm
+                    </Button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -712,8 +772,8 @@ const ExamManagementPage: React.FC = () => {
                                 value={selectedDate || ''}
                                 onValueChange={(val) => setSelectedDate(val || '')}
                             >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Chọn ngày thi" />
+                                <SelectTrigger className={!selectedDate ? 'border-red-500' : ''}>
+                                    <SelectValue placeholder="Chọn ngày thi *" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {uniqueDates.length > 0 ? (
@@ -765,6 +825,10 @@ const ExamManagementPage: React.FC = () => {
                 <Card className="p-8 text-center text-gray-500">
                     <p>Vui lòng chọn module để xem danh sách điểm thi</p>
                 </Card>
+            ) : !selectedDate ? (
+                <Card className="p-8 text-center text-gray-500">
+                    <p>Vui lòng chọn ngày thi để xem danh sách điểm thi</p>
+                </Card>
             ) : loading ? (
                 <Card className="p-8 text-center">
                     <p>Đang tải...</p>
@@ -814,8 +878,11 @@ const ExamManagementPage: React.FC = () => {
                                             
                                             const isEditing = editingRow?.examResultId === result.examResultId && editingRow?.studentId === score.studentId;
                                             
+                                            // Create unique key using resultIndex, examDate, and studentId to avoid duplicates
+                                            const uniqueKey = `${resultIndex}-${result.examDate}-${score.studentId}`;
+                                            
                                             return (
-                                                <TableRow key={`${result.examResultId}-${score.studentId}`}>
+                                                <TableRow key={uniqueKey}>
                                                     <TableCell>{globalIndex}</TableCell>
                                                     <TableCell>{score.studentCode}</TableCell>
                                                     <TableCell>{score.fullName}</TableCell>
@@ -996,6 +1063,22 @@ const ExamManagementPage: React.FC = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Import Modal with Preview and Edit */}
+            {selectedClass && selectedModule && (
+                <ImportExamGradesModal
+                    open={showImportModal}
+                    onClose={() => {
+                        setShowImportModal(false);
+                        setImportEntryDate('');
+                    }}
+                    onSuccess={handleImportSuccess}
+                    classId={selectedClass}
+                    moduleId={selectedModule}
+                    entryDate={importEntryDate}
+                    setEntryDate={setImportEntryDate}
+                />
+            )}
         </div>
     );
 };
