@@ -46,6 +46,13 @@ export interface GradeRecordResponse {
     finalScore: number;
     passStatus: 'PASS' | 'FAIL';
     entryDate?: string; // ISO date: "2025-01-15" - ngày thi của đợt nhập điểm này
+    // Thông tin module và class (cho API lấy điểm theo student)
+    moduleId?: number;
+    moduleCode?: string;
+    moduleName?: string;
+    semester?: number;
+    classId?: number;
+    className?: string;
 }
 
 export interface GradeEntryResponse {
@@ -55,11 +62,14 @@ export interface GradeEntryResponse {
     moduleId: number;
     moduleCode?: string;
     moduleName: string;
+    semester?: number;
     entryDate: string;
     createdBy: number;
     createdByName: string;
     createdAt: string;
     updatedAt: string;
+    passCount?: number;
+    failCount?: number;
 }
 
 export interface GradeEntryDetailResponse {
@@ -250,5 +260,16 @@ export const exportGrades = async (classId: number, semester: number, moduleId?:
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
+};
+
+/**
+ * GET /api/grade-entries/student/{studentId}
+ * Lấy tất cả điểm thi của một học viên cụ thể
+ */
+export const getStudentGradesByStudentId = async (studentId: number): Promise<GradeRecordResponse[]> => {
+    console.log('API: Fetching grades for student ID:', studentId);
+    const response = await api.get<GradeRecordResponse[]>(`/api/grade-entries/student/${studentId}`);
+    console.log('API: Response received:', response.data);
+    return response.data;
 };
 
