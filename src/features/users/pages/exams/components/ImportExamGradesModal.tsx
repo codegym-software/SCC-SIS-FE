@@ -486,20 +486,29 @@ export default function ImportExamGradesModal({
                                                                     {rowIndex + 1}
                                                                 </td>
                                                                 {headers.map((header, colIndex) => {
+                                                                    // Check if column is read-only (Final Score, Pass Status, or Student ID)
+                                                                    const isStudentIdColumn = 
+                                                                        header.toLowerCase().includes('student') && 
+                                                                        (header.toLowerCase().includes('id') || header.toLowerCase().includes('code'));
                                                                     const isReadOnly =
-                                                                        header === finalHeader || header === passHeader;
+                                                                        header === finalHeader || 
+                                                                        header === passHeader || 
+                                                                        isStudentIdColumn;
+                                                                    
                                                                     return (
                                                                         <td
                                                                             key={colIndex}
                                                                             className="px-3 py-1 border-r border-gray-200 last:border-r-0"
                                                                         >
                                                                             {isReadOnly ? (
-                                                                                <span className="text-xs font-medium text-blue-600">
+                                                                                <span className={`text-xs font-medium ${isStudentIdColumn ? 'text-gray-700' : 'text-blue-600'}`}>
                                                                                     {header === finalHeader
                                                                                         ? finalScore !== null
                                                                                             ? finalScore.toFixed(2)
                                                                                             : '--'
-                                                                                        : passStatus || '--'}
+                                                                                        : header === passHeader
+                                                                                        ? passStatus || '--'
+                                                                                        : row[header] || '--'}
                                                                                 </span>
                                                                             ) : (
                                                                                 <input

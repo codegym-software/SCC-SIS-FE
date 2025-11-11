@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, User, Mail, Phone, Calendar, GraduationCap, Clock, CheckCircle, XCircle, BookOpen, MapPin, Users, BarChart3, FileText } from 'lucide-react';
 import { listClasses } from '@/shared/api/classes';
 import { getClassStudents } from '@/shared/api/classes';
+import { getStudentGradesByStudentId, type GradeRecordResponse } from '@/shared/api/grade-entries';
 import { useToast } from '@/shared/hooks/useToast';
 import ClassLogTab from '@/features/users/pages/classes/components/journals/ClassLogTab';
 import type { EnrollmentResponse } from '@/shared/types/classes';
@@ -13,16 +14,44 @@ interface StudentViewProps {
 }
 
 const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
+    console.log('🎯 StudentView component rendered for:', student.name, student.id);
+    alert('Component rendered: ' + student.name); // DEBUG
+    
     const { error: showErrorToast } = useToast();
     const [activeTab, setActiveTab] = useState('info');
     const [enrollments, setEnrollments] = useState<any[]>([]);
     const [isLoadingEnrollments, setIsLoadingEnrollments] = useState(false);
     const [selectedClass, setSelectedClass] = useState<any | null>(null);
+    const [studentGrades, setStudentGrades] = useState<GradeRecordResponse[]>([]);
+    const [isLoadingGrades, setIsLoadingGrades] = useState(false);
 
-    // Load student's enrollments when viewing classes tab
-    useEffect(() => {
-        loadEnrollments(); // Load ngay khi mount để có activeEnrollment
-    }, [student.id]);
+    const loadStudentGrades = async () => {
+        try {
+            setIsLoadingGrades(true);
+            console.log('🔥 Loading grades for student ID:', student.id);
+            alert('Calling API for student: ' + student.id); // DEBUG - xóa sau
+            const grades = await getStudentGradesByStudentId(parseInt(student.id));
+            console.log('✅ Received grades from API:', grades);
+            console.log('📊 Number of grades:', grades.length);
+            
+            // Sort by semester and entry date
+            grades.sort((a, b) => {
+                if (a.semester !== b.semester) {
+                    return (a.semester || 0) - (b.semester || 0);
+                }
+                return (a.entryDate || '').localeCompare(b.entryDate || '');
+            });
+            
+            console.log('Sorted grades:', grades);
+            setStudentGrades(grades);
+        } catch (error: any) {
+            console.error('Error loading student grades:', error);
+            console.error('Error details:', error?.response?.data);
+            showErrorToast('Lỗi tải điểm thi', error?.response?.data?.message || 'Không thể tải điểm thi của học viên');
+        } finally {
+            setIsLoadingGrades(false);
+        }
+    };
 
 
     const loadEnrollments = async () => {
@@ -78,6 +107,15 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
             setIsLoadingEnrollments(false);
         }
     };
+
+    // Load student's enrollments and grades when component mounts
+    useEffect(() => {
+        console.log('🚀 === StudentView useEffect triggered for student:', student.id, student.name);
+        alert('useEffect triggered! Student: ' + student.name); // DEBUG - xóa sau
+        loadEnrollments(); // Load ngay khi mount để có activeEnrollment
+        loadStudentGrades(); // Load điểm của học viên
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [student.id]);
 
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -283,42 +321,70 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                 return (
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
-                            <h4 className="text-sm font-medium text-gray-900">Bảng điểm</h4>
-                            <span className="text-sm text-gray-600">Điểm trung bình: 8.75</span>
+                            <h4 className="text-sm font-medium text-gray-900">Bảng điểm thi</h4>
+                            {studentGrades.length > 0 && (
+                                <span className="text-sm text-gray-600">
+                                    Tổng: {studentGrades.length} bài thi
+                                </span>
+                            )}
                         </div>
                         
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b">
-                                        <th className="text-left py-2">Module</th>
-                                        <th className="text-left py-2">Loại thi</th>
-                                        <th className="text-left py-2">Lý thuyết</th>
-                                        <th className="text-left py-2">Thực hành</th>
-                                        <th className="text-left py-2">Tổng kết</th>
-                                        <th className="text-left py-2">Ngày thi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="border-b">
-                                        <td className="py-2">JAVA101 (Java Cơ bản)</td>
-                                        <td className="py-2">Giữa kỳ</td>
-                                        <td className="py-2">8.5</td>
-                                        <td className="py-2">9.0</td>
-                                        <td className="py-2 font-bold">8.8</td>
-                                        <td className="py-2">2024-12-20</td>
-                                    </tr>
-                                    <tr className="border-b">
-                                        <td className="py-2">JAVA101 (Java Cơ bản)</td>
-                                        <td className="py-2">Bài tập lớn</td>
-                                        <td className="py-2">8.0</td>
-                                        <td className="py-2">9.5</td>
-                                        <td className="py-2 font-bold">8.8</td>
-                                        <td className="py-2">2024-12-15</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                        {isLoadingGrades ? (
+                            <div className="text-center py-8 text-gray-500">Đang tải điểm...</div>
+                        ) : studentGrades.length === 0 ? (
+                            <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                <BarChart3 size={48} className="mx-auto text-gray-300 mb-2" />
+                                <p className="text-sm text-gray-600">Chưa có điểm thi nào</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b bg-gray-50">
+                                            <th className="text-left py-2 px-3">Kì</th>
+                                            <th className="text-left py-2 px-3">Module</th>
+                                            <th className="text-left py-2 px-3">Lớp</th>
+                                            <th className="text-left py-2 px-3">Lý thuyết</th>
+                                            <th className="text-left py-2 px-3">Thực hành</th>
+                                            <th className="text-left py-2 px-3">Tổng kết</th>
+                                            <th className="text-left py-2 px-3">Kết quả</th>
+                                            <th className="text-left py-2 px-3">Ngày thi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {studentGrades.map((grade) => (
+                                            <tr key={grade.gradeRecordId} className="border-b hover:bg-gray-50">
+                                                <td className="py-2 px-3">
+                                                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                                                        Kì {grade.semester || '-'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-2 px-3">
+                                                    <div className="font-medium">{grade.moduleName}</div>
+                                                    <div className="text-xs text-gray-500">{grade.moduleCode}</div>
+                                                </td>
+                                                <td className="py-2 px-3 text-xs text-gray-600">{grade.className}</td>
+                                                <td className="py-2 px-3 font-medium">{grade.theoryScore?.toFixed(1) || '-'}</td>
+                                                <td className="py-2 px-3 font-medium">{grade.practiceScore?.toFixed(1) || '-'}</td>
+                                                <td className="py-2 px-3 font-bold text-blue-600">{grade.finalScore?.toFixed(1) || '-'}</td>
+                                                <td className="py-2 px-3">
+                                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                                        grade.passStatus === 'PASS' 
+                                                            ? 'bg-green-100 text-green-700' 
+                                                            : 'bg-red-100 text-red-700'
+                                                    }`}>
+                                                        {grade.passStatus === 'PASS' ? 'Đạt' : 'Không đạt'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-2 px-3 text-xs text-gray-600">
+                                                    {grade.entryDate ? new Date(grade.entryDate).toLocaleDateString('vi-VN') : '-'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 );
 
