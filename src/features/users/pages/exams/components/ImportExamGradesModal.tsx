@@ -1,18 +1,32 @@
 import { useState, useRef } from 'react';
 import { X, Upload, FileDown, Edit2, Save, Download } from 'lucide-react';
-import { importStudentsFromExcel, downloadStudentTemplate } from '@/shared/api/students';
+import { importGradesFromExcel, downloadGradeTemplate } from '@/shared/api/grade-entries';
 import { useToast } from '@/shared/hooks/useToast';
-// import * as XLSX from 'xlsx'; // TODO: Replace with secure Excel parser
-// Temporary: XLSX package removed due to vulnerability. Keep a null stub and guard usages.
-const XLSX: any = null;
+import * as XLSX from 'xlsx';
 
-type Props = { open: boolean; onClose: () => void; onSuccess: () => void };
+type Props = {
+    open: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+    classId: number;
+    moduleId: number;
+    entryDate: string;
+    setEntryDate: (date: string) => void;
+};
 
 type ExcelRow = {
     [key: string]: string | number;
 };
 
-export default function ImportStudentsModal({ open, onClose, onSuccess }: Props) {
+export default function ImportExamGradesModal({
+    open,
+    onClose,
+    onSuccess,
+    classId,
+    moduleId,
+    entryDate,
+    setEntryDate,
+}: Props) {
     const { success, error, info } = useToast();
     const [file, setFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
@@ -23,10 +37,23 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
     const [editedData, setEditedData] = useState<ExcelRow[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Tính toán điểm tổng và pass/fail
+    const calculateFinalScore = (theory: number | string, practice: number | string): number | null => {
+        const theoryNum = typeof theory === 'string' ? parseFloat(theory) : theory;
+        const practiceNum = typeof practice === 'string' ? parseFloat(practice) : practice;
+        if (isNaN(theoryNum) || isNaN(practiceNum)) return null;
+        return Math.round((theoryNum * 0.3 + practiceNum * 0.7) * 100) / 100;
+    };
+
+    const getPassStatus = (finalScore: number | null): string => {
+        if (finalScore === null) return '';
+        return finalScore >= 50 ? 'PASS' : 'FAIL';
+    };
+
     const handleDownloadTemplate = async () => {
         setDownloading(true);
         try {
-            await downloadStudentTemplate();
+            await downloadGradeTemplate(classId, moduleId);
             success('Tải template thành công', 'File mẫu đã được tải về máy');
         } catch (e: any) {
             const msg = e?.response?.data?.message || 'Có lỗi xảy ra khi tải template';
@@ -41,13 +68,6 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
         info('Đang đọc file...', selectedFile.name);
 
         try {
-            if (!XLSX) {
-                info(
-                    'Xem trước Excel tạm thời bị tắt',
-                    'Gói XLSX đã được gỡ để vá bảo mật. Vẫn có thể import trực tiếp file.',
-                );
-                return;
-            }
             const arrayBuffer = await selectedFile.arrayBuffer();
             const workbook = XLSX.read(arrayBuffer, { type: 'array' });
             const firstSheetName = workbook.SheetNames[0];
@@ -82,15 +102,36 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
             newData[rowIndex] = {};
         }
         newData[rowIndex][header] = value;
+
+        // Tự động tính điểm tổng và pass/fail nếu có lý thuyết và thực hành
+        const theoryHeader = headers.find((h) => h.toLowerCase().includes('theory') || h.toLowerCase().includes('lt'));
+        const practiceHeader = headers.find((h) => h.toLowerCase().includes('practice') || h.toLowerCase().includes('th'));
+
+        if (theoryHeader && practiceHeader) {
+            const theory = newData[rowIndex][theoryHeader];
+            const practice = newData[rowIndex][practiceHeader];
+            const finalScore = calculateFinalScore(theory, practice);
+            const passStatus = getPassStatus(finalScore);
+
+            // Cập nhật final score và pass status nếu có cột
+            const finalHeader = headers.find((h) => h.toLowerCase().includes('final') || h.toLowerCase().includes('tổng'));
+            const passHeader = headers.find(
+                (h) => h.toLowerCase().includes('pass') || h.toLowerCase().includes('status') || h.toLowerCase().includes('kết quả'),
+            );
+
+            if (finalHeader && finalScore !== null) {
+                newData[rowIndex][finalHeader] = finalScore;
+            }
+            if (passHeader && passStatus) {
+                newData[rowIndex][passHeader] = passStatus;
+            }
+        }
+
         setEditedData(newData);
     };
 
     const handleExportEditedExcel = () => {
         try {
-            if (!XLSX) {
-                info('Xuất Excel tạm thời bị tắt', 'Gói XLSX đã được gỡ để vá bảo mật.');
-                return;
-            }
             // Create workbook
             const workbook = XLSX.utils.book_new();
 
@@ -101,7 +142,7 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
 
             // Generate file name
-            const fileName = file?.name.replace(/\.(xlsx|xls)$/i, '') || 'edited_students';
+            const fileName = file?.name.replace(/\.(xlsx|xls)$/i, '') || 'edited_grades';
             const exportFileName = `${fileName}_edited.xlsx`;
 
             // Write file
@@ -116,10 +157,6 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
 
     const handleSaveAndContinue = () => {
         try {
-            if (!XLSX) {
-                info('Lưu Excel tạm thời bị tắt', 'Gói XLSX đã được gỡ để vá bảo mật.');
-                return;
-            }
             // Create workbook from edited data
             const workbook = XLSX.utils.book_new();
             const worksheet = XLSX.utils.json_to_sheet(editedData);
@@ -132,7 +169,7 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
             });
 
             // Create new File from blob
-            const fileName = file?.name || 'students.xlsx';
+            const fileName = file?.name || 'grades.xlsx';
             const editedFile = new File([blob], fileName, {
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             });
@@ -153,24 +190,25 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
             return;
         }
 
+        if (!entryDate) {
+            error('Chưa nhập ngày thi', 'Vui lòng nhập ngày thi trước khi import');
+            return;
+        }
+
         // If editor was opened and data exists, use edited data to create new file
         let fileToImport = file;
         if (showEditor && editedData.length > 0) {
             try {
-                if (!XLSX) {
-                    // Fall back to original file when XLSX disabled
-                } else {
-                    const workbook = XLSX.utils.book_new();
-                    const worksheet = XLSX.utils.json_to_sheet(editedData);
-                    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-                    const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
-                    const blob = new Blob([excelBuffer], {
-                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    });
-                    fileToImport = new File([blob], file.name, {
-                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    });
-                }
+                const workbook = XLSX.utils.book_new();
+                const worksheet = XLSX.utils.json_to_sheet(editedData);
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+                const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+                const blob = new Blob([excelBuffer], {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                });
+                fileToImport = new File([blob], file.name, {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                });
             } catch (err) {
                 console.error('Error creating file from edited data:', err);
                 error('Lỗi', 'Không thể tạo file từ dữ liệu đã chỉnh sửa. Đang sử dụng file gốc.');
@@ -180,13 +218,8 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
         setImporting(true);
 
         try {
-            // Call import API with the file
-            const response = await importStudentsFromExcel(fileToImport);
-            const created = response.data;
-
-            setImporting(false);
-
-            success('Import hoàn tất', `Đã tạo thành công ${created.length} học viên`);
+            await importGradesFromExcel(fileToImport, classId, moduleId, entryDate);
+            success('Import hoàn tất', 'Đã nhập điểm thành công');
             onSuccess();
 
             // Reset state
@@ -199,9 +232,10 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
                 fileInputRef.current.value = '';
             }
         } catch (e: any) {
-            setImporting(false);
             const msg = e?.response?.data?.message || 'Có lỗi xảy ra khi import';
             error('Import thất bại', msg);
+        } finally {
+            setImporting(false);
         }
     };
 
@@ -221,25 +255,31 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
         }
     };
 
+    const handleClose = () => {
+        handleRemoveFile();
+        setEntryDate('');
+        onClose();
+    };
+
     if (!open) return null;
 
     return (
         <div className="fixed inset-0 z-50">
-            <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+            <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
             <div className="fixed inset-0 flex items-center justify-center p-4">
                 <div
                     className={`bg-white rounded-xl shadow-lg w-full ${showEditor ? 'max-w-7xl' : 'max-w-2xl'} relative max-h-[90vh] flex flex-col`}
                 >
                     <div className="p-6 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
                         <div>
-                            <h2 className="text-lg font-semibold text-gray-900">Import Học viên từ Excel</h2>
+                            <h2 className="text-lg font-semibold text-gray-900">Import Điểm từ Excel</h2>
                             <p className="text-sm text-gray-500 mt-1">
                                 {showEditor
                                     ? 'Xem và chỉnh sửa dữ liệu trước khi import'
-                                    : 'Tải mẫu Excel, điền dữ liệu và upload để tạo nhiều hồ sơ cùng lúc.'}
+                                    : 'Tải mẫu Excel, điền điểm và upload để nhập điểm hàng loạt.'}
                             </p>
                         </div>
-                        <button className="text-gray-400 hover:text-gray-600" onClick={onClose}>
+                        <button className="text-gray-400 hover:text-gray-600" onClick={handleClose}>
                             <X className="w-5 h-5" />
                         </button>
                     </div>
@@ -252,11 +292,29 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
                                     <h3 className="text-sm font-medium text-blue-900 mb-2">📋 Hướng dẫn</h3>
                                     <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
                                         <li>Tải file mẫu bằng nút "Download Template" bên dưới</li>
-                                        <li>Điền thông tin học viên vào file (các cột bắt buộc: Họ tên, Email, SĐT)</li>
+                                        <li>Điền điểm lý thuyết và thực hành (0-100) vào file</li>
                                         <li>Chọn file đã điền - bạn sẽ có thể xem và chỉnh sửa trực tiếp trên trang</li>
+                                        <li>Nhập ngày thi (bắt buộc) trước khi import</li>
                                         <li>Sau khi kiểm tra và chỉnh sửa xong, bấm "Import ngay"</li>
-                                        <li>Hệ thống sẽ tự động tạo hồ sơ và bỏ qua các dòng lỗi</li>
+                                        <li>Hệ thống sẽ tự động tính điểm tổng và kết quả (PASS/FAIL)</li>
                                     </ol>
+                                </div>
+
+                                {/* Entry Date Input */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">
+                                        Ngày thi <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={entryDate}
+                                        onChange={(e) => setEntryDate(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="YYYY-MM-DD"
+                                    />
+                                    <p className="text-xs text-gray-500">
+                                        Định dạng: YYYY-MM-DD (ví dụ: 2025-01-15)
+                                    </p>
                                 </div>
 
                                 {/* Actions */}
@@ -374,9 +432,9 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
                                     {/* Warning */}
                                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                                         <p className="text-sm text-yellow-800">
-                                            💡 <strong>Lưu ý:</strong> Bạn có thể chỉnh sửa dữ liệu trực tiếp trong
-                                            bảng. Sau khi hoàn tất, bấm "Lưu và tiếp tục" ở footer để cập nhật, hoặc
-                                            "Xuất file đã sửa" để tải về máy.
+                                            💡 <strong>Lưu ý:</strong> Khi bạn nhập điểm lý thuyết và thực hành, hệ
+                                            thống sẽ tự động tính điểm tổng và kết quả (PASS/FAIL). Điểm tổng = Lý thuyết
+                                            × 30% + Thực hành × 70%. Đạt nếu điểm tổng ≥ 50.
                                         </p>
                                     </div>
 
@@ -400,33 +458,70 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-gray-200">
-                                                    {editedData.map((row, rowIndex) => (
-                                                        <tr key={rowIndex} className="hover:bg-gray-50">
-                                                            <td className="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-r border-gray-200 sticky left-0 z-10">
-                                                                {rowIndex + 1}
-                                                            </td>
-                                                            {headers.map((header, colIndex) => (
-                                                                <td
-                                                                    key={colIndex}
-                                                                    className="px-3 py-1 border-r border-gray-200 last:border-r-0"
-                                                                >
-                                                                    <input
-                                                                        type="text"
-                                                                        value={row[header] || ''}
-                                                                        onChange={(e) =>
-                                                                            handleCellChange(
-                                                                                rowIndex,
-                                                                                header,
-                                                                                e.target.value,
-                                                                            )
-                                                                        }
-                                                                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                                        placeholder={`Nhập ${header.toLowerCase()}...`}
-                                                                    />
+                                                    {editedData.map((row, rowIndex) => {
+                                                        const theoryHeader = headers.find((h) =>
+                                                            h.toLowerCase().includes('theory') || h.toLowerCase().includes('lt'),
+                                                        );
+                                                        const practiceHeader = headers.find((h) =>
+                                                            h.toLowerCase().includes('practice') || h.toLowerCase().includes('th'),
+                                                        );
+                                                        const finalHeader = headers.find((h) =>
+                                                            h.toLowerCase().includes('final') || h.toLowerCase().includes('tổng'),
+                                                        );
+                                                        const passHeader = headers.find(
+                                                            (h) =>
+                                                                h.toLowerCase().includes('pass') ||
+                                                                h.toLowerCase().includes('status') ||
+                                                                h.toLowerCase().includes('kết quả'),
+                                                        );
+
+                                                        const theory = row[theoryHeader || ''];
+                                                        const practice = row[practiceHeader || ''];
+                                                        const finalScore = calculateFinalScore(theory, practice);
+                                                        const passStatus = getPassStatus(finalScore);
+
+                                                        return (
+                                                            <tr key={rowIndex} className="hover:bg-gray-50">
+                                                                <td className="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-r border-gray-200 sticky left-0 z-10">
+                                                                    {rowIndex + 1}
                                                                 </td>
-                                                            ))}
-                                                        </tr>
-                                                    ))}
+                                                                {headers.map((header, colIndex) => {
+                                                                    const isReadOnly =
+                                                                        header === finalHeader || header === passHeader;
+                                                                    return (
+                                                                        <td
+                                                                            key={colIndex}
+                                                                            className="px-3 py-1 border-r border-gray-200 last:border-r-0"
+                                                                        >
+                                                                            {isReadOnly ? (
+                                                                                <span className="text-xs font-medium text-blue-600">
+                                                                                    {header === finalHeader
+                                                                                        ? finalScore !== null
+                                                                                            ? finalScore.toFixed(2)
+                                                                                            : '--'
+                                                                                        : passStatus || '--'}
+                                                                                </span>
+                                                                            ) : (
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={row[header] || ''}
+                                                                                    onChange={(e) =>
+                                                                                        handleCellChange(
+                                                                                            rowIndex,
+                                                                                            header,
+                                                                                            e.target.value,
+                                                                                        )
+                                                                                    }
+                                                                                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                                                    placeholder={`Nhập ${header.toLowerCase()}...`}
+                                                                                />
+                                                                            )}
+                                                                        </td>
+                                                                    );
+                                                                })}
+                                                            </tr>
+                                                        );
+                                                    })}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -454,7 +549,7 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
                     <div className="p-6 border-t border-gray-200 flex justify-end gap-3 flex-shrink-0">
                         <button
                             type="button"
-                            onClick={onClose}
+                            onClick={handleClose}
                             disabled={importing}
                             className="px-6 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-50"
                         >
@@ -473,7 +568,7 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
                         <button
                             type="button"
                             onClick={handleImport}
-                            disabled={importing || !file}
+                            disabled={importing || !file || !entryDate}
                             className="px-6 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-black disabled:opacity-50"
                         >
                             {importing ? 'Đang import...' : 'Import ngay'}
@@ -484,3 +579,4 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
         </div>
     );
 }
+

@@ -40,7 +40,8 @@ export type UpdateStudentDto = {
     addressLine?: string | null;
 };
 
-// Thêm type mới cho enrollment với status
+// ENROLLMENT STATUS (thuộc bảng enrollments - quản lí lớp học)
+// Enrollment có 4 trạng thái: ACTIVE, SUSPENDED, DROPPED, GRADUATED
 export type StudentEnrollment = {
     enrollmentId: number;
     classId: number;
@@ -51,6 +52,10 @@ export type StudentEnrollment = {
     leftAt?: string;
     enrollmentNote?: string;
 };
+
+// STUDENT OVERALL STATUS (thuộc bảng students - hồ sơ học viên)
+// Student có 4 trạng thái: PENDING, ACTIVE, DROPPED, GRADUATED
+export type StudentOverallStatus = 'PENDING' | 'ACTIVE' | 'DROPPED' | 'GRADUATED';
 
 // DTO mới từ backend với enrollments
 export type StudentWithEnrollmentsDto = {
