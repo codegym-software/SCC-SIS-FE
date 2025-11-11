@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
     Search,
     X,
@@ -20,6 +21,7 @@ import {
     History,
     Pause,
     Play,
+    Clock,
 } from 'lucide-react';
 import ClassList from '@/features/users/pages/classes/list.tsx';
 import ManageStudentsModal from '@/features/users/pages/classes/components/ManageStudentsModal';
@@ -30,6 +32,7 @@ import ConfirmDialog from '@/shared/components/ConfirmDialog';
 import { useToast } from '@/shared/hooks/useToast';
 import { useUserProfile } from '@/stores/userProfile';
 import http from '@/shared/api/http';
+import { getModulesByProgram, type ModuleResponse } from '@/shared/api/modules';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -264,6 +267,7 @@ function MultiSelect({
 }
 
 export default function ClassesPage() {
+    const location = useLocation();
     const toast = useToast();
     const { me: userProfile } = useUserProfile();
     const isLecturer = userProfile?.roles?.some((r) => r.code === 'LECTURER');
@@ -280,6 +284,8 @@ export default function ClassesPage() {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [view, setView] = useState<'list' | 'detail'>('list');
     const [selectedClass, setSelectedClass] = useState<Class | null>(null);
+    const [modules, setModules] = useState<ModuleResponse[]>([]);
+    const [modulesLoading, setModulesLoading] = useState(false);
 
     // Soft color themes for class cards + corresponding text accents
     const cardThemes = [
@@ -496,6 +502,13 @@ export default function ClassesPage() {
         fetchData();
     }, [hasGlobalScope]);
 
+    // Reset view to 'list' when navigating to this page (including clicking sidebar menu)
+    // location.key changes every time user navigates, even to the same path
+    useEffect(() => {
+        setView('list');
+        setSelectedClass(null);
+    }, [location.key]); // Runs every time navigation happens
+
     // Filter classes based on search and status
     const filteredClasses = classes.filter((c) => {
         const matchesSearch =
@@ -570,6 +583,30 @@ export default function ClassesPage() {
             fetchActiveStudentCount(selectedClass.id);
         }
     }, [selectedClass?.id]);
+
+    // Fetch modules when selectedClass changes
+    useEffect(() => {
+        const fetchModules = async () => {
+            if (!selectedClass?.programId) {
+                setModules([]);
+                return;
+            }
+
+            try {
+                setModulesLoading(true);
+                const response = await getModulesByProgram({ programId: selectedClass.programId });
+                setModules(response.data || []);
+            } catch (error) {
+                console.error('Failed to load modules:', error);
+                toast.error?.('Không thể tải danh sách modules');
+                setModules([]);
+            } finally {
+                setModulesLoading(false);
+            }
+        };
+
+        fetchModules();
+    }, [selectedClass?.programId]);
 
     // AssignInstructorModal function removed - using component instead
 
@@ -1351,9 +1388,115 @@ export default function ClassesPage() {
 
                     {/* Modules Tab */}
                     <TabsContent value="modules" className="space-y-4 mt-6">
-                        <div className="bg-white rounded-lg border p-6 shadow-sm">
-                            <h3 className="font-semibold text-lg mb-4">Modules học tập</h3>
-                            <p className="text-sm text-gray-500">Danh sách các modules sẽ được cập nhật sau</p>
+                        <div className="bg-white rounded-lg border shadow-sm">
+                            <div className="p-4 border-b">
+                                <h3 className="font-semibold text-base">Modules học tập</h3>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Danh sách các module trong chương trình {selectedClass?.program}
+                                </p>
+                            </div>
+
+                            {modulesLoading ? (
+                                <div className="p-6 text-center text-gray-500">
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                                    <p className="text-sm">Đang tải modules...</p>
+                                </div>
+                            ) : modules.length === 0 ? (
+                                <div className="p-6 text-center text-gray-500">
+                                    <BookOpen size={32} className="mx-auto mb-2 text-gray-300" />
+                                    <p className="text-sm">Chương trình chưa có module nào</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y">
+                                    {modules.map((module, index) => (
+                                        <div
+                                            key={module.moduleId}
+                                            className="p-3 hover:bg-gray-50 transition-colors"
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                {/* Module Number */}
+                                                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-semibold">
+                                                    {module.sequenceOrder || index + 1}
+                                                </div>
+
+                                                {/* Module Info */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="flex-1">
+                                                            <h4 className="font-medium text-sm text-gray-900">
+                                                                {module.name}
+                                                            </h4>
+                                                            <p className="text-xs text-gray-500 mb-1.5">
+                                                                Mã: {module.code}
+                                                            </p>
+                                                            {module.description && (
+                                                                <p className="text-xs text-gray-600 mb-2">
+                                                                    {module.description}
+                                                                </p>
+                                                            )}
+
+                                                            {/* Module Metadata */}
+                                                            <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                                                                <div className="flex items-center gap-1">
+                                                                    <Calendar size={12} />
+                                                                    <span>Học kỳ {module.semester}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    <ClipboardList size={12} />
+                                                                    <span>{module.credits} tín chỉ</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    <Clock size={12} />
+                                                                    <span>{module.durationHours}h</span>
+                                                                </div>
+                                                                <span
+                                                                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs ${
+                                                                        module.level === 'Beginner'
+                                                                            ? 'bg-green-100 text-green-700'
+                                                                            : module.level === 'Intermediate'
+                                                                              ? 'bg-yellow-100 text-yellow-700'
+                                                                              : 'bg-red-100 text-red-700'
+                                                                    }`}
+                                                                >
+                                                                    {module.level}
+                                                                </span>
+                                                                {module.isMandatory && (
+                                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700">
+                                                                        Bắt buộc
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Resources */}
+                                                            {module.resources && module.resources.length > 0 && (
+                                                                <div className="mt-2 space-y-0.5">
+                                                                    <p className="text-xs font-medium text-gray-700">
+                                                                        Tài liệu:
+                                                                    </p>
+                                                                    {module.resources.map((resource, idx) => (
+                                                                        <a
+                                                                            key={idx}
+                                                                            href={resource.url}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                                                        >
+                                                                            <FileText size={11} />
+                                                                            <span>
+                                                                                {resource.fileName || 'Tài liệu'}
+                                                                            </span>
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </TabsContent>
 

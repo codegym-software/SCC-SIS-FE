@@ -82,7 +82,8 @@ export type EnrollmentResponse = {
     studentId: number;
     studentName: string;
     studentEmail: string;
-    status: string;
+    studentOverallStatus: string;  // Trạng thái tổng quan của học viên
+    status: string;  // Trạng thái enrollment trong lớp
     enrolledAt: string;
     leftAt: string;
     note: string;

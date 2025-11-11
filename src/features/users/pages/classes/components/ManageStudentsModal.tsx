@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Plus, Eye, UserMinus, Edit2 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -40,7 +41,8 @@ type Student = {
     email: string;
     phone?: string;
     initial: string;
-    status: string;
+    studentOverallStatus: string;  // Trạng thái tổng quan của học viên
+    status: string;  // Trạng thái enrollment
     enrolledAt: string;
     leftAt?: string;
     note?: string;
@@ -61,6 +63,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
     onStudentsChanged,
     readOnly = false,
 }) => {
+    const navigate = useNavigate();
     const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [openAddStudent, setOpenAddStudent] = useState(false);
@@ -161,6 +164,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                 name: enrollment.studentName,
                 email: enrollment.studentEmail,
                 initial: enrollment.studentName.charAt(0).toUpperCase(),
+                studentOverallStatus: enrollment.studentOverallStatus,
                 status: enrollment.status,
                 enrolledAt: enrollment.enrolledAt,
                 leftAt: enrollment.leftAt,
@@ -187,7 +191,8 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
     };
 
     const handleViewDetails = (student: Student) => {
-        setSelectedStudent(student);
+        // Navigate to student detail page
+        navigate(`/students/${student.studentId}`);
     };
 
     const handleRemoveFromClass = async (student: Student) => {
@@ -353,7 +358,11 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                 ) : (
                     <div className="divide-y">
                         {filteredStudents.map((student) => (
-                            <div key={student.enrollmentId} className="px-4 py-3 grid grid-cols-12 gap-4 items-center">
+                            <div 
+                                key={student.enrollmentId} 
+                                className="px-4 py-3 grid grid-cols-12 gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors"
+                                onClick={() => handleViewDetails(student)}
+                            >
                                 {/* Student Info */}
                                 <div className="col-span-5 flex items-center gap-3">
                                     <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-sm font-medium">
@@ -366,7 +375,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                 </div>
 
                                 {/* Status */}
-                                <div className="col-span-4">
+                                <div className="col-span-4" onClick={(e) => e.stopPropagation()}>
                                     {editingStatus === student.enrollmentId ? (
                                         <div className="space-y-2">
                                             <select
@@ -390,14 +399,18 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                             />
                                             <div className="flex gap-2">
                                                 <button
-                                                    onClick={() => handleChangeStatus(student)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Prevent row click
+                                                        handleChangeStatus(student);
+                                                    }}
                                                     disabled={!newStatus || newStatus === student.status}
                                                     className="flex-1 text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
                                                 >
                                                     Lưu
                                                 </button>
                                                 <button
-                                                    onClick={() => {
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Prevent row click
                                                         setEditingStatus(null);
                                                         setNewNote('');
                                                     }}
@@ -415,9 +428,10 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                                 >
                                                     {getStatusText(student.status)}
                                                 </span>
-                                                {!readOnly && (
+                                                {!readOnly && student.studentOverallStatus !== 'DROPPED' && (
                                                     <button
-                                                        onClick={() => {
+                                                        onClick={(e) => {
+                                                            e.stopPropagation(); // Prevent row click
                                                             setEditingStatus(student.enrollmentId);
                                                             setNewStatus(student.status);
                                                             setNewNote(student.note || '');
@@ -437,7 +451,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                 </div>
 
                                 {/* Actions */}
-                                <div className="col-span-3">
+                                <div className="col-span-3" onClick={(e) => e.stopPropagation()}>
                                     {!readOnly && (
                                         <DropdownMenu>
                                             <DropdownMenuTrigger className="h-8 w-8 rounded hover:bg-gray-100 flex items-center justify-center">
@@ -460,7 +474,10 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                     )}
                                     {readOnly && (
                                         <button
-                                            onClick={() => handleViewDetails(student)}
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Prevent double navigation
+                                                handleViewDetails(student);
+                                            }}
                                             className="h-8 px-3 text-xs rounded border hover:bg-gray-50 flex items-center gap-1"
                                         >
                                             <Eye size={14} />
