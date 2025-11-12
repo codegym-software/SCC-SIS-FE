@@ -497,7 +497,7 @@ export default function CentersPage() {
                                             <div>
                                                 <div className="text-sm font-medium">{c.name}</div>
                                                 <div className="text-xs text-gray-500">Mã: {c.code}</div>
-                                                <div className="text-xs text-gray-500">Tạo: 2024-01-15</div>
+                                                {c.establishedDate && <div className="text-xs text-gray-500">Thành lập: {new Date(c.establishedDate).toLocaleDateString('vi-VN')}</div>}
                                             </div>
                                         </div>
                                     </div>
