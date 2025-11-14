@@ -31,7 +31,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       {
         path: '/webviewer-lib',
         initialDoc: documentUrl,
-        // licenseKey: 'YOUR_LICENSE_KEY', // Thay bằng license key của bạn (hoặc comment để dùng trial)
+        licenseKey: 'demo:1762935254371:6018116b0300000000d9cdfc8ea0f72fd89a910e02e08d59b7d7201aaa',
       },
       viewerRef.current
     ).then((instance) => {

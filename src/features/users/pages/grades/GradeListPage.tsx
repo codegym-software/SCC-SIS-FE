@@ -324,9 +324,8 @@ export function GradeListPage() {
                             <Select
                                 value={selectedSemester?.toString() || ''}
                                 onValueChange={(value) => setSelectedSemester(value ? parseInt(value) : null)}
-                                disabled={!selectedClass || semesters.length === 0}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger disabled={!selectedClass || semesters.length === 0}>
                                     <SelectValue placeholder="Chọn học kỳ" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -348,9 +347,8 @@ export function GradeListPage() {
                                     setSelectedModule(value ? parseInt(value) : null);
                                     setSelectedEntryDate(null);
                                 }}
-                                disabled={!selectedClass || !selectedSemester || modules.length === 0}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger disabled={!selectedClass || !selectedSemester || modules.length === 0}>
                                     <SelectValue placeholder="Chọn module" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -371,9 +369,8 @@ export function GradeListPage() {
                             <Select
                                 value={selectedEntryDate || ''}
                                 onValueChange={(value) => setSelectedEntryDate(value || null)}
-                                disabled={!selectedModule || availableEntryDates.length === 0}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger disabled={!selectedModule || availableEntryDates.length === 0}>
                                     <SelectValue placeholder="Chọn ngày chấm điểm" />
                                 </SelectTrigger>
                                 <SelectContent>

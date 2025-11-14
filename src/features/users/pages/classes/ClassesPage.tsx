@@ -664,23 +664,27 @@ export default function ClassesPage() {
                     if (!editing && (!programId || isNaN(programId))) {
                         newErrors.program = 'Vui lòng chọn chương trình';
                     }
-                    if (!startDate) {
-                        newErrors.startDate = 'Vui lòng chọn ngày bắt đầu';
-                    }
                     
-                    // Validate endDate phải lớn hơn startDate và thời gian hiện tại
-                    if (endDate) {
-                        const start = new Date(startDate);
-                        const end = new Date(endDate);
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        
-                        if (end <= start) {
-                            newErrors.startDate = 'Ngày kết thúc phải lớn hơn ngày bắt đầu';
+                    // Chỉ validate startDate và endDate khi TẠO MỚI (không validate khi edit vì bị disabled)
+                    if (!editing) {
+                        if (!startDate) {
+                            newErrors.startDate = 'Vui lòng chọn ngày bắt đầu';
                         }
                         
-                        if (end < today) {
-                            newErrors.startDate = 'Ngày kết thúc phải lớn hơn thời gian hiện tại';
+                        // Validate endDate phải lớn hơn startDate và thời gian hiện tại
+                        if (endDate) {
+                            const start = new Date(startDate);
+                            const end = new Date(endDate);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            
+                            if (end <= start) {
+                                newErrors.startDate = 'Ngày kết thúc phải lớn hơn ngày bắt đầu';
+                            }
+                            
+                            if (end < today) {
+                                newErrors.startDate = 'Ngày kết thúc phải lớn hơn thời gian hiện tại';
+                            }
                         }
                     }
                     
@@ -694,9 +698,13 @@ export default function ClassesPage() {
                     }
 
                     // Validate study days based on start/end date (only if < 7 days)
-                    if (startDate && endDate && selectedDays.length > 0) {
-                        const start = new Date(startDate);
-                        const end = new Date(endDate);
+                    // Khi edit: lấy startDate và endDate từ editing object
+                    const validationStartDate = editing ? editing.startDate : startDate;
+                    const validationEndDate = editing ? editing.endDate : endDate;
+                    
+                    if (validationStartDate && validationEndDate && selectedDays.length > 0) {
+                        const start = new Date(validationStartDate);
+                        const end = new Date(validationEndDate);
                         const diffTime = Math.abs(end.getTime() - start.getTime());
                         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -778,8 +786,9 @@ export default function ClassesPage() {
                             };
 
                             if (description.trim()) updatePayload.description = description.trim();
-                            if (startDate) updatePayload.startDate = startDate;
-                            if (endDate) updatePayload.endDate = endDate;
+                            // Khi edit: startDate và endDate bị disabled nên lấy từ editing object
+                            if (editing.startDate) updatePayload.startDate = editing.startDate;
+                            if (editing.endDate) updatePayload.endDate = editing.endDate;
                             if (room.trim()) updatePayload.room = room.trim();
                             if (capacity > 0) updatePayload.capacity = capacity;
 
