@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Plus, Eye, UserMinus, Edit2 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -40,7 +41,8 @@ type Student = {
     email: string;
     phone?: string;
     initial: string;
-    status: string;
+    studentOverallStatus: string;  // Trạng thái tổng quan của học viên
+    status: string;  // Trạng thái enrollment
     enrolledAt: string;
     leftAt?: string;
     note?: string;
@@ -61,6 +63,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
     onStudentsChanged,
     readOnly = false,
 }) => {
+    const navigate = useNavigate();
     const { success: showSuccessToast, error: showErrorToast } = useToast();
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [openAddStudent, setOpenAddStudent] = useState(false);
@@ -79,40 +82,89 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
     const loadStudents = async () => {
         try {
             setIsLoading(true);
-            console.log('[ManageStudentsModal] Loading students for class:', classItem.id);
+            console.log('[ManageStudentsModal] Loading ALL students (all statuses) for class:', classItem.id);
 
-            // Load ALL students, not just ACTIVE
-            const response = await getClassStudents(parseInt(classItem.id), {
-                page: 0,
-                size: 1000,
-            });
-
-            console.log('[ManageStudentsModal] API Response:', response);
-            console.log('[ManageStudentsModal] Response data:', response.data);
-
-            // Handle Spring Page response structure
-            let enrollments: EnrollmentResponse[] = [];
-            if (response.data) {
-                if (Array.isArray(response.data)) {
-                    // If it's already an array
-                    enrollments = response.data;
-                } else if (response.data.content && Array.isArray(response.data.content)) {
-                    // If it's a Spring Page object with content property
-                    enrollments = response.data.content;
-                } else {
-                    console.warn('[ManageStudentsModal] Unexpected response structure:', response.data);
+            // WORKAROUND: Backend có vấn đề với status filter
+            // Khi update status sang SUSPENDED/DROPPED, API ?status=SUSPENDED trả về 0
+            // Có thể backend đang soft delete thay vì chỉ update status
+            // Thử gọi không có status param để xem có trả về tất cả không
+            
+            let allEnrollments: EnrollmentResponse[] = [];
+            
+            try {
+                // Thử 1: Gọi KHÔNG có status param
+                console.log('[ManageStudentsModal] Trying API call WITHOUT status filter...');
+                const responseAll = await getClassStudents(parseInt(classItem.id), {
+                    page: 0,
+                    size: 1000,
+                });
+                
+                if (responseAll.data) {
+                    if (Array.isArray(responseAll.data)) {
+                        allEnrollments = responseAll.data;
+                    } else if (responseAll.data.content && Array.isArray(responseAll.data.content)) {
+                        allEnrollments = responseAll.data.content;
+                    }
                 }
+                
+                console.log('[ManageStudentsModal] Without filter returned:', allEnrollments.length, 'students');
+                
+                // Nếu vẫn chỉ có ACTIVE, thì backend có vấn đề nghiêm trọng
+                const hasNonActive = allEnrollments.some(e => e.status !== 'ACTIVE');
+                if (!hasNonActive && allEnrollments.length > 0) {
+                    console.warn('[ManageStudentsModal] ⚠️ BACKEND ISSUE: API only returns ACTIVE students even without status filter!');
+                    console.warn('[ManageStudentsModal] ⚠️ Students with SUSPENDED/DROPPED/GRADUATED status are NOT being returned.');
+                    console.warn('[ManageStudentsModal] ⚠️ Please check backend: enrollment may be soft deleted or filtered incorrectly.');
+                }
+            } catch (error) {
+                console.error('[ManageStudentsModal] Failed to load without status filter:', error);
+                
+                // Fallback: Thử gọi với từng status
+                console.log('[ManageStudentsModal] Fallback: Trying with individual status filters...');
+                const statuses = ['ACTIVE', 'SUSPENDED', 'DROPPED', 'GRADUATED'];
+                
+                const responses = await Promise.all(
+                    statuses.map(status => 
+                        getClassStudents(parseInt(classItem.id), {
+                            status,
+                            page: 0,
+                            size: 1000,
+                        }).catch(err => {
+                            console.warn(`[ManageStudentsModal] Failed to load ${status} students:`, err);
+                            return { data: { content: [] } };
+                        })
+                    )
+                );
+
+                // Merge results
+                responses.forEach((response, idx) => {
+                    if (response.data) {
+                        let enrollments: EnrollmentResponse[] = [];
+                        if (Array.isArray(response.data)) {
+                            enrollments = response.data;
+                        } else if (response.data.content && Array.isArray(response.data.content)) {
+                            enrollments = response.data.content;
+                        }
+                        allEnrollments.push(...enrollments);
+                        console.log(`[ManageStudentsModal] ${statuses[idx]} students: ${enrollments.length}`);
+                    }
+                });
             }
 
-            console.log('[ManageStudentsModal] Enrollments:', enrollments);
-            console.log('[ManageStudentsModal] Enrollments length:', enrollments.length);
+            console.log('[ManageStudentsModal] Total enrollments (all statuses):', allEnrollments.length);
+            
+            // Log each enrollment with its status
+            allEnrollments.forEach((e, idx) => {
+                console.log(`[ManageStudentsModal] Enrollment ${idx}: ${e.studentName} - Status: ${e.status} - ID: ${e.enrollmentId}`);
+            });
 
-            const formattedStudents: Student[] = enrollments.map((enrollment) => ({
+            const formattedStudents: Student[] = allEnrollments.map((enrollment) => ({
                 enrollmentId: enrollment.enrollmentId,
                 studentId: enrollment.studentId,
                 name: enrollment.studentName,
                 email: enrollment.studentEmail,
                 initial: enrollment.studentName.charAt(0).toUpperCase(),
+                studentOverallStatus: enrollment.studentOverallStatus,
                 status: enrollment.status,
                 enrolledAt: enrollment.enrolledAt,
                 leftAt: enrollment.leftAt,
@@ -120,6 +172,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
             }));
 
             console.log('[ManageStudentsModal] Formatted students:', formattedStudents);
+            console.log('[ManageStudentsModal] Student statuses:', formattedStudents.map(s => `${s.name}: ${s.status}`));
             setStudents(formattedStudents);
         } catch (error: any) {
             console.error('[ManageStudentsModal] Error loading students:', error);
@@ -138,7 +191,8 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
     };
 
     const handleViewDetails = (student: Student) => {
-        setSelectedStudent(student);
+        // Navigate to student detail page
+        navigate(`/students/${student.studentId}`);
     };
 
     const handleRemoveFromClass = async (student: Student) => {
@@ -304,7 +358,11 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                 ) : (
                     <div className="divide-y">
                         {filteredStudents.map((student) => (
-                            <div key={student.enrollmentId} className="px-4 py-3 grid grid-cols-12 gap-4 items-center">
+                            <div 
+                                key={student.enrollmentId} 
+                                className="px-4 py-3 grid grid-cols-12 gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors"
+                                onClick={() => handleViewDetails(student)}
+                            >
                                 {/* Student Info */}
                                 <div className="col-span-5 flex items-center gap-3">
                                     <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-sm font-medium">
@@ -317,7 +375,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                 </div>
 
                                 {/* Status */}
-                                <div className="col-span-4">
+                                <div className="col-span-4" onClick={(e) => e.stopPropagation()}>
                                     {editingStatus === student.enrollmentId ? (
                                         <div className="space-y-2">
                                             <select
@@ -341,14 +399,18 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                             />
                                             <div className="flex gap-2">
                                                 <button
-                                                    onClick={() => handleChangeStatus(student)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Prevent row click
+                                                        handleChangeStatus(student);
+                                                    }}
                                                     disabled={!newStatus || newStatus === student.status}
                                                     className="flex-1 text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
                                                 >
                                                     Lưu
                                                 </button>
                                                 <button
-                                                    onClick={() => {
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Prevent row click
                                                         setEditingStatus(null);
                                                         setNewNote('');
                                                     }}
@@ -366,9 +428,10 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                                 >
                                                     {getStatusText(student.status)}
                                                 </span>
-                                                {!readOnly && (
+                                                {!readOnly && student.studentOverallStatus !== 'DROPPED' && (
                                                     <button
-                                                        onClick={() => {
+                                                        onClick={(e) => {
+                                                            e.stopPropagation(); // Prevent row click
                                                             setEditingStatus(student.enrollmentId);
                                                             setNewStatus(student.status);
                                                             setNewNote(student.note || '');
@@ -388,7 +451,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                 </div>
 
                                 {/* Actions */}
-                                <div className="col-span-3">
+                                <div className="col-span-3" onClick={(e) => e.stopPropagation()}>
                                     {!readOnly && (
                                         <DropdownMenu>
                                             <DropdownMenuTrigger className="h-8 w-8 rounded hover:bg-gray-100 flex items-center justify-center">
@@ -411,7 +474,10 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                     )}
                                     {readOnly && (
                                         <button
-                                            onClick={() => handleViewDetails(student)}
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Prevent double navigation
+                                                handleViewDetails(student);
+                                            }}
                                             className="h-8 px-3 text-xs rounded border hover:bg-gray-50 flex items-center gap-1"
                                         >
                                             <Eye size={14} />

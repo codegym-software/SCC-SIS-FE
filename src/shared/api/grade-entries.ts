@@ -46,6 +46,13 @@ export interface GradeRecordResponse {
     finalScore: number;
     passStatus: 'PASS' | 'FAIL';
     entryDate?: string; // ISO date: "2025-01-15" - ngày thi của đợt nhập điểm này
+    // Thông tin module và class (cho API lấy điểm theo student)
+    moduleId?: number;
+    moduleCode?: string;
+    moduleName?: string;
+    semester?: number;
+    classId?: number;
+    className?: string;
 }
 
 export interface GradeEntryResponse {
@@ -55,11 +62,14 @@ export interface GradeEntryResponse {
     moduleId: number;
     moduleCode?: string;
     moduleName: string;
+    semester?: number;
     entryDate: string;
     createdBy: number;
     createdByName: string;
     createdAt: string;
     updatedAt: string;
+    passCount?: number;
+    failCount?: number;
 }
 
 export interface GradeEntryDetailResponse {
@@ -171,6 +181,95 @@ export const getStudentGrades = async (
     if (moduleId) params.moduleId = moduleId;
 
     const response = await api.get<StudentGradesResponse>('/api/grade-entries/student-grades', { params });
+    return response.data;
+};
+
+/**
+ * POST /api/grade-entries/import
+ * Import điểm từ file Excel cho một đợt nhập điểm
+ */
+export const importGradesFromExcel = async (
+    file: File,
+    classId: number,
+    moduleId: number,
+    entryDate: string,
+): Promise<GradeEntryDetailResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('classId', classId.toString());
+    formData.append('moduleId', moduleId.toString());
+    formData.append('entryDate', entryDate);
+
+    const response = await api.post<GradeEntryDetailResponse>('/api/grade-entries/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+};
+
+/**
+ * GET /api/grade-entries/export-template?classId=1&moduleId=5
+ * Download Excel template để nhập điểm
+ */
+export const downloadGradeTemplate = async (classId: number, moduleId: number) => {
+    const response = await api.get('/api/grade-entries/export-template', {
+        responseType: 'blob',
+        headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+        params: { classId, moduleId },
+    });
+
+    // Create download link
+    const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'grade_import_template.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+};
+
+/**
+ * GET /api/grade-entries/export?classId=1&semester=1&moduleId=5&entryDate=2024-01-01
+ * Export danh sách điểm ra Excel (sau khi filter)
+ * @param entryDate Bắt buộc khi đã chọn moduleId
+ */
+export const exportGrades = async (classId: number, semester: number, moduleId?: number, entryDate?: string) => {
+    const params: any = { classId, semester };
+    if (moduleId) params.moduleId = moduleId;
+    if (entryDate) params.entryDate = entryDate;
+
+    const response = await api.get('/api/grade-entries/export', {
+        responseType: 'blob',
+        headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+        params,
+    });
+
+    // Create download link
+    const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const filename = `grades_export_${classId}_${semester}${moduleId ? `_${moduleId}` : ''}${entryDate ? `_${entryDate}` : ''}.xlsx`;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+};
+
+/**
+ * GET /api/grade-entries/student/{studentId}
+ * Lấy tất cả điểm thi của một học viên cụ thể
+ */
+export const getStudentGradesByStudentId = async (studentId: number): Promise<GradeRecordResponse[]> => {
+    console.log('API: Fetching grades for student ID:', studentId);
+    const response = await api.get<GradeRecordResponse[]>(`/api/grade-entries/student/${studentId}`);
+    console.log('API: Response received:', response.data);
     return response.data;
 };
 

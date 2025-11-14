@@ -50,10 +50,10 @@ const StudentSearch: React.FC<StudentSearchProps> = ({
                         className="h-9 px-3 pr-8 rounded-md border text-sm outline-none focus:ring-2 focus:ring-blue-200 appearance-none bg-white"
                     >
                         <option>Tất cả trạng thái</option>
+                        <option>Đang chờ</option>
                         <option>Đang học</option>
-                        <option>Bảo lưu</option>
+                        <option>Nghỉ học</option>
                         <option>Tốt nghiệp</option>
-                        <option>Tạm dừng</option>
                     </select>
                     <Filter size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>

@@ -42,9 +42,11 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
     return (
         <div className="fixed inset-0 z-50">
             <div className="fixed inset-0 bg-black/30" onClick={onClose} />
-            <div className="fixed inset-0 flex items-start justify-center pt-12 px-4">
-                <div className="w-full max-w-2xl rounded-lg bg-white shadow-lg border">
-                    {children}
+            <div className="fixed inset-0 overflow-y-auto">
+                <div className="flex min-h-full items-center justify-center p-4">
+                    <div className="w-full max-w-2xl rounded-lg bg-white shadow-lg border my-8">
+                        {children}
+                    </div>
                 </div>
             </div>
         </div>
@@ -89,63 +91,211 @@ export default function CentersPage() {
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    // Vietnam provinces and cities
+    // Vietnam provinces and cities (63 tỉnh/thành phố)
     const vietnamProvinces = [
-        'An Giang', 'Bà Rịa - Vũng Tàu', 'Bắc Giang', 'Bắc Kạn', 'Bạc Liêu', 'Bắc Ninh',
-        'Bến Tre', 'Bình Định', 'Bình Dương', 'Bình Phước', 'Bình Thuận', 'Cà Mau',
-        'Cao Bằng', 'Đắk Lắk', 'Đắk Nông', 'Điện Biên', 'Đồng Nai', 'Đồng Tháp',
-        'Gia Lai', 'Hà Giang', 'Hà Nam', 'Hà Tĩnh', 'Hải Dương', 'Hậu Giang',
-        'Hòa Bình', 'Hưng Yên', 'Khánh Hòa', 'Kiên Giang', 'Kon Tum', 'Lai Châu',
-        'Lâm Đồng', 'Lạng Sơn', 'Lào Cai', 'Long An', 'Nam Định', 'Nghệ An',
-        'Ninh Bình', 'Ninh Thuận', 'Phú Thọ', 'Quảng Bình', 'Quảng Nam', 'Quảng Ngãi',
-        'Quảng Ninh', 'Quảng Trị', 'Sóc Trăng', 'Sơn La', 'Tây Ninh', 'Thái Bình',
-        'Thái Nguyên', 'Thanh Hóa', 'Thừa Thiên Huế', 'Tiền Giang', 'Trà Vinh',
-        'Tuyên Quang', 'Vĩnh Long', 'Vĩnh Phúc', 'Yên Bái',
-        'Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ'
+        // Thành phố trực thuộc trung ương
+        'Hà Nội',
+        'TP. Hồ Chí Minh',
+        'Đà Nẵng',
+        'Hải Phòng',
+        'Cần Thơ',
+        // Các tỉnh
+        'An Giang',
+        'Bà Rịa - Vũng Tàu',
+        'Bắc Giang',
+        'Bắc Kạn',
+        'Bạc Liêu',
+        'Bắc Ninh',
+        'Bến Tre',
+        'Bình Định',
+        'Bình Dương',
+        'Bình Phước',
+        'Bình Thuận',
+        'Cà Mau',
+        'Cao Bằng',
+        'Đắk Lắk',
+        'Đắk Nông',
+        'Điện Biên',
+        'Đồng Nai',
+        'Đồng Tháp',
+        'Gia Lai',
+        'Hà Giang',
+        'Hà Nam',
+        'Hà Tĩnh',
+        'Hải Dương',
+        'Hậu Giang',
+        'Hòa Bình',
+        'Hưng Yên',
+        'Khánh Hòa',
+        'Kiên Giang',
+        'Kon Tum',
+        'Lai Châu',
+        'Lâm Đồng',
+        'Lạng Sơn',
+        'Lào Cai',
+        'Long An',
+        'Nam Định',
+        'Nghệ An',
+        'Ninh Bình',
+        'Ninh Thuận',
+        'Phú Thọ',
+        'Phú Yên',
+        'Quảng Bình',
+        'Quảng Nam',
+        'Quảng Ngãi',
+        'Quảng Ninh',
+        'Quảng Trị',
+        'Sóc Trăng',
+        'Sơn La',
+        'Tây Ninh',
+        'Thái Bình',
+        'Thái Nguyên',
+        'Thanh Hóa',
+        'Thừa Thiên Huế',
+        'Tiền Giang',
+        'Trà Vinh',
+        'Tuyên Quang',
+        'Vĩnh Long',
+        'Vĩnh Phúc',
+        'Yên Bái'
     ].sort()
 
     const filteredProvinces = vietnamProvinces.filter(province =>
         province.toLowerCase().includes(provinceQuery.toLowerCase())
     )
 
-    // Common districts/counties in Vietnam
+    // Common districts/counties in Vietnam (mở rộng)
     const vietnamDistricts = [
-        'Quận 1', 'Quận 2', 'Quận 3', 'Quận 4', 'Quận 5', 'Quận 6', 'Quận 7', 'Quận 8', 'Quận 9', 'Quận 10',
-        'Quận 11', 'Quận 12', 'Quận Bình Thạnh', 'Quận Tân Bình', 'Quận Tân Phú', 'Quận Phú Nhuận',
+        // TP. Hồ Chí Minh - Quận
+        'Quận 1', 'Quận 2', 'Quận 3', 'Quận 4', 'Quận 5', 'Quận 6', 'Quận 7', 'Quận 8', 
+        'Quận 9', 'Quận 10', 'Quận 11', 'Quận 12',
+        'Quận Bình Thạnh', 'Quận Tân Bình', 'Quận Tân Phú', 'Quận Phú Nhuận',
         'Quận Gò Vấp', 'Quận Bình Tân', 'Quận Thủ Đức',
-        'Quận Ba Đình', 'Quận Hoàn Kiếm', 'Quận Hai Bà Trưng', 'Quận Đống Đa', 'Quận Tây Hồ', 'Quận Cầu Giấy',
-        'Quận Thanh Xuân', 'Quận Hoàng Mai', 'Quận Long Biên', 'Quận Nam Từ Liêm', 'Quận Bắc Từ Liêm', 'Quận Hà Đông',
-        'Quận Hải Châu', 'Quận Thanh Khê', 'Quận Sơn Trà', 'Quận Ngũ Hành Sơn', 'Quận Liên Chiểu', 'Quận Cẩm Lệ',
-        'Quận Hồng Bàng', 'Quận Ngô Quyền', 'Quận Lê Chân', 'Quận Kiến An', 'Quận Dương Kinh',
+        // TP. Hồ Chí Minh - Huyện
         'Huyện Bình Chánh', 'Huyện Nhà Bè', 'Huyện Hóc Môn', 'Huyện Củ Chi', 'Huyện Cần Giờ',
-        'Huyện Gia Lâm', 'Huyện Đông Anh', 'Huyện Sóc Sơn', 'Huyện Thanh Trì', 'Huyện Thường Tín',
-        'Huyện Phúc Thọ', 'Huyện Đan Phượng', 'Huyện Hoài Đức', 'Huyện Quốc Oai', 'Huyện Thạch Thất',
-        'Huyện Chương Mỹ', 'Huyện Thanh Oai', 'Huyện Mỹ Đức', 'Huyện Ứng Hòa', 'Huyện Ba Vì',
-        'Thành phố Thủ Dầu Một', 'Thành phố Biên Hòa', 'Thành phố Vũng Tàu', 'Thành phố Phan Thiết',
-        'Thành phố Nha Trang', 'Thành phố Đà Lạt', 'Thành phố Buôn Ma Thuột', 'Thành phố Pleiku',
-        'Thành phố Quy Nhon', 'Thành phố Huế', 'Thành phố Vinh', 'Thành phố Nam Định',
-        'Thành phố Thái Nguyên', 'Thành phố Hạ Long', 'Thành phố Bắc Ninh', 'Thành phố Việt Trì'
+        // TP. Hồ Chí Minh - Thành phố
+        'Thành phố Thủ Đức',
+        // Hà Nội - Quận
+        'Quận Ba Đình', 'Quận Hoàn Kiếm', 'Quận Hai Bà Trưng', 'Quận Đống Đa', 
+        'Quận Tây Hồ', 'Quận Cầu Giấy', 'Quận Thanh Xuân', 'Quận Hoàng Mai', 
+        'Quận Long Biên', 'Quận Nam Từ Liêm', 'Quận Bắc Từ Liêm', 'Quận Hà Đông',
+        // Hà Nội - Huyện
+        'Huyện Gia Lâm', 'Huyện Đông Anh', 'Huyện Sóc Sơn', 'Huyện Thanh Trì', 
+        'Huyện Thường Tín', 'Huyện Phúc Thọ', 'Huyện Đan Phượng', 'Huyện Hoài Đức', 
+        'Huyện Quốc Oai', 'Huyện Thạch Thất', 'Huyện Chương Mỹ', 'Huyện Thanh Oai', 
+        'Huyện Mỹ Đức', 'Huyện Ứng Hòa', 'Huyện Ba Vì', 'Huyện Phú Xuyên',
+        'Huyện Mê Linh',
+        // Hà Nội - Thị xã
+        'Thị xã Sơn Tây',
+        // Đà Nẵng - Quận
+        'Quận Hải Châu', 'Quận Thanh Khê', 'Quận Sơn Trà', 'Quận Ngũ Hành Sơn', 
+        'Quận Liên Chiểu', 'Quận Cẩm Lệ',
+        // Đà Nẵng - Huyện
+        'Huyện Hòa Vang', 'Huyện Hoàng Sa',
+        // Hải Phòng - Quận
+        'Quận Hồng Bàng', 'Quận Ngô Quyền', 'Quận Lê Chân', 'Quận Hải An', 
+        'Quận Kiến An', 'Quận Đồ Sơn', 'Quận Dương Kinh',
+        // Hải Phòng - Huyện
+        'Huyện Thuỷ Nguyên', 'Huyện An Dương', 'Huyện An Lão', 'Huyện Kiến Thuỵ',
+        'Huyện Tiên Lãng', 'Huyện Vĩnh Bảo', 'Huyện Cát Hải', 'Huyện Bạch Long Vĩ',
+        // Cần Thơ - Quận
+        'Quận Ninh Kiều', 'Quận Ô Môn', 'Quận Bình Thuỷ', 'Quận Cái Răng', 'Quận Thốt Nốt',
+        // Cần Thơ - Huyện
+        'Huyện Vĩnh Thạnh', 'Huyện Cờ Đỏ', 'Huyện Phong Điền', 'Huyện Thới Lai',
+        // Các thành phố tỉnh lẻ
+        'Thành phố Thủ Dầu Một', 'Thành phố Biên Hòa', 'Thành phố Vũng Tàu', 
+        'Thành phố Phan Thiết', 'Thành phố Nha Trang', 'Thành phố Đà Lạt', 
+        'Thành phố Buôn Ma Thuột', 'Thành phố Pleiku', 'Thành phố Quy Nhơn', 
+        'Thành phố Huế', 'Thành phố Vinh', 'Thành phố Nam Định', 
+        'Thành phố Thái Nguyên', 'Thành phố Hạ Long', 'Thành phố Bắc Ninh', 
+        'Thành phố Việt Trì', 'Thành phố Thanh Hóa', 'Thành phố Hải Dương',
+        'Thành phố Hưng Yên', 'Thành phố Vĩnh Long', 'Thành phố Long Xuyên',
+        'Thành phố Châu Đốc', 'Thành phố Rạch Giá', 'Thành phố Cà Mau',
+        'Thành phố Mỹ Tho', 'Thành phố Bến Tre', 'Thành phố Trà Vinh',
+        'Thành phố Sóc Trăng', 'Thành phố Bạc Liêu', 'Thành phố Tuy Hòa',
+        'Thành phố Tam Kỳ', 'Thành phố Quảng Ngãi', 'Thành phố Đông Hà',
+        'Thành phố Hà Tĩnh', 'Thành phố Hòa Bình', 'Thành phố Lạng Sơn',
+        'Thành phố Cao Bằng', 'Thành phố Yên Bái', 'Thành phố Tuyên Quang',
+        // Các huyện phổ biến khác
+        'Huyện Nhơn Trạch', 'Huyện Long Thành', 'Huyện Tân Uyên', 'Huyện Dầu Tiếng',
+        'Huyện Xuyên Mộc', 'Huyện Châu Đức', 'Huyện Đức Hòa', 'Huyện Bến Lức',
+        'Huyện Cần Đước', 'Huyện Cai Lậy', 'Huyện Mỏ Cày Nam', 'Huyện Cầu Ngang',
+        'Huyện Châu Thành', 'Huyện Tân Châu', 'Huyện Tri Tôn'
     ].sort()
 
     const filteredDistricts = vietnamDistricts.filter(district =>
         district.toLowerCase().includes(districtQuery.toLowerCase())
     )
 
-    // Common wards in Vietnam
+    // Common wards in Vietnam (mở rộng)
     const vietnamWards = [
-        'Phường 1', 'Phường 2', 'Phường 3', 'Phường 4', 'Phường 5', 'Phường 6', 'Phường 7', 'Phường 8',
-        'Phường 9', 'Phường 10', 'Phường 11', 'Phường 12', 'Phường 13', 'Phường 14', 'Phường 15',
-        'Phường Bến Nghé', 'Phường Bến Thành', 'Phường Cô Giang', 'Phường Cầu Kho', 'Phường Cầu Ông Lãnh',
-        'Phường Đa Kao', 'Phường Nguyễn Cư Trinh', 'Phường Nguyễn Thái Bình', 'Phường Phạm Ngũ Lão',
-        'Phường Tân Định', 'Phường Bùi Thị Xuân', 'Phường Đống Đa', 'Phường Hàng Bài', 'Phường Hàng Bồ',
-        'Phường Hàng Buồm', 'Phường Hàng Đào', 'Phường Hàng Gai', 'Phường Hàng Mã', 'Phường Hàng Trống',
-        'Phường Lý Thái Tổ', 'Phường Phan Chu Trinh', 'Phường Tràng Tiền', 'Phường Trúc Bạch',
-        'Phường Cửa Nam', 'Phường Cửa Đông', 'Phường Đức Giang', 'Phường Gia Thụy', 'Phường Long Biên',
-        'Phường Ngọc Lâm', 'Phường Phúc Đông', 'Phường Phúc Lợi', 'Phường Sài Đồng', 'Phường Thạch Bàn',
-        'Phường Thượng Thanh', 'Phường Việt Hưng', 'Phường Bồ Đề', 'Phường Thống Nhất', 'Phường Thành Công',
-        'Xã An Phú', 'Xã Bình An', 'Xã Đông Thạnh', 'Xã Hòa Phú', 'Xã Tân Thạnh', 'Xã Thới An',
-        'Xã Xuân Thới Đông', 'Xã Xuân Thới Sơn', 'Xã Xuân Thới Thượng', 'Xã Lê Minh Xuân',
-        'Xã Tân Kiên', 'Xã Tân Nhựt', 'Xã Tân Quý Tây', 'Xã Vĩnh Lộc A', 'Xã Vĩnh Lộc B',
+        // Phường đánh số (phổ biến ở các thành phố lớn)
+        'Phường 1', 'Phường 2', 'Phường 3', 'Phường 4', 'Phường 5', 'Phường 6', 
+        'Phường 7', 'Phường 8', 'Phường 9', 'Phường 10', 'Phường 11', 'Phường 12', 
+        'Phường 13', 'Phường 14', 'Phường 15', 'Phường 16', 'Phường 17', 'Phường 18',
+        'Phường 19', 'Phường 20', 'Phường 21', 'Phường 22', 'Phường 23', 'Phường 24',
+        'Phường 25', 'Phường 26', 'Phường 27', 'Phường 28',
+        
+        // TP. Hồ Chí Minh - Phường có tên (Quận 1)
+        'Phường Bến Nghé', 'Phường Bến Thành', 'Phường Cô Giang', 'Phường Cầu Kho', 
+        'Phường Cầu Ông Lãnh', 'Phường Đa Kao', 'Phường Nguyễn Cư Trinh', 
+        'Phường Nguyễn Thái Bình', 'Phường Phạm Ngũ Lão', 'Phường Tân Định',
+        
+        // TP. Hồ Chí Minh - Các phường khác
+        'Phường An Lạc', 'Phường An Lạc A', 'Phường An Phú', 'Phường An Phú Đông',
+        'Phường Bình An', 'Phường Bình Chiểu', 'Phường Bình Hưng Hòa', 'Phường Bình Hưng Hòa A',
+        'Phường Bình Hưng Hòa B', 'Phường Bình Thuận', 'Phường Bình Trị Đông', 
+        'Phường Bình Trị Đông A', 'Phường Bình Trị Đông B', 'Phường Cát Lái',
+        'Phường Hiệp Bình Chánh', 'Phường Hiệp Bình Phước', 'Phường Hiệp Phú',
+        'Phường Linh Chiểu', 'Phường Linh Đông', 'Phường Linh Tây', 'Phường Linh Trung',
+        'Phường Linh Xuân', 'Phường Long Bình', 'Phường Long Phước', 'Phường Long Thạnh Mỹ',
+        'Phường Long Trường', 'Phường Tân Chánh Hiệp', 'Phường Tân Hưng Thuận',
+        'Phường Tân Phú', 'Phường Tân Quy', 'Phường Tân Sơn Nhì', 'Phường Tân Thành',
+        'Phường Tân Thới Hòa', 'Phường Tân Thới Nhất', 'Phường Thảo Điền',
+        'Phường Thạnh Lộc', 'Phường Thạnh Mỹ Lợi', 'Phường Thủ Thiêm',
+        'Phường Trường Thạnh', 'Phường Trường Thọ',
+        
+        // Hà Nội - Phường (Quận Ba Đình)
+        'Phường Cống Vị', 'Phường Điện Biên', 'Phường Đội Cấn', 'Phường Giảng Võ',
+        'Phường Kim Mã', 'Phường Liễu Giai', 'Phường Ngọc Hà', 'Phường Ngọc Khánh',
+        'Phường Nguyễn Trung Trực', 'Phường Phúc Xá', 'Phường Quán Thánh',
+        'Phường Thành Công', 'Phường Trúc Bạch', 'Phường Vĩnh Phúc',
+        
+        // Hà Nội - Phường (Quận Hoàn Kiếm)
+        'Phường Chương Dương', 'Phường Cửa Đông', 'Phường Cửa Nam', 'Phường Đồng Xuân',
+        'Phường Hàng Bạc', 'Phường Hàng Bài', 'Phường Hàng Bồ', 'Phường Hàng Bông',
+        'Phường Hàng Buồm', 'Phường Hàng Đào', 'Phường Hàng Gai', 'Phường Hàng Mã',
+        'Phường Hàng Trống', 'Phường Lý Thái Tổ', 'Phường Phan Chu Trinh',
+        'Phường Phúc Tân', 'Phường Tràng Tiền', 'Phường Trần Hưng Đạo',
+        
+        // Hà Nội - Phường (Quận Long Biên)
+        'Phường Bồ Đề', 'Phường Cự Khối', 'Phường Đức Giang', 'Phường Giang Biên',
+        'Phường Gia Thụy', 'Phường Long Biên', 'Phường Ngọc Lâm', 'Phường Ngọc Thụy',
+        'Phường Phúc Đông', 'Phường Phúc Lợi', 'Phường Sài Đồng', 'Phường Thạch Bàn',
+        'Phường Thượng Thanh', 'Phường Việt Hưng',
+        
+        // Hà Nội - Phường khác
+        'Phường Cầu Diễn', 'Phường Dịch Vọng', 'Phường Dịch Vọng Hậu', 'Phường Mai Dịch',
+        'Phường Nghĩa Đô', 'Phường Nghĩa Tân', 'Phường Quan Hoa', 'Phường Trung Hòa',
+        'Phường Yên Hòa', 'Phường Khương Đình', 'Phường Khương Mai', 'Phường Khương Trung',
+        'Phường Thanh Xuân Bắc', 'Phường Thanh Xuân Nam', 'Phường Thanh Xuân Trung',
+        
+        // Đà Nẵng - Phường
+        'Phường An Hải Bắc', 'Phường An Hải Đông', 'Phường An Hải Tây', 'Phường Bình Hiên',
+        'Phường Bình Thuận', 'Phường Hải Châu 1', 'Phường Hải Châu 2', 'Phường Hòa Cường Bắc',
+        'Phường Hòa Cường Nam', 'Phường Hòa Thuận Đông', 'Phường Hòa Thuận Tây',
+        'Phường Khuê Mỹ', 'Phường Mân Thái', 'Phường Mỹ An', 'Phường Nại Hiên Đông',
+        'Phường Phước Mỹ', 'Phường Thạc Gián', 'Phường Thanh Bình', 'Phường Thọ Quang',
+        'Phường Thuận Phước',
+        
+        // Xã (nông thôn)
+        'Xã An Phú', 'Xã An Thạnh', 'Xã Bình An', 'Xã Bình Hưng', 'Xã Bình Mỹ',
+        'Xã Đông Thạnh', 'Xã Hòa Phú', 'Xã Hưng Long', 'Xã Lê Minh Xuân',
+        'Xã Long Hòa', 'Xã Long Thới', 'Xã Phú Xuân', 'Xã Tân An Hội',
+        'Xã Tân Kiên', 'Xã Tân Nhựt', 'Xã Tân Phú Trung', 'Xã Tân Quý Tây',
+        'Xã Tân Thạnh', 'Xã Tân Thông Hội', 'Xã Thới An', 'Xã Thới Tam Thôn',
+        'Xã Trung An', 'Xã Vĩnh Lộc A', 'Xã Vĩnh Lộc B',
+        'Xã Xuân Thới Đông', 'Xã Xuân Thới Sơn', 'Xã Xuân Thới Thượng',
         'Xã Phạm Văn Hai', 'Xã Phong Phú', 'Xã An Phú Tây', 'Xã Hưng Long', 'Xã Nhơn Đức',
         'Xã Phú Xuân', 'Xã Quy Đức', 'Xã Tân An Hội', 'Xã Tân Phú Trung', 'Xã Phú Hòa Đông',
         'Thị trấn Tân Túc', 'Thị trấn Bến Lức', 'Thị trấn Cần Đước', 'Thị trấn Cần Giuộc',
@@ -270,12 +420,24 @@ export default function CentersPage() {
         if (phoneError) errors.phone = phoneError
         const addressError = validateRequired(formData.addressLine, 'Địa chỉ')
         if (addressError) errors.addressLine = addressError
-        const provinceError = validateRequired(formData.province, 'Tỉnh/Thành phố')
-        if (provinceError) errors.province = provinceError
-        const districtError = validateRequired(formData.district, 'Quận/Huyện')
-        if (districtError) errors.district = districtError
-        const wardError = validateRequired(formData.ward, 'Phường/Xã')
-        if (wardError) errors.ward = wardError
+        
+        // Validate province
+        if (!formData.province || !formData.province.trim()) {
+            errors.province = 'Tỉnh/Thành phố là bắt buộc'
+        } else if (!vietnamProvinces.includes(formData.province)) {
+            errors.province = 'Vui lòng chọn Tỉnh/Thành phố từ danh sách'
+        }
+        
+        // Validate district
+        if (!formData.district || !formData.district.trim()) {
+            errors.district = 'Quận/Huyện là bắt buộc'
+        }
+        
+        // Validate ward
+        if (!formData.ward || !formData.ward.trim()) {
+            errors.ward = 'Phường/Xã là bắt buộc'
+        }
+        
         return errors
     }
 
@@ -315,9 +477,9 @@ export default function CentersPage() {
             email: String(form.get('email') || '').trim().toLowerCase(),
             phone: String(form.get('phone') || '').trim(),
             addressLine: String(form.get('addressLine') || '').trim(),
-            province: String(form.get('province') || '').trim(),
-            district: String(form.get('district') || '').trim(),
-            ward: String(form.get('ward') || '').trim(),
+            province: (selectedProvince || '').trim(),
+            district: (selectedDistrict || '').trim(),
+            ward: (selectedWard || '').trim(),
         }
 
         const errors = validateAllFields(formData)
@@ -497,7 +659,7 @@ export default function CentersPage() {
                                             <div>
                                                 <div className="text-sm font-medium">{c.name}</div>
                                                 <div className="text-xs text-gray-500">Mã: {c.code}</div>
-                                                <div className="text-xs text-gray-500">Tạo: 2024-01-15</div>
+                                                {c.establishedDate && <div className="text-xs text-gray-500">Thành lập: {new Date(c.establishedDate).toLocaleDateString('vi-VN')}</div>}
                                             </div>
                                         </div>
                                     </div>
@@ -840,6 +1002,7 @@ export default function CentersPage() {
                                                             setSelectedProvince(province)
                                                             setProvinceQuery(province)
                                                             setShowProvinceDropdown(false)
+                                                            clearFieldError('province')
                                                         }}
                                                     >
                                                         {province}
@@ -849,6 +1012,9 @@ export default function CentersPage() {
                                                 <div className="px-2 py-1 text-xs text-gray-500">Không tìm thấy tỉnh/thành phố</div>
                                             )}
                                         </div>
+                                    )}
+                                    {validationErrors.province && (
+                                        <div className="text-xs text-red-600 mt-1">{validationErrors.province}</div>
                                     )}
                                 </div>
                                 <div className="relative">
@@ -861,13 +1027,17 @@ export default function CentersPage() {
                                             setSelectedDistrict(e.target.value)
                                             setDistrictQuery(e.target.value)
                                             setShowDistrictDropdown(true)
+                                            clearFieldError('district')
                                         }}
                                         onFocus={() => setShowDistrictDropdown(true)}
                                         onBlur={() => setTimeout(() => setShowDistrictDropdown(false), 200)}
                                         placeholder="Nhập hoặc chọn quận/huyện"
                                         required
-                                        className="w-full h-8 rounded-md border px-2 text-xs"
+                                        className={`w-full h-8 rounded-md border px-2 text-xs ${validationErrors.district ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     />
+                                    {validationErrors.district && (
+                                        <div className="text-xs text-red-600 mt-1">{validationErrors.district}</div>
+                                    )}
                                     {showDistrictDropdown && (
                                         <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
                                             {filteredDistricts.length > 0 ? (
@@ -900,13 +1070,17 @@ export default function CentersPage() {
                                             setSelectedWard(e.target.value)
                                             setWardQuery(e.target.value)
                                             setShowWardDropdown(true)
+                                            clearFieldError('ward')
                                         }}
                                         onFocus={() => setShowWardDropdown(true)}
                                         onBlur={() => setTimeout(() => setShowWardDropdown(false), 200)}
                                         placeholder="Nhập hoặc chọn phường/xã"
                                         required
-                                        className="w-full h-8 rounded-md border px-2 text-xs"
+                                        className={`w-full h-8 rounded-md border px-2 text-xs ${validationErrors.ward ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                                     />
+                                    {validationErrors.ward && (
+                                        <div className="text-xs text-red-600 mt-1">{validationErrors.ward}</div>
+                                    )}
                                     {showWardDropdown && (
                                         <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
                                             {filteredWards.length > 0 ? (

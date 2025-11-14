@@ -4,6 +4,7 @@ import { getRoles } from '../../../shared/api/roles'
 import { getCentersLite } from '../../../shared/api/centers'
 import { getUserView, assignRolesBatch, revokeUserRolesBulk, revokeUserRole, getRevokedRolesByUserId } from '../../../api/user'
 import { useToast } from '../../../shared/hooks/useToast'
+import ConfirmDialog from '../../../shared/components/ConfirmDialog'
 import type { UserViewDto, UserAssignment } from '../../../shared/types/userView'
 import type { RoleDto } from '../../../shared/types/role'
 import type { CenterLiteDto } from '../../../shared/types/centers'
@@ -48,6 +49,9 @@ export default function AssignRoleModal({ userId, onClose, onSuccess }: AssignRo
   const [revokedRoles, setRevokedRoles] = useState<Array<{ roleId: number; centerId: number | null }>>([])
 
   const [errors, setErrors] = useState<{ global?: string; drafts?: string[] }>({})
+  
+  // Confirm dialog state - chỉ cho hủy gán
+  const [showRevokeConfirm, setShowRevokeConfirm] = useState(false)
 
   // Load data khi modal mở
   useEffect(() => {
@@ -250,6 +254,18 @@ export default function AssignRoleModal({ userId, onClose, onSuccess }: AssignRo
 
     if (!validate()) return
 
+    // Nếu có hủy gán → hiển thị confirm dialog
+    if (marked.size > 0) {
+      setShowRevokeConfirm(true)
+      return
+    }
+
+    // Nếu chỉ có gán vai trò mới → thực hiện luôn
+    await executeSubmit()
+  }
+
+  // Thực hiện submit thực sự
+  const executeSubmit = async () => {
     try {
       // ✅ Revoke theo ID thật
       if (marked.size > 0) {
@@ -340,9 +356,25 @@ export default function AssignRoleModal({ userId, onClose, onSuccess }: AssignRo
   if (!userView) return null
 
   return (
-    <div className="fixed inset-0 z-50">
-      <div className="fixed inset-0 bg-black/30" onClick={onClose} />
-      <div className="fixed inset-0 flex items-start justify-center pt-12 px-4">
+    <>
+      {/* Confirm Dialog - chỉ cho hủy gán */}
+      <ConfirmDialog
+        open={showRevokeConfirm}
+        onClose={() => setShowRevokeConfirm(false)}
+        onConfirm={() => {
+          setShowRevokeConfirm(false)
+          executeSubmit()
+        }}
+        title="Xác nhận hủy gán vai trò"
+        description={`Bạn đang hủy gán ${marked.size} vai trò.\n\n⚠️ Thao tác này không thể hoàn tác. Bạn có chắc chắn muốn tiếp tục?`}
+        confirmText="Xác nhận hủy gán"
+        cancelText="Hủy bỏ"
+        variant="danger"
+      />
+
+      <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 bg-black/30" onClick={onClose} />
+        <div className="fixed inset-0 flex items-start justify-center pt-12 px-4">
         <div className="w-full max-w-4xl rounded-lg bg-white shadow-lg border max-h-[85vh] overflow-auto">
           <form onSubmit={handleSubmit}>
             {/* Header */}
@@ -590,6 +622,7 @@ export default function AssignRoleModal({ userId, onClose, onSuccess }: AssignRo
           </form>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

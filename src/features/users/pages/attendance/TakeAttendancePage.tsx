@@ -97,8 +97,14 @@ export default function TakeAttendancePage() {
                     );
                     setAttendanceRecords(existingRecords);
                 } else {
-                    // Creating new attendance - fetch students
-                    const response = await http.get(`/api/classes/${classId}/students`);
+                    // Creating new attendance - fetch ONLY ACTIVE students
+                    const response = await http.get(`/api/classes/${classId}/students`, {
+                        params: {
+                            status: 'ACTIVE',  // Chỉ lấy học viên đang học
+                            page: 0,
+                            size: 1000
+                        }
+                    });
                     const enrollments = response.data.content || response.data.items || response.data;
 
                     const studentsData: Student[] = enrollments.map((enrollment: any) => ({
