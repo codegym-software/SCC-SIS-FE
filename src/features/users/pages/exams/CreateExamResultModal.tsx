@@ -300,9 +300,8 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, 
                                     setSelectedModuleName('');
                                     setScoreRows([]);
                                 }}
-                                disabled={loadingClasses}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger disabled={loadingClasses}>
                                     <SelectValue placeholder="Chọn lớp">
                                         {selectedClassName || 'Chọn lớp'}
                                     </SelectValue>
@@ -332,9 +331,8 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, 
                                     setSelectedModuleName('');
                                     setScoreRows([]);
                                 }}
-                                disabled={!selectedClassId}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger disabled={!selectedClassId}>
                                     <SelectValue placeholder="Chọn kỳ học">
                                         {selectedSemester ? `Kỳ ${selectedSemester}` : 'Chọn kỳ học'}
                                     </SelectValue>
@@ -360,9 +358,8 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, 
                                     setSelectedModuleName(selectedModuleData?.name || '');
                                     setScoreRows([]);
                                 }}
-                                disabled={!selectedSemester || !selectedClassId}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger disabled={!selectedSemester || !selectedClassId}>
                                     <SelectValue placeholder="Chọn module">
                                         {selectedModuleName || 'Chọn module'}
                                     </SelectValue>
