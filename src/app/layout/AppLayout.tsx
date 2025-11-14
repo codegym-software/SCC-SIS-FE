@@ -279,7 +279,8 @@ function AppLayout({ children }: AppLayoutProps) {
                                             title={sidebarCollapsed ? item.label : undefined}
                                         >
                                             <IconComponent
-                                                size={16}
+                                                width={16}
+                                                height={16}
                                                 className={sidebarCollapsed ? '' : 'flex-shrink-0'}
                                             />
                                             {!sidebarCollapsed && <span>{item.label}</span>}
@@ -306,7 +307,11 @@ function AppLayout({ children }: AppLayoutProps) {
                                     }
                                     title={sidebarCollapsed ? item.label : undefined}
                                 >
-                                    <IconComponent size={16} className={sidebarCollapsed ? '' : 'flex-shrink-0'} />
+                                    <IconComponent
+                                        width={16}
+                                        height={16}
+                                        className={sidebarCollapsed ? '' : 'flex-shrink-0'}
+                                    />
                                     {!sidebarCollapsed && <span>{item.label}</span>}
                                 </NavLink>
                             );
