@@ -11,7 +11,7 @@ import { getClassById, getMyLecturerClasses, type ClassDto } from '@/shared/api/
 import { getModulesByProgram } from '@/shared/api/modules';
 import { getClassStudents } from '@/shared/api/classes';
 import type { EnrollmentResponse } from '@/shared/types/classes';
-import { toast } from 'sonner';
+import { useToast } from '@/shared/hooks/useToast';
 
 interface CreateExamResultModalProps {
     onClose: () => void;
@@ -37,6 +37,7 @@ interface ScoreRow extends Student {
 }
 
 const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, onSuccess }) => {
+    const toast = useToast();
     const [classes, setClasses] = useState<ClassDto[]>([]);
     const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
     const [selectedClassName, setSelectedClassName] = useState<string>('');
@@ -157,9 +158,9 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, 
 
             if (activeEnrollments.length === 0) {
                 if (enrollments.length === 0) {
-                    toast.warning('Lớp này chưa có học viên nào');
+                    toast.info('Lớp này chưa có học viên nào');
                 } else {
-                    toast.warning(`Lớp này có ${enrollments.length} học viên nhưng không có học viên nào đang học (ACTIVE)`);
+                    toast.info('Không có học viên đang học', `Lớp này có ${enrollments.length} học viên nhưng không có học viên nào đang học (ACTIVE)`);
                 }
                 setScoreRows([]);
                 return;
@@ -255,7 +256,7 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, 
             };
             
             await createGradeEntry(createRequest);
-            toast.success('Nhập điểm thành công');
+            toast.success('Nhập điểm thành công!', `Đã nhập điểm cho ${gradeRecords.length} học viên trong lớp ${selectedClassName}`);
             onSuccess();
         } catch (error: any) {
             console.error('Error creating exam result:', error);
