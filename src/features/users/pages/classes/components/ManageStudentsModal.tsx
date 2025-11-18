@@ -491,8 +491,8 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                         {filteredStudents.map((student) => (
                             <div 
                                 key={student.enrollmentId} 
-                                className="px-4 py-3 grid grid-cols-12 gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors"
-                                onClick={() => handleViewDetails(student)}
+                                className={`px-4 py-3 grid grid-cols-12 gap-4 items-center transition-colors ${!readOnly ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+                                onClick={!readOnly ? () => handleViewDetails(student) : undefined}
                             >
                                 {/* Student Info */}
                                 <div className="col-span-5 flex items-center gap-3">
@@ -617,10 +617,12 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                                 <span className="text-gray-400">⋯</span>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent className="w-48">
-                                                <DropdownMenuItem onClick={() => handleViewDetails(student)}>
-                                                    <Eye size={14} className="mr-2" />
-                                                    Xem chi tiết
-                                                </DropdownMenuItem>
+                                                {!readOnly && (
+                                                    <DropdownMenuItem onClick={() => handleViewDetails(student)}>
+                                                        <Eye size={14} className="mr-2" />
+                                                        Xem chi tiết
+                                                    </DropdownMenuItem>
+                                                )}
                                                 <DropdownMenuItem
                                                     onClick={() => handleRemoveFromClass(student)}
                                                     className="text-red-600"
@@ -630,18 +632,6 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
-                                    )}
-                                    {readOnly && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation(); // Prevent double navigation
-                                                handleViewDetails(student);
-                                            }}
-                                            className="h-8 px-3 text-xs rounded border hover:bg-gray-50 flex items-center gap-1"
-                                        >
-                                            <Eye size={14} />
-                                            Xem
-                                        </button>
                                     )}
                                 </div>
                             </div>
