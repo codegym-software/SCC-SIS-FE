@@ -213,7 +213,7 @@ function AppLayout({ children }: AppLayoutProps) {
                     className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r bg-gradient-to-b from-gray-50 to-white hidden md:flex md:flex-col fixed left-0 top-14 bottom-0 overflow-y-auto z-40 transition-all duration-300 shadow-sm`}
                 >
                     {/* Added extra top spacing so all menu items sit a bit lower */}
-                    <nav className="flex-1 px-2 pt-6 pb-3 space-y-1">
+                    <nav className="flex-1 px-2 pt-8 pb-3 space-y-1">
                         {menuGroups.map((group) => (
                             <div key={group.id}>
                                 {group.label && !sidebarCollapsed && (
