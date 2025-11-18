@@ -167,7 +167,9 @@ export default function AssignRoleModal({ userId, onClose, onSuccess }: AssignRo
 
   // Thêm hàng mới
   const addNewRow = () => {
-    setDrafts(prev => [...prev, {}])
+    // Nếu user đã có vai trò, tự động set vai trò đó cho draft mới
+    const existingRoleId = existing.length > 0 ? existing[0].roleId : undefined
+    setDrafts(prev => [...prev, { roleId: existingRoleId }])
     setErrors({})
   }
 
@@ -510,26 +512,34 @@ export default function AssignRoleModal({ userId, onClose, onSuccess }: AssignRo
                                 {/* Role select */}
                                 <div className="flex-1">
                                   <label className="block text-xs text-gray-600 mb-1">Vai trò *</label>
-                                  <select
-                                    value={draft.roleId || ''}
-                                    onChange={(e) => updateDraft(idx, 'roleId', e.target.value ? Number(e.target.value) : null)}
-                                    className={`w-full h-10 rounded-lg border px-3 text-sm ${errors.drafts?.[idx] ? 'border-red-500' : 'border-gray-300'
-                                      }`}
-                                  >
-                                    <option value="">-- Chọn vai trò --</option>
-                                    {roles.map(role => {
-                                      const isRoleRevoked = isRevoked(role.roleId, draft.centerId)
-                                      return (
-                                        <option 
-                                          key={role.roleId} 
-                                          value={role.roleId}
-                                          disabled={isRoleRevoked}
-                                        >
-                                          {role.name}{isRoleRevoked ? ' (Đã bị hủy gán)' : ''}
-                                        </option>
-                                      )
-                                    })}
-                                  </select>
+                                  {existing.length > 0 ? (
+                                    // Nếu đã có vai trò, hiển thị read-only
+                                    <div className="w-full h-10 rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm flex items-center text-gray-700">
+                                      {roles.find(r => r.roleId === draft.roleId)?.name || '-- Chọn vai trò --'}
+                                    </div>
+                                  ) : (
+                                    // Nếu chưa có vai trò, cho phép chọn
+                                    <select
+                                      value={draft.roleId || ''}
+                                      onChange={(e) => updateDraft(idx, 'roleId', e.target.value ? Number(e.target.value) : null)}
+                                      className={`w-full h-10 rounded-lg border px-3 text-sm ${errors.drafts?.[idx] ? 'border-red-500' : 'border-gray-300'
+                                        }`}
+                                    >
+                                      <option value="">-- Chọn vai trò --</option>
+                                      {roles.map(role => {
+                                        const isRoleRevoked = isRevoked(role.roleId, draft.centerId)
+                                        return (
+                                          <option 
+                                            key={role.roleId} 
+                                            value={role.roleId}
+                                            disabled={isRoleRevoked}
+                                          >
+                                            {role.name}{isRoleRevoked ? ' (Đã bị hủy gán)' : ''}
+                                          </option>
+                                        )
+                                      })}
+                                    </select>
+                                  )}
                                 </div>
 
                                 {/* Center select */}
