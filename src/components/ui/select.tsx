@@ -23,21 +23,30 @@ interface SelectProps {
     value?: string;
     onValueChange?: (value: string) => void;
     children: React.ReactNode;
+    disabled?: boolean;
 }
 
-const Select: React.FC<SelectProps> = ({ value, onValueChange, children }) => {
+const Select: React.FC<SelectProps> = ({ value, onValueChange, children, disabled }) => {
     const [open, setOpen] = React.useState(false);
 
     const handleValueChange = React.useCallback(
         (newValue: string) => {
+            if (disabled) return;
             onValueChange?.(newValue);
             setOpen(false);
         },
-        [onValueChange],
+        [onValueChange, disabled],
     );
 
     return (
-        <SelectContext.Provider value={{ value: value || '', onValueChange: handleValueChange, open, onOpenChange: setOpen }}>
+        <SelectContext.Provider
+            value={{
+                value: value || '',
+                onValueChange: handleValueChange,
+                open,
+                onOpenChange: disabled ? () => {} : setOpen,
+            }}
+        >
             <div className="relative">{children}</div>
         </SelectContext.Provider>
     );
@@ -73,7 +82,7 @@ const SelectValue = React.forwardRef<HTMLSpanElement, React.HTMLAttributes<HTMLS
 
         // If children are provided, use them (for custom display)
         // Otherwise, show value or placeholder
-        const displayText = children ? children : (value || placeholder || 'Select...');
+        const displayText = children ? children : value || placeholder || 'Select...';
 
         return (
             <span ref={ref} className={cn('block truncate', className)} {...props}>
@@ -149,4 +158,3 @@ const SelectItem = React.forwardRef<
 SelectItem.displayName = 'SelectItem';
 
 export { Select, SelectTrigger, SelectValue, SelectContent, SelectItem };
-

@@ -18,6 +18,7 @@ import { keycloak } from '../../keycloak';
 import { NavLink } from 'react-router-dom';
 import { useUserProfile } from '../../stores/userProfile';
 import { roleDisplay } from '../../utils/roleLabel';
+import TopNavBar from '@/features/users/pages/dashboard/components/TopNavBar';
 
 function RootLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -200,61 +201,19 @@ function AppLayout({ children }: AppLayoutProps) {
 
     return (
         <div className="min-h-screen bg-white text-gray-900 m-0 p-0">
+            {/* Top Navigation Bar - Sticky across all pages */}
+            <TopNavBar
+                sidebarCollapsed={sidebarCollapsed}
+                onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+            />
+
             <div className="flex min-h-screen m-0 p-0">
-                {/* Sidebar */}
+                {/* Sidebar - Fixed position */}
                 <aside
-                    className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r bg-gradient-to-b from-gray-50 to-white hidden md:flex md:flex-col sticky top-0 h-screen overflow-y-auto z-10 transition-all duration-300 relative shadow-sm`}
+                    className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r bg-gradient-to-b from-gray-50 to-white hidden md:flex md:flex-col fixed left-0 top-14 bottom-0 overflow-y-auto z-40 transition-all duration-300 shadow-sm`}
                 >
-                    <div className="px-4 py-5 border-b border-gray-200">
-                        {!sidebarCollapsed && (
-                            <>
-                                <div className="text-xs text-gray-500 mb-2">Hệ thống Giáo dục Số</div>
-                                <div className="flex items-center gap-3">
-                                    {userAvatar ? (
-                                        <img
-                                            src={userAvatar}
-                                            alt="User Avatar"
-                                            className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-md"
-                                        />
-                                    ) : (
-                                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium">
-                                            NV
-                                        </div>
-                                    )}
-                                    <div>
-                                        <div className="text-sm font-medium">
-                                            {loading ? 'Đang tải...' : (me?.fullName ?? me?.keycloak?.username ?? '—')}
-                                        </div>
-                                        <div className="text-xs text-gray-500">
-                                            {loading ? '...' : mainRole ? roleDisplay(mainRole) : '—'}
-                                        </div>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                        {sidebarCollapsed &&
-                            (userAvatar ? (
-                                <img
-                                    src={userAvatar}
-                                    alt="User Avatar"
-                                    className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-md mx-auto"
-                                />
-                            ) : (
-                                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium mx-auto">
-                                    NV
-                                </div>
-                            ))}
-                    </div>
-
-                    {/* Toggle button - positioned inside sidebar */}
-                    <button
-                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                        className="absolute top-1/2 right-2 w-6 h-6 rounded-full bg-white border border-gray-200 shadow-md hover:bg-gray-50 flex items-center justify-center transition-colors z-20 transform -translate-y-1/2"
-                    >
-                        {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-                    </button>
-
-                    <nav className="flex-1 px-2 py-3 space-y-1">
+                    {/* Added extra top spacing so all menu items sit a bit lower */}
+                    <nav className="flex-1 px-2 pt-6 pb-3 space-y-1">
                         {menuGroups.map((group) => (
                             <div key={group.id}>
                                 {group.label && !sidebarCollapsed && (
@@ -279,7 +238,8 @@ function AppLayout({ children }: AppLayoutProps) {
                                             title={sidebarCollapsed ? item.label : undefined}
                                         >
                                             <IconComponent
-                                                size={16}
+                                                width={16}
+                                                height={16}
                                                 className={sidebarCollapsed ? '' : 'flex-shrink-0'}
                                             />
                                             {!sidebarCollapsed && <span>{item.label}</span>}
@@ -306,7 +266,11 @@ function AppLayout({ children }: AppLayoutProps) {
                                     }
                                     title={sidebarCollapsed ? item.label : undefined}
                                 >
-                                    <IconComponent size={16} className={sidebarCollapsed ? '' : 'flex-shrink-0'} />
+                                    <IconComponent
+                                        width={16}
+                                        height={16}
+                                        className={sidebarCollapsed ? '' : 'flex-shrink-0'}
+                                    />
                                     {!sidebarCollapsed && <span>{item.label}</span>}
                                 </NavLink>
                             );
@@ -322,8 +286,10 @@ function AppLayout({ children }: AppLayoutProps) {
                     </div>
                 </aside>
 
-                {/* Main */}
-                <div className="flex-1 flex flex-col min-h-screen">
+                {/* Main Content - with margin to account for fixed sidebar */}
+                <div
+                    className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-64'}`}
+                >
                     <main className="flex-1 w-full min-h-screen p-6">{children}</main>
                 </div>
             </div>
