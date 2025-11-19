@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Menu, Bell, Settings, Search, AlertTriangle } from 'lucide-react';
+import { Menu, Bell, Search } from 'lucide-react';
 import { useUserProfile } from '@/stores/userProfile';
 import CenterSwitcher from './CenterSwitcher';
 import { useCenterSelection } from '@/stores/centerSelection';
@@ -15,89 +15,20 @@ interface TopNavBarProps {
 }
 
 export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavBarProps) {
-    const { me } = useUserProfile();
+    const { userProfile } = useUserProfile();
     const location = useLocation();
     const navigate = useNavigate();
-    const selectedCenterId = useCenterSelection((s) => s.selectedCenterId);
-    const [showNotifications, setShowNotifications] = useState(false);
-    const [warningCount, setWarningCount] = useState(0);
-    const [warnings, setWarnings] = useState<StudentWarning[]>([]);
-    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-    const [activeTab, setActiveTab] = useState<'warnings' | 'all'>('warnings');
-    const [loading, setLoading] = useState(false);
-    const notifRef = useRef<HTMLDivElement | null>(null);
-
-    // Fetch student warnings from API (with mock fallback)
-    useEffect(() => {
-        const fetchWarnings = async () => {
-            setLoading(true);
-            try {
-                const response = await studentWarningsApi.getStudentWarnings(selectedCenterId);
-                setWarnings(response.warnings);
-                setWarningCount(response.totalCount);
-            } catch (error) {
-                console.error('Failed to fetch student warnings:', error);
-                // Fallback to mock data on error
-                const mock = studentWarningsApi.getMockWarnings();
-                setWarnings(mock);
-                setWarningCount(mock.length);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchWarnings();
-    }, [selectedCenterId]);
-
-    // Fetch generalized notifications (with mock fallback)
-    useEffect(() => {
-        const fetchNotifications = async () => {
-            try {
-                const res = await notificationsApi.fetchNotifications(selectedCenterId);
-                setNotifications(res.notifications);
-            } catch (error) {
-                console.error('Failed to fetch notifications:', error);
-                setNotifications(notificationsApi.getMock());
-            }
-        };
-        fetchNotifications();
-    }, [selectedCenterId]);
-
-    // Close dropdown on outside click
-    useEffect(() => {
-        function onDocClick(e: MouseEvent) {
-            if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-                setShowNotifications(false);
-            }
-        }
-        if (showNotifications) {
-            document.addEventListener('mousedown', onDocClick);
-        }
-        return () => document.removeEventListener('mousedown', onDocClick);
-    }, [showNotifications]);
     // Hiển thị CenterSwitcher trên trang tổng quan (path '/') cho các role có quyền xem số liệu theo trung tâm
-    const canSelectCenter = me?.roles?.some((r) => ['CENTER_MANAGER', 'SUPER_ADMIN'].includes(r.code));
+    const canSelectCenter = userProfile?.roles?.[0]?.code && ['CENTER_MANAGER', 'SUPER_ADMIN'].includes(userProfile.roles[0].code);
     const showCenterSwitcher = canSelectCenter && location.pathname === '/';
 
     return (
-        <div className="sticky top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm flex items-center">
-            {/* Left Section - Logo area aligned with sidebar width */}
-            <div
-                className={`${sidebarCollapsed ? 'w-16' : 'w-64'} hidden md:flex items-center justify-start px-4 transition-all duration-300`}
-            >
-                <div className="flex items-center gap-2">
-                    <div className="h-9 w-9 rounded-full bg-blue-600 grid place-items-center text-white font-bold text-sm shadow-md">
-                        E
-                    </div>
-                    {!sidebarCollapsed && <span className="text-base font-semibold text-gray-900">EduManage</span>}
-                </div>
-            </div>
-            {/* Divider that lines up with the sidebar edge */}
-            <div className="hidden md:block h-12 w-px bg-gray-200" />
-
-            {/* Right Section - Rest of the navbar */}
-            <div className="flex-1 flex items-center justify-between px-4 sm:px-6 py-3 gap-4">
-                {/* Left controls in navbar */}
+        <div className="sticky top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+            <div className="flex items-center px-4 sm:px-6 h-[56px]">
+                {/* Left Section - Logo space (reserved for future logo) */}
+                <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} flex-shrink-0 transition-all duration-300`} />
+                
+                {/* Middle Section - Left controls */}
                 <div className="flex items-center gap-1 sm:gap-2">
                     <button
                         onClick={onToggleSidebar}
@@ -114,11 +45,14 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                     </button>
                 </div>
 
-                {/* Center: CenterSwitcher - chỉ hiển thị ở trang tổng quan cho CENTER_MANAGER */}
-                <div className="flex-1 flex justify-center max-w-md">{showCenterSwitcher && <CenterSwitcher />}</div>
-
-                {/* Right: Notifications + Settings + Avatar */}
+                {/* Spacer to push right section to the end */}
+                <div className="flex-1" />
+                
+                {/* Right Section - Center Switcher + Notifications + Avatar */}
                 <div className="flex items-center gap-3">
+                    {/* Center Switcher - Only show on dashboard for CENTER_MANAGER and SUPER_ADMIN */}
+                    {showCenterSwitcher && <CenterSwitcher />}
+                    
                     {/* Language Selector */}
                     <button className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
                         <span className="text-sm font-medium text-gray-700">VN</span>
@@ -259,24 +193,30 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                         )}
                     </div>
 
-                    {/* Settings */}
-                    <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                        <Settings size={20} className="text-gray-700" />
-                    </button>
-
                     {/* Avatar */}
-                    <button className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">
-                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 grid place-items-center text-white font-semibold text-sm shadow-md">
-                            {me?.fullName
-                                ?.split(' ')
-                                .map((n) => n[0])
-                                .join('')
-                                .toUpperCase()
-                                .slice(0, 2) || 'U'}
-                        </div>
+                    <button 
+                        onClick={() => navigate('/settings')}
+                        className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                        {userProfile?.avatarUrl ? (
+                            <img 
+                                src={userProfile.avatarUrl} 
+                                alt={userProfile.fullName}
+                                className="h-9 w-9 rounded-full object-cover shadow-md border-2 border-white"
+                            />
+                        ) : (
+                            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 grid place-items-center text-white font-semibold text-sm shadow-md">
+                                {userProfile?.fullName
+                                    ?.split(' ')
+                                    .map((n) => n[0])
+                                    .join('')
+                                    .toUpperCase()
+                                    .slice(0, 2) || 'U'}
+                            </div>
+                        )}
                         <div className="hidden lg:block text-left">
-                            <div className="text-sm font-semibold text-gray-900">{me?.fullName || 'User'}</div>
-                            <div className="text-xs text-gray-500">{me?.roles?.[0]?.code || 'Quản lý Trung tâm'}</div>
+                            <div className="text-sm font-semibold text-gray-900">{userProfile?.fullName || 'User'}</div>
+                            <div className="text-xs text-gray-500">{userProfile?.roles?.[0]?.code || 'Quản lý Trung tâm'}</div>
                         </div>
                     </button>
                 </div>

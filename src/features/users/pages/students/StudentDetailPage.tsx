@@ -29,6 +29,9 @@ export default function StudentDetailPage() {
     const [selectedClass, setSelectedClass] = useState<any | null>(null);
     const [grades, setGrades] = useState<GradeRecordResponse[]>([]);
     const [gradesLoading, setGradesLoading] = useState(false);
+    const [selectedScoresClassId, setSelectedScoresClassId] = useState<number | null>(null);
+    const [selectedMonth, setSelectedMonth] = useState(0); // 0 = all months
+    const [selectedYear, setSelectedYear] = useState(0); // 0 = all years
 
     // Map DTO -> UI
     const mapDto = (dto: StudentWithEnrollmentsDto): StudentUI => ({
@@ -105,6 +108,57 @@ export default function StudentDetailPage() {
 
         fetchGrades();
     }, [activeTab, id]);
+
+    // Filter grades based on selected class and month/year
+    const filteredGrades = grades.filter(grade => {
+        // Filter by class
+        if (selectedScoresClassId && grade.classId !== selectedScoresClassId) {
+            return false;
+        }
+
+        // Filter by month and year
+        if (selectedMonth !== 0 || selectedYear !== 0) {
+            if (!grade.entryDate) return false;
+            
+            const [year, month] = grade.entryDate.split('-').map(Number);
+            
+            if (selectedYear !== 0 && year !== selectedYear) {
+                return false;
+            }
+            
+            if (selectedMonth !== 0 && month !== selectedMonth) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    // Get available years from grades
+    const availableYears = Array.from(
+        new Set(
+            grades
+                .filter(g => g.entryDate)
+                .map(g => parseInt(g.entryDate.split('-')[0]))
+        )
+    ).sort((a, b) => b - a);
+
+    // Months array
+    const months = [
+        { value: 0, label: 'Tất cả tháng' },
+        { value: 1, label: 'Tháng 1' },
+        { value: 2, label: 'Tháng 2' },
+        { value: 3, label: 'Tháng 3' },
+        { value: 4, label: 'Tháng 4' },
+        { value: 5, label: 'Tháng 5' },
+        { value: 6, label: 'Tháng 6' },
+        { value: 7, label: 'Tháng 7' },
+        { value: 8, label: 'Tháng 8' },
+        { value: 9, label: 'Tháng 9' },
+        { value: 10, label: 'Tháng 10' },
+        { value: 11, label: 'Tháng 11' },
+        { value: 12, label: 'Tháng 12' },
+    ];
 
     const calculateOverallStatus = (enrollments: StudentEnrollment[]): 'Đang chờ' | 'Đang học' | 'Nghỉ học' => {
         if (!enrollments || enrollments.length === 0) return 'Đang chờ';
@@ -376,10 +430,60 @@ export default function StudentDetailPage() {
                         {activeTab === 'scores' && (
                             <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                                 <div className="p-6 border-b">
-                                    <h4 className="text-base font-semibold text-gray-900">Bảng điểm</h4>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        Danh sách điểm thi của học viên
-                                    </p>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <h4 className="text-base font-semibold text-gray-900">Bảng điểm</h4>
+                                            <p className="text-sm text-gray-500 mt-1">
+                                                Danh sách điểm thi của học viên
+                                            </p>
+                                        </div>
+                                        
+                                        {/* Filters */}
+                                        <div className="flex gap-2">
+                                            {/* Class Filter */}
+                                            {student?.enrollments && student.enrollments.length > 0 && (
+                                                <select
+                                                    value={selectedScoresClassId || ''}
+                                                    onChange={(e) => setSelectedScoresClassId(e.target.value ? parseInt(e.target.value) : null)}
+                                                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                >
+                                                    <option value="">Tất cả lớp</option>
+                                                    {student.enrollments.map((enrollment) => (
+                                                        <option key={enrollment.classId} value={enrollment.classId}>
+                                                            {enrollment.className}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            )}
+
+                                            {/* Month Filter */}
+                                            <select
+                                                value={selectedMonth}
+                                                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            >
+                                                {months.map((month) => (
+                                                    <option key={month.value} value={month.value}>
+                                                        {month.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+
+                                            {/* Year Filter */}
+                                            <select
+                                                value={selectedYear}
+                                                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            >
+                                                <option value={0}>Tất cả năm</option>
+                                                {availableYears.map((year) => (
+                                                    <option key={year} value={year}>
+                                                        {year}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                                 
                                 {gradesLoading ? (
@@ -387,51 +491,51 @@ export default function StudentDetailPage() {
                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
                                         Đang tải điểm...
                                     </div>
-                                ) : grades.length === 0 ? (
+                                ) : filteredGrades.length === 0 ? (
                                     <div className="p-8 text-center text-gray-500">
                                         <BarChart3 size={40} className="mx-auto mb-3 text-gray-300" />
-                                        <p>Chưa có điểm thi nào</p>
+                                        <p>{grades.length === 0 ? 'Chưa có điểm thi nào' : 'Không có điểm thi nào phù hợp với bộ lọc'}</p>
                                     </div>
                                 ) : (
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm">
                                             <thead className="bg-gray-50">
                                                 <tr>
-                                                    <th className="text-left py-3 px-6 font-medium text-gray-700">Lớp học</th>
-                                                    <th className="text-left py-3 px-6 font-medium text-gray-700">Module</th>
-                                                    <th className="text-left py-3 px-6 font-medium text-gray-700">Học kỳ</th>
-                                                    <th className="text-center py-3 px-6 font-medium text-gray-700">Lý thuyết</th>
-                                                    <th className="text-center py-3 px-6 font-medium text-gray-700">Thực hành</th>
-                                                    <th className="text-center py-3 px-6 font-medium text-gray-700">Tổng kết</th>
-                                                    <th className="text-center py-3 px-6 font-medium text-gray-700">Kết quả</th>
-                                                    <th className="text-left py-3 px-6 font-medium text-gray-700">Ngày thi</th>
+                                                    <th className="text-left py-2 px-4 font-medium text-gray-700">Lớp học</th>
+                                                    <th className="text-left py-2 px-4 font-medium text-gray-700">Module</th>
+                                                    <th className="text-left py-2 px-4 font-medium text-gray-700">Học kỳ</th>
+                                                    <th className="text-center py-2 px-4 font-medium text-gray-700">Lý thuyết</th>
+                                                    <th className="text-center py-2 px-4 font-medium text-gray-700">Thực hành</th>
+                                                    <th className="text-center py-2 px-4 font-medium text-gray-700">Tổng kết</th>
+                                                    <th className="text-center py-2 px-4 font-medium text-gray-700">Kết quả</th>
+                                                    <th className="text-left py-2 px-4 font-medium text-gray-700">Ngày thi</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-200">
-                                                {grades.map((grade, index) => (
+                                                {filteredGrades.map((grade, index) => (
                                                     <tr key={index} className="hover:bg-gray-50">
-                                                        <td className="py-3 px-6 text-gray-900">
+                                                        <td className="py-2 px-4 text-gray-900">
                                                             {grade.className || '-'}
                                                         </td>
-                                                        <td className="py-3 px-6 text-gray-900">
+                                                        <td className="py-2 px-4 text-gray-900">
                                                             <div className="font-medium">{grade.moduleName || '-'}</div>
                                                             {grade.moduleCode && (
                                                                 <div className="text-xs text-gray-500">{grade.moduleCode}</div>
                                                             )}
                                                         </td>
-                                                        <td className="py-3 px-6 text-gray-600">
+                                                        <td className="py-2 px-4 text-gray-600">
                                                             {grade.semester ? `Học kỳ ${grade.semester}` : '-'}
                                                         </td>
-                                                        <td className="py-3 px-6 text-center text-gray-900">
+                                                        <td className="py-2 px-4 text-center text-gray-900">
                                                             {grade.theoryScore.toFixed(1)}
                                                         </td>
-                                                        <td className="py-3 px-6 text-center text-gray-900">
+                                                        <td className="py-2 px-4 text-center text-gray-900">
                                                             {grade.practiceScore.toFixed(1)}
                                                         </td>
-                                                        <td className="py-3 px-6 text-center font-semibold text-gray-900">
+                                                        <td className="py-2 px-4 text-center font-semibold text-gray-900">
                                                             {grade.finalScore.toFixed(1)}
                                                         </td>
-                                                        <td className="py-3 px-6 text-center">
+                                                        <td className="py-2 px-4 text-center">
                                                             <span
                                                                 className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
                                                                     grade.passStatus === 'PASS'
@@ -442,7 +546,7 @@ export default function StudentDetailPage() {
                                                                 {grade.passStatus === 'PASS' ? 'Đạt' : 'Chưa đạt'}
                                                             </span>
                                                         </td>
-                                                        <td className="py-3 px-6 text-gray-600">
+                                                        <td className="py-2 px-4 text-gray-600">
                                                             {grade.entryDate || '-'}
                                                         </td>
                                                     </tr>

@@ -143,6 +143,12 @@ export default function AttendancePage() {
 
                 const response = await getTeacherAttendanceSchedules(me.userId, from, to);
                 
+                // Debug: Log API response
+                console.log('📅 [AttendancePage] API Response:', response.data);
+                console.log('📅 [AttendancePage] Sessions with TAKEN status:', 
+                    response.data.filter(s => s.sessionStatus === 'TAKEN')
+                );
+                
                 // Fetch session IDs for classes that have TAKEN status
                 const uniqueClassIds = [...new Set(response.data.map(s => s.classId))];
                 const sessionIdMap = new Map<string, number>(); // key: classId-date, value: sessionId
@@ -164,12 +170,19 @@ export default function AttendancePage() {
                 // Enrich sessions with studyTime and sessionId
                 const enrichedSessions: SessionWithTime[] = response.data.map((session) => {
                     const sessionKey = `${session.classId}-${session.attendanceDate}`;
+                    
+                    // Ưu tiên studyTime từ session (đã lưu tại thời điểm điểm danh)
+                    // Nếu không có (sessions cũ trước khi có field này), lấy từ class hiện tại
+                    const studyTime = session.studyTime || classStudyTimeMapRef.current.get(session.classId);
+                    
                     return {
                         ...session,
-                        studyTime: classStudyTimeMapRef.current.get(session.classId),
+                        studyTime: studyTime,
                         sessionId: sessionIdMap.get(sessionKey) || null,
                     };
                 });
+                
+                console.log('📅 [AttendancePage] Enriched sessions:', enrichedSessions);
                 setSessions(enrichedSessions);
             } catch (error) {
                 console.error('Failed to fetch schedule:', error);
