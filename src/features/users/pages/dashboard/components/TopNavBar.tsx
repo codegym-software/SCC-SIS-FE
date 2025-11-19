@@ -4,6 +4,8 @@ import { Menu, Bell, Settings, Search, AlertTriangle } from 'lucide-react';
 import { useUserProfile } from '@/stores/userProfile';
 import CenterSwitcher from './CenterSwitcher';
 import { useCenterSelection } from '@/stores/centerSelection';
+import { studentWarningsApi } from '@/shared/api/student-warnings';
+import type { StudentWarning } from '@/shared/api/student-warnings';
 
 interface TopNavBarProps {
     sidebarCollapsed: boolean;
@@ -17,56 +19,30 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
     const selectedCenterId = useCenterSelection((s) => s.selectedCenterId);
     const [showNotifications, setShowNotifications] = useState(false);
     const [warningCount, setWarningCount] = useState(0);
-    const [warnings, setWarnings] = useState<
-        Array<{
-            studentId: number;
-            code: string;
-            name: string;
-            reason: string;
-            detail: string;
-            program: string;
-            classCode: string;
-            severity: 'HIGH' | 'MEDIUM' | 'LOW';
-        }>
-    >([]);
+    const [warnings, setWarnings] = useState<StudentWarning[]>([]);
+    const [loading, setLoading] = useState(false);
     const notifRef = useRef<HTMLDivElement | null>(null);
 
-    // Mock warnings (TODO: replace by API filtered by selectedCenterId)
+    // Fetch student warnings from API (with mock fallback)
     useEffect(() => {
-        const mock = [
-            {
-                studentId: 1,
-                code: 'HV001',
-                name: 'Nguyễn Văn B',
-                reason: 'Nghỉ học nhiều',
-                detail: 'Đã nghỉ 5/12 buổi học',
-                program: 'Java Cơ bản',
-                classCode: 'K14',
-                severity: 'HIGH' as const,
-            },
-            {
-                studentId: 2,
-                code: 'HV002',
-                name: 'Trần Thị C',
-                reason: 'Điểm số thấp',
-                detail: 'Điểm trung bình: 4.2/10',
-                program: 'Python Data Science',
-                classCode: 'K12',
-                severity: 'HIGH' as const,
-            },
-            {
-                studentId: 3,
-                code: 'HV003',
-                name: 'Lê Văn D',
-                reason: 'Chưa nộp bài tập',
-                detail: 'Còn 3 bài tập chưa nộp',
-                program: 'Digital Marketing',
-                classCode: 'K08',
-                severity: 'MEDIUM' as const,
-            },
-        ];
-        setWarnings(mock);
-        setWarningCount(mock.length);
+        const fetchWarnings = async () => {
+            setLoading(true);
+            try {
+                const response = await studentWarningsApi.getStudentWarnings(selectedCenterId);
+                setWarnings(response.warnings);
+                setWarningCount(response.totalCount);
+            } catch (error) {
+                console.error('Failed to fetch student warnings:', error);
+                // Fallback to mock data on error
+                const mock = studentWarningsApi.getMockWarnings();
+                setWarnings(mock);
+                setWarningCount(mock.length);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchWarnings();
     }, [selectedCenterId]);
 
     // Close dropdown on outside click
