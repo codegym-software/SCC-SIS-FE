@@ -8,6 +8,7 @@ import ClassesPage from '../../features/users/pages/classes/ClassesPage.tsx';
 import StudentProfilePage from '../../features/users/pages/students/StudentProfilePage';
 import StudentDetailPage from '../../features/users/pages/students/StudentDetailPage';
 import SettingsPage from '../../features/users/pages/settings/SettingsPage';
+import ActivityLogPage from '../../features/users/pages/activity/ActivityLogPage';
 import MyClassesPage from '../../features/students/pages/my-classes/MyClassesPage';
 import ProtectedRoute from './ProtectedRoute';
 import AttendancePage from '../../features/users/pages/attendance/AttendancePage';
@@ -58,6 +59,7 @@ export default function AppRoutes() {
                 }
             />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/activity-log" element={<ActivityLogPage />} />
             {/* Chỉ redirect khi thực sự không tìm thấy route */}
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
