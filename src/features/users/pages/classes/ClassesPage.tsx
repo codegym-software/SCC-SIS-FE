@@ -572,11 +572,29 @@ export default function ClassesPage() {
         fetchData();
     }, [hasGlobalScope, globalSelectedCenterId]); // Refetch when center changes
 
+    // Handle navigation from dashboard - open class detail if selectedClassId is provided
+    useEffect(() => {
+        const state = location.state as { selectedClassId?: number } | null;
+        if (state?.selectedClassId && classes.length > 0) {
+            const classToSelect = classes.find((c) => c.id === String(state.selectedClassId));
+            if (classToSelect) {
+                setSelectedClass(classToSelect);
+                setView('detail');
+                // Clear state after using it
+                window.history.replaceState({}, document.title);
+            }
+        }
+    }, [location.state, classes]);
+
     // Reset view to 'list' when navigating to this page (including clicking sidebar menu)
     // location.key changes every time user navigates, even to the same path
     useEffect(() => {
-        setView('list');
-        setSelectedClass(null);
+        // Don't reset if we're navigating with a selectedClassId
+        const state = location.state as { selectedClassId?: number } | null;
+        if (!state?.selectedClassId) {
+            setView('list');
+            setSelectedClass(null);
+        }
     }, [location.key]); // Runs every time navigation happens
 
     // Filter classes based on search and status
