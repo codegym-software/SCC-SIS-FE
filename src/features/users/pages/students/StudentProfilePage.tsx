@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import StudentSearch from './search';
 import StudentList from './list';
 import StudentView from './view';
@@ -56,12 +57,23 @@ export default function StudentProfilePage() {
     const globalSelectedCenterId = useCenterSelection((s) => s.selectedCenterId);
 
     const toast = useToast();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [programFilter, setProgramFilter] = useState('Tất cả chương trình');
     const [openView, setOpenView] = useState<StudentUI | null>(null);
     const [openEdit, setOpenEdit] = useState<StudentUI | null>(null);
     const [openCreate, setOpenCreate] = useState(false);
+    
+    // Auto-open create modal if action=create in URL
+    useEffect(() => {
+        if (searchParams.get('action') === 'create') {
+            setOpenCreate(true);
+            // Remove query param after opening modal
+            searchParams.delete('action');
+            setSearchParams(searchParams, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<StudentUI | null>(null);
     const [openChangeStatus, setOpenChangeStatus] = useState<StudentUI | null>(null);

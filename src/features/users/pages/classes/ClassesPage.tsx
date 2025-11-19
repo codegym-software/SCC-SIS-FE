@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import {
     Search,
     X,
@@ -278,9 +278,20 @@ export default function ClassesPage() {
     const toast = useToast();
     const { me: userProfile } = useUserProfile();
     const isLecturer = userProfile?.roles?.some((r) => r.code === 'LECTURER');
+    const [searchParams, setSearchParams] = useSearchParams();
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [openCreate, setOpenCreate] = useState(false);
+    
+    // Auto-open create modal if action=create in URL
+    useEffect(() => {
+        if (searchParams.get('action') === 'create') {
+            setOpenCreate(true);
+            // Remove query param after opening modal
+            searchParams.delete('action');
+            setSearchParams(searchParams, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
     const [openEdit, setOpenEdit] = useState<Class | null>(null);
     // ManageStudents now renders inline in Students tab; keep state only if needed elsewhere
     const [openAssignInstructor, setOpenAssignInstructor] = useState<Class | null>(null);

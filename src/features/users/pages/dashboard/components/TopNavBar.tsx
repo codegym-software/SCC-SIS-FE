@@ -2,7 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, Bell, Search } from 'lucide-react';
 import { useUserProfile } from '@/stores/userProfile';
-// import CenterSwitcher from './CenterSwitcher';
+import CenterSwitcher from './CenterSwitcher';
 
 interface TopNavBarProps {
     sidebarCollapsed: boolean;
@@ -43,8 +43,11 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                 {/* Spacer to push right section to the end */}
                 <div className="flex-1" />
                 
-                {/* Right Section - Notifications + Avatar */}
+                {/* Right Section - Center Switcher + Notifications + Avatar */}
                 <div className="flex items-center gap-3">
+                    {/* Center Switcher - Only show on dashboard for CENTER_MANAGER and SUPER_ADMIN */}
+                    {showCenterSwitcher && <CenterSwitcher />}
+                    
                     {/* Language Selector */}
                     <button className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
                         <span className="text-sm font-medium text-gray-700">VN</span>
