@@ -3,6 +3,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, Bell, Search } from 'lucide-react';
 import { useUserProfile } from '@/stores/userProfile';
 import CenterSwitcher from './CenterSwitcher';
+import { useCenterSelection } from '@/stores/centerSelection';
+import { studentWarningsApi } from '@/shared/api/student-warnings';
+import type { StudentWarning } from '@/shared/api/student-warnings';
+import { notificationsApi } from '@/shared/api/notifications';
+import type { NotificationItem } from '@/shared/api/notifications';
 
 interface TopNavBarProps {
     sidebarCollapsed: boolean;
@@ -53,11 +58,140 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                         <span className="text-sm font-medium text-gray-700">VN</span>
                     </button>
 
-                    {/* Notifications */}
-                    <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                        <Bell size={20} className="text-gray-700" />
-                        <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-                    </button>
+                    {/* Notifications dropdown with tabs */}
+                    <div className="relative" ref={notifRef}>
+                        <button
+                            className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                            onClick={() => setShowNotifications((s) => !s)}
+                            aria-haspopup="menu"
+                            aria-expanded={showNotifications}
+                        >
+                            <Bell size={20} className="text-gray-700" />
+                            {(warningCount > 0 || notifications.length > 0) && (
+                                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 grid place-items-center text-[10px] font-semibold bg-red-600 text-white rounded-full shadow">
+                                    {warningCount + notifications.length}
+                                </span>
+                            )}
+                        </button>
+                        {showNotifications && (
+                            <div className="absolute right-0 mt-2 w-96 max-w-[90vw] bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                                <div className="flex border-b bg-gray-50 text-xs">
+                                    <button
+                                        onClick={() => setActiveTab('warnings')}
+                                        className={`flex-1 px-3 py-2 font-medium transition-colors ${activeTab === 'warnings' ? 'bg-white text-red-600 border-b-2 border-red-500' : 'text-gray-600 hover:text-gray-800'}`}
+                                    >
+                                        Cảnh báo ({warningCount})
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('all')}
+                                        className={`flex-1 px-3 py-2 font-medium transition-colors ${activeTab === 'all' ? 'bg-white text-blue-600 border-b-2 border-blue-500' : 'text-gray-600 hover:text-gray-800'}`}
+                                    >
+                                        Hoạt động ({notifications.length})
+                                    </button>
+                                </div>
+                                <div className="max-h-96 overflow-auto">
+                                    {activeTab === 'warnings' && (
+                                        <div>
+                                            <div className="px-4 py-2 text-xs font-medium text-gray-500">
+                                                Học sinh bị cảnh báo
+                                            </div>
+                                            {warnings.length === 0 && (
+                                                <div className="px-4 py-6 text-sm text-gray-500">Chưa có cảnh báo.</div>
+                                            )}
+                                            {warnings.slice(0, 5).map((w) => (
+                                                <button
+                                                    key={w.studentId}
+                                                    onClick={() => {
+                                                        setShowNotifications(false);
+                                                        navigate(`/students/${w.studentId}`);
+                                                    }}
+                                                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-start gap-3"
+                                                >
+                                                    <div
+                                                        className={`mt-0.5 h-6 w-6 rounded-full grid place-items-center text-white text-[10px] font-semibold shadow ${
+                                                            w.severity === 'HIGH'
+                                                                ? 'bg-red-600'
+                                                                : w.severity === 'MEDIUM'
+                                                                  ? 'bg-amber-500'
+                                                                  : 'bg-blue-500'
+                                                        }`}
+                                                    >
+                                                        !
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-sm font-medium text-gray-900 truncate">
+                                                            {w.name} <span className="text-gray-500">#{w.code}</span>
+                                                        </div>
+                                                        <div className="text-xs text-red-600">{w.reason}</div>
+                                                        <div className="text-xs text-gray-600 truncate">
+                                                            {w.detail} — {w.program} • {w.classCode}
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                            {warnings.length > 0 && (
+                                                <div className="px-4 py-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            setShowNotifications(false);
+                                                            navigate('/students');
+                                                        }}
+                                                        className="w-full text-sm font-semibold text-blue-700 hover:text-blue-800"
+                                                    >
+                                                        Xem tất cả học sinh cảnh báo
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    {activeTab === 'all' && (
+                                        <div>
+                                            <div className="px-4 py-2 text-xs font-medium text-gray-500">
+                                                Hoạt động gần đây
+                                            </div>
+                                            {notifications.length === 0 && (
+                                                <div className="px-4 py-6 text-sm text-gray-500">
+                                                    Không có hoạt động.
+                                                </div>
+                                            )}
+                                            {notifications.slice(0, 6).map((n) => (
+                                                <div
+                                                    key={n.id}
+                                                    className="px-4 py-3 border-b last:border-b-0 hover:bg-gray-50"
+                                                >
+                                                    <div className="text-xs text-gray-500 flex justify-between">
+                                                        <span>{new Date(n.createdAt).toLocaleTimeString()}</span>
+                                                        {n.unread && (
+                                                            <span className="text-red-600 font-semibold">Mới</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-sm font-medium text-gray-900 line-clamp-1">
+                                                        {n.title}
+                                                    </div>
+                                                    <div className="text-xs text-gray-600 line-clamp-2">
+                                                        {n.message}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {notifications.length > 0 && (
+                                                <div className="px-4 py-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            setShowNotifications(false);
+                                                            navigate('/activity-log');
+                                                        }}
+                                                        className="w-full text-sm font-semibold text-blue-700 hover:text-blue-800"
+                                                    >
+                                                        Xem Activity Log
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Avatar */}
                     <button 
