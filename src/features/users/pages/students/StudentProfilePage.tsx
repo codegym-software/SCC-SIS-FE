@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import StudentSearch from './search';
 import StudentList from './list';
 import StudentView from './view';
@@ -55,9 +54,6 @@ export default function StudentProfilePage() {
 
     // Get selected center from global store
     const globalSelectedCenterId = useCenterSelection((s) => s.selectedCenterId);
-
-    // Check query params for auto-open modal
-    const [searchParams, setSearchParams] = useSearchParams();
 
     const toast = useToast();
     const [query, setQuery] = useState('');
@@ -226,15 +222,6 @@ export default function StudentProfilePage() {
         };
         initData();
     }, [globalSelectedCenterId]); // Refetch when center changes
-
-    // Auto-open create modal if ?action=create is present
-    useEffect(() => {
-        if (searchParams.get('action') === 'create') {
-            setOpenCreate(true);
-            // Remove query param after opening modal
-            setSearchParams({});
-        }
-    }, [searchParams, setSearchParams]);
 
     // Tự động tìm kiếm khi thay đổi query (debounce)
     useEffect(() => {
