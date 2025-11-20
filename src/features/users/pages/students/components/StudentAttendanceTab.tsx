@@ -143,7 +143,10 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
                         </div>
                     ) : attendanceData ? (
                         <>
-                            {/* Attendance Statistics */}
+                            {/* Attendance Statistics Title */}
+                            <h4 className="text-base font-semibold text-gray-900 mb-4">Thống kê điểm danh</h4>
+
+                            {/* Attendance Statistics (Filtered) */}
                             <div className="grid grid-cols-4 gap-4">
                                 <div className="bg-white p-4 rounded-lg border border-gray-200">
                                     <div className="text-xs font-medium text-gray-500 mb-2">Tổng buổi</div>
@@ -239,7 +242,7 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
                                                                 {record.notes || '—'}
                                                             </td>
                                                         </tr>
-                                                    ))}
+                                                    )}
                                                 </tbody>
                                             </table>
                                         </div>

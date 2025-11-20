@@ -167,7 +167,9 @@ export default function AssignRoleModal({ userId, onClose, onSuccess }: AssignRo
 
   // Thêm hàng mới
   const addNewRow = () => {
-    setDrafts(prev => [...prev, {}])
+    // Nếu user đã có vai trò, tự động set vai trò đó cho draft mới
+    const existingRoleId = existing.length > 0 ? existing[0].roleId : undefined
+    setDrafts(prev => [...prev, { roleId: existingRoleId }])
     setErrors({})
   }
 

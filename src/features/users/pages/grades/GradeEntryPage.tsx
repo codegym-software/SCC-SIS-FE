@@ -34,7 +34,6 @@ export function GradeEntryPage() {
     const [gradeEntry, setGradeEntry] = useState<GradeEntryDetail | null>(null);
     const [gradeInputs, setGradeInputs] = useState<Record<number, GradeInput>>({});
     const [error, setError] = useState<string | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [openImport, setOpenImport] = useState(false);
@@ -101,7 +100,6 @@ export function GradeEntryPage() {
         try {
             setSaving(true);
             setError(null);
-            setSuccessMessage(null);
 
             const updates = Object.values(gradeInputs).map((input) => ({
                 gradeRecordId: input.gradeRecordId,
@@ -110,13 +108,15 @@ export function GradeEntryPage() {
             }));
 
             await updateGradeRecords(parseInt(gradeEntryId), updates);
-            setSuccessMessage('✅ Đã lưu điểm thành công!');
-
+            
             // Reload data to show updated values
             await loadGradeEntry();
-
-            // Clear success message after 3 seconds
-            setTimeout(() => setSuccessMessage(null), 3000);
+            
+            // Show success toast notification
+            toast.success('Nhập điểm thành công!', {
+                description: `Đã cập nhật điểm cho ${updates.length} học viên`,
+                duration: 3000,
+            });
         } catch (err) {
             setError('Không thể lưu điểm. Vui lòng thử lại.');
             console.error('Error saving grades:', err);
@@ -235,12 +235,6 @@ export function GradeEntryPage() {
                 <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>{error}</AlertDescription>
-                </Alert>
-            )}
-            {successMessage && (
-                <Alert className="border-green-500 bg-green-50">
-                    <AlertCircle className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-600">{successMessage}</AlertDescription>
                 </Alert>
             )}
 
