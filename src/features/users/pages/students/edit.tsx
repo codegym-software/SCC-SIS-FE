@@ -15,7 +15,7 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
         phone: student.phone,
         address: student.address || '',
         dateOfBirth: student.dob || '',
-        avatar: student.avatar || '',
+        avatar: student.avatar || ''
     });
 
     // Load avatar from localStorage on mount
@@ -38,16 +38,16 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
     }>({});
 
     const handleInputChange = (field: string, value: string) => {
-        setFormData((prev) => ({
+        setFormData(prev => ({
             ...prev,
-            [field]: value,
+            [field]: value
         }));
-
+        
         // Clear error when user starts typing
         if (errors[field as keyof typeof errors]) {
-            setErrors((prev) => ({
+            setErrors(prev => ({
                 ...prev,
-                [field]: undefined,
+                [field]: undefined
             }));
         }
     };
@@ -58,18 +58,18 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
             // Validate file size (20MB = 20 * 1024 * 1024 bytes)
             const maxSize = 20 * 1024 * 1024;
             if (file.size > maxSize) {
-                setErrors((prev) => ({
+                setErrors(prev => ({
                     ...prev,
-                    avatar: 'Kích thước file không được vượt quá 20MB',
+                    avatar: 'Kích thước file không được vượt quá 20MB'
                 }));
                 return;
             }
 
             // Validate file type
             if (!file.type.startsWith('image/')) {
-                setErrors((prev) => ({
+                setErrors(prev => ({
                     ...prev,
-                    avatar: 'Chỉ được chọn file ảnh',
+                    avatar: 'Chỉ được chọn file ảnh'
                 }));
                 return;
             }
@@ -83,11 +83,11 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                 localStorage.setItem(`student_avatar_${student.id}`, base64);
             };
             reader.readAsDataURL(file);
-
+            
             // Clear error
-            setErrors((prev) => ({
+            setErrors(prev => ({
                 ...prev,
-                avatar: undefined,
+                avatar: undefined
             }));
         }
     };
@@ -96,9 +96,9 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
         setPreviewUrl(null);
         // Remove from localStorage
         localStorage.removeItem(`student_avatar_${student.id}`);
-        setFormData((prev) => ({
+        setFormData(prev => ({
             ...prev,
-            avatar: '',
+            avatar: ''
         }));
     };
 
@@ -130,16 +130,16 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
 
     const handleSave = () => {
         if (validateForm()) {
-            const updatedStudent: StudentUI = {
+            const updatedStudent: Student = {
                 ...student,
                 name: formData.name,
                 email: formData.email,
                 phone: formData.phone,
                 address: formData.address,
                 dob: formData.dateOfBirth,
-                avatar: previewUrl || student.avatar,
+                avatar: previewUrl || student.avatar
             };
-
+            
             onSave?.(updatedStudent);
             onClose?.();
         }
@@ -158,7 +158,10 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                         <p className="text-sm text-gray-500">Cập nhật thông tin học viên {student.name}.</p>
                     </div>
                 </div>
-                <button className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100" onClick={onClose}>
+                <button 
+                    className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
+                    onClick={onClose}
+                >
                     <X size={20} />
                 </button>
             </div>
@@ -167,7 +170,9 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
             <div className="px-4 py-4">
                 {/* Avatar Upload Section */}
                 <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-900 mb-3">Ảnh đại diện</label>
+                    <label className="block text-sm font-medium text-gray-900 mb-3">
+                        Ảnh đại diện
+                    </label>
                     <div className="flex items-center gap-4">
                         {/* Avatar Preview */}
                         <div className="relative">
@@ -208,8 +213,12 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                                 <Upload size={16} />
                                 Chọn ảnh từ máy
                             </label>
-                            <p className="text-xs text-gray-500 mt-1">Tối đa 20MB. Định dạng: JPG, PNG, GIF</p>
-                            {errors.avatar && <p className="text-xs text-red-600 mt-1">{errors.avatar}</p>}
+                            <p className="text-xs text-gray-500 mt-1">
+                                Tối đa 20MB. Định dạng: JPG, PNG, GIF
+                            </p>
+                            {errors.avatar && (
+                                <p className="text-xs text-red-600 mt-1">{errors.avatar}</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -219,7 +228,9 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                     <div className="space-y-4">
                         {/* Họ và tên */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-900 mb-2">Họ và tên</label>
+                            <label className="block text-sm font-medium text-gray-900 mb-2">
+                                Họ và tên
+                            </label>
                             <input
                                 type="text"
                                 value={formData.name}
@@ -229,12 +240,16 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                                 }`}
                                 placeholder="Nhập họ và tên"
                             />
-                            {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name}</p>}
+                            {errors.name && (
+                                <p className="text-xs text-red-600 mt-1">{errors.name}</p>
+                            )}
                         </div>
 
                         {/* Số điện thoại */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-900 mb-2">Số điện thoại</label>
+                            <label className="block text-sm font-medium text-gray-900 mb-2">
+                                Số điện thoại
+                            </label>
                             <div className="relative">
                                 <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
@@ -247,12 +262,16 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                                     placeholder="Nhập số điện thoại"
                                 />
                             </div>
-                            {errors.phone && <p className="text-xs text-red-600 mt-1">{errors.phone}</p>}
+                            {errors.phone && (
+                                <p className="text-xs text-red-600 mt-1">{errors.phone}</p>
+                            )}
                         </div>
 
                         {/* Địa chỉ */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-900 mb-2">Địa chỉ</label>
+                            <label className="block text-sm font-medium text-gray-900 mb-2">
+                                Địa chỉ
+                            </label>
                             <div className="relative">
                                 <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
@@ -265,7 +284,9 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                                     placeholder="Nhập địa chỉ"
                                 />
                             </div>
-                            {errors.address && <p className="text-xs text-red-600 mt-1">{errors.address}</p>}
+                            {errors.address && (
+                                <p className="text-xs text-red-600 mt-1">{errors.address}</p>
+                            )}
                         </div>
                     </div>
 
@@ -273,7 +294,9 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                     <div className="space-y-4">
                         {/* Email */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-900 mb-2">Email</label>
+                            <label className="block text-sm font-medium text-gray-900 mb-2">
+                                Email
+                            </label>
                             <div className="relative">
                                 <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
@@ -286,7 +309,9 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                                     placeholder="Nhập email"
                                 />
                             </div>
-                            {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
+                            {errors.email && (
+                                <p className="text-xs text-red-600 mt-1">{errors.email}</p>
+                            )}
                         </div>
 
                         {/* Ngày sinh */}
@@ -303,7 +328,9 @@ const StudentEdit: React.FC<StudentEditProps> = ({ student, onClose, onSave }) =
                                     errors.dateOfBirth ? 'border-red-300' : 'border-gray-300'
                                 }`}
                             />
-                            {errors.dateOfBirth && <p className="text-xs text-red-600 mt-1">{errors.dateOfBirth}</p>}
+                            {errors.dateOfBirth && (
+                                <p className="text-xs text-red-600 mt-1">{errors.dateOfBirth}</p>
+                            )}
                         </div>
                     </div>
                 </div>
