@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { LucideIcon } from 'lucide-react';
 import {
     Building2,
     Users,
@@ -8,22 +9,33 @@ import {
     Settings,
     BookOpen,
     Sparkles,
+    UserCheck,
+    AlertTriangle,
 } from 'lucide-react';
+import { listClasses } from '../../../../shared/api/classes';
+import { useCenterSelection, useEnsureCenterLoaded } from '../../../../stores/centerSelection';
 
 // Import components
-import Stats from './components/stats';
-import SystemStatus from './components/system-status';
+import Stats from '@/features/users/pages/dashboard/components/stats';
+import SystemStatus from '@/features/users/pages/dashboard/components/system-status';
+import RecentActivity from '@/features/users/pages/dashboard/components/RecentActivity';
+import StudentWarnings from '@/features/users/pages/dashboard/components/StudentWarnings';
+import QuickActions from '@/features/users/pages/dashboard/components/quick-actions';
+import RecentClasses from '@/features/users/pages/dashboard/components/RecentClasses';
 
 // Import APIs
 import { listActiveCenters } from '../../../../shared/api/centers';
 import { listUserViews } from '../../../../shared/api/userViews';
 import { getRoles } from '../../../../shared/api/roles';
+import { getAllStudentsWithEnrollments } from '../../../../shared/api/students';
 import { useUserProfile } from '../../../../stores/userProfile';
 
 export default function DashboardPage() {
     const navigate = useNavigate();
     const { me, loading: userLoading } = useUserProfile();
-    
+    useEnsureCenterLoaded();
+    const selectedCenterId = useCenterSelection((s) => s.selectedCenterId);
+
     // All hooks must be declared before any conditional returns
     const [isLoaded, setIsLoaded] = useState(false);
     const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
@@ -32,13 +44,16 @@ export default function DashboardPage() {
     const [centersCount, setCentersCount] = useState<number>(0);
     const [activeUsersCount, setActiveUsersCount] = useState<number>(0);
     const [rolesCount, setRolesCount] = useState<number>(0);
-    
+    const [classesCount, setClassesCount] = useState<number>(0);
+    const [lecturersCount, setLecturersCount] = useState<number>(0);
+    const [warningsCount, setWarningsCount] = useState<number>(0);
+
     // Redirect students and lecturers to their respective pages
     useEffect(() => {
         if (!userLoading && me) {
             const isStudent = me.roles?.some((role) => role.code === 'STUDENT') ?? false;
             const isLecturer = me.roles?.some((role) => role.code === 'LECTURER') ?? false;
-            
+
             if (isStudent) {
                 navigate('/my-classes', { replace: true });
             } else if (isLecturer) {
@@ -51,7 +66,7 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
         try {
             // Add a small delay to ensure authentication is ready
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 100));
 
             // Fetch centers count
             try {
@@ -78,28 +93,60 @@ export default function DashboardPage() {
                 setCentersCount(0);
             }
 
-            // Fetch users count
+            // Fetch students count
+            // Logic:
+            // - PENDING (đang chờ): học viên chưa vào lớp → đếm chung toàn hệ thống
+            // - ACTIVE (đang học): học viên đang trong lớp → đếm theo trung tâm của lớp
             try {
-                const usersResponse = await listUserViews();
+                const [studentsWithEnrollmentsResponse, classesResponse] = await Promise.all([
+                    getAllStudentsWithEnrollments(),
+                    listClasses(selectedCenterId ? { centerId: selectedCenterId } : undefined)
+                ]);
 
-                if (usersResponse && usersResponse.data) {
-                    const data = usersResponse.data as any;
+                let count = 0;
 
-                    // Handle different response structures like UsersPage does
-                    let count = 0;
-                    if (Array.isArray(data)) {
-                        count = data.length;
-                    } else if (data.items && Array.isArray(data.items)) {
-                        count = data.items.length;
-                    } else if (data.total !== undefined) {
-                        count = data.total;
+                if (studentsWithEnrollmentsResponse && studentsWithEnrollmentsResponse.data) {
+                    const allStudents = studentsWithEnrollmentsResponse.data as any[];
+
+                    // 1. Đếm học viên PENDING (đang chờ) - không phụ thuộc trung tâm
+                    const pendingStudents = allStudents.filter((student: any) => {
+                        return student.overallStatus?.toUpperCase() === 'PENDING';
+                    });
+                    count += pendingStudents.length;
+
+                    // 2. Đếm học viên ACTIVE (đang học) theo trung tâm của lớp
+                    if (classesResponse && classesResponse.data) {
+                        const classes = Array.isArray(classesResponse.data) 
+                            ? classesResponse.data 
+                            : classesResponse.data.items || [];
+
+                        // Tạo Map: classId -> class để tra cứu nhanh
+                        const classMap = new Map();
+                        classes.forEach((cls: any) => {
+                            classMap.set(cls.classId, cls);
+                        });
+
+                        // Đếm học viên có enrollment ACTIVE trong các lớp đã filter
+                        const activeStudentIds = new Set<number>();
+                        allStudents.forEach((student: any) => {
+                            if (student.enrollments && Array.isArray(student.enrollments)) {
+                                student.enrollments.forEach((enrollment: any) => {
+                                    // Kiểm tra enrollment có status ACTIVE và thuộc lớp đã filter
+                                    if (enrollment.status?.toUpperCase() === 'ACTIVE' && 
+                                        classMap.has(enrollment.classId)) {
+                                        activeStudentIds.add(student.studentId);
+                                    }
+                                });
+                            }
+                        });
+
+                        count += activeStudentIds.size;
                     }
-
-                    setActiveUsersCount(count);
-                } else {
-                    setActiveUsersCount(0);
                 }
+
+                setActiveUsersCount(count);
             } catch (usersError) {
+                console.error('Error fetching students:', usersError);
                 setActiveUsersCount(0);
             }
 
@@ -128,15 +175,56 @@ export default function DashboardPage() {
                 setRolesCount(0);
             }
 
-        } catch (error) {
+            // Fetch classes count filtered by selected center if any
+            try {
+                const classesRes = await listClasses(selectedCenterId ? { centerId: selectedCenterId } : undefined);
+                if (classesRes && classesRes.data) {
+                    const data = classesRes.data as any;
+                    let count = 0;
+                    if (Array.isArray(data)) count = data.length;
+                    else if (data.items && Array.isArray(data.items)) count = data.items.length;
+                    else if (data.total !== undefined) count = data.total;
+                    setClassesCount(count);
+                } else {
+                    setClassesCount(0);
+                }
+            } catch (err) {
+                setClassesCount(0);
+            }
 
-            // Set default values in case of error (based on actual API responses)
-            setCentersCount(5);
-            setActiveUsersCount(20); // Updated to match UsersPage
-            setRolesCount(7);
+            // Fetch lecturers count filtered by selected center
+            try {
+                const lecturersRes = await listUserViews(
+                    selectedCenterId ? { centerId: selectedCenterId, roleCode: 'LECTURER' } : { roleCode: 'LECTURER' },
+                );
+                if (lecturersRes && lecturersRes.data) {
+                    const data = lecturersRes.data as any;
+                    let count = 0;
+                    if (Array.isArray(data)) count = data.length;
+                    else if (data.items && Array.isArray(data.items)) count = data.items.length;
+                    else if (data.total !== undefined) count = data.total;
+                    setLecturersCount(count);
+                } else {
+                    setLecturersCount(0);
+                }
+            } catch (err) {
+                setLecturersCount(0);
+            }
+
+            // Fetch warnings count - students with issues (placeholder logic)
+            // TODO: Replace with actual warnings/alerts API when available
+            try {
+                // For now, approximate by checking inactive or problematic students
+                // This could be students with overdue payments, low attendance, etc.
+                setWarningsCount(5); // Placeholder
+            } catch (err) {
+                setWarningsCount(0);
+            }
+        } catch (error) {
+            // Không set giá trị mặc định nữa - để giá trị 0 nếu có lỗi
+            console.error('Error fetching dashboard data:', error);
         }
     };
-
 
     useEffect(() => {
         setIsLoaded(true);
@@ -154,6 +242,14 @@ export default function DashboardPage() {
         fetchDashboardData();
     }, []);
 
+    // Refetch when center changes
+    useEffect(() => {
+        if (isLoaded) {
+            fetchDashboardData();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedCenterId]);
+
     // Listen for changes in appearance settings
     useEffect(() => {
         const handleStorageChange = () => {
@@ -170,41 +266,53 @@ export default function DashboardPage() {
 
     const stats = [
         {
-            label: 'Tổng số Trung tâm',
-            value: centersCount.toString(),
-            sub: `${centersCount} trung tâm hoạt động`,
-            change: null,
-            changeType: 'neutral' as const,
-            icon: Building2 as React.ComponentType<{ size?: number }>,
-            iconColor: 'from-blue-500 to-cyan-500',
-            bgGradient: 'from-blue-50 to-cyan-50',
-            glowColor: 'shadow-blue-200',
-        },
-        {
-            label: 'Người dùng đang hoạt động',
+            label: 'Tổng số học viên',
             value: activeUsersCount.toString(),
-            sub: `${activeUsersCount} người dùng trong hệ thống`,
+            sub: `${activeUsersCount} hồ sơ học viên`,
             change: null,
             changeType: 'neutral' as const,
             icon: Users as React.ComponentType<{ size?: number }>,
             iconColor: 'from-green-500 to-emerald-500',
             bgGradient: 'from-green-50 to-emerald-50',
             glowColor: 'shadow-green-200',
+            onClick: () => navigate('/students'),
         },
         {
-            label: 'Vai trò được định nghĩa',
-            value: rolesCount.toString(),
-            sub: `${rolesCount} vai trò trong hệ thống`,
+            label: 'Lớp đang hoạt động',
+            value: classesCount.toString(),
+            sub: `${classesCount} lớp đang hoạt động`,
             change: null,
             changeType: 'neutral' as const,
-            icon: Shield as React.ComponentType<{ size?: number }>,
+            icon: BookOpen as React.ComponentType<{ size?: number }>,
             iconColor: 'from-purple-500 to-violet-500',
             bgGradient: 'from-purple-50 to-violet-50',
             glowColor: 'shadow-purple-200',
+            onClick: () => navigate('/classes'),
+        },
+        {
+            label: 'Giảng viên',
+            value: lecturersCount.toString(),
+            sub: `${lecturersCount} giảng viên`,
+            change: null,
+            changeType: 'neutral' as const,
+            icon: UserCheck as React.ComponentType<{ size?: number }>,
+            iconColor: 'from-blue-500 to-cyan-500',
+            bgGradient: 'from-blue-50 to-cyan-50',
+            glowColor: 'shadow-blue-200',
+            onClick: () => navigate('/users'),
+        },
+        {
+            label: 'Cảnh báo',
+            value: warningsCount.toString(),
+            sub: `${warningsCount} vấn đề cần xử lý`,
+            change: null,
+            changeType: 'neutral' as const,
+            icon: AlertTriangle as React.ComponentType<{ size?: number }>,
+            iconColor: 'from-red-500 to-orange-500',
+            bgGradient: 'from-red-50 to-orange-50',
+            glowColor: 'shadow-red-200',
         },
     ];
-
-
 
     const systemServices = [
         {
@@ -241,36 +349,76 @@ export default function DashboardPage() {
 
     return (
         <div
-            className="dashboard-container space-y-8 px-6 pt-6 pb-8 w-full relative m-0"
+            className="dashboard-container space-y-8 px-6 py-8 w-full relative m-0"
             style={{
                 minHeight: '100vh',
                 backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat',
-                backgroundAttachment: 'fixed'
+                backgroundAttachment: 'fixed',
             }}
         >
             {/* Background Overlay */}
-            {backgroundImage && (
-                <div className="fixed inset-0 bg-black/20 pointer-events-none z-0"></div>
-            )}
+            {backgroundImage && <div className="fixed inset-0 bg-black/20 pointer-events-none z-0"></div>}
 
             {/* Content */}
             <div className="relative z-20">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="space-y-1 relative z-30">
-                        <h1 className="text-3xl font-bold text-gray-900 bg-white px-4 py-2 rounded-lg">Dashboard</h1>
-                        <p className="text-gray-600 bg-white px-4 py-1 rounded-lg">Tổng quan hệ thống quản lý giáo dục</p>
-                    </div>
+                {/* Page Title */}
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900">Dashboard Trung tâm</h1>
+                    <p className="text-gray-600 mt-1">
+                        {selectedCenterId ? 'Tổng quan theo trung tâm đã chọn' : 'Tổng quan toàn hệ thống'}
+                    </p>
                 </div>
 
                 {/* Stats */}
                 <div className="mb-12 relative z-20">
                     <Stats stats={stats} isLoaded={isLoaded} />
                 </div>
+                {/* Quick actions + Recent classes */}
+                <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-20">
+                    <QuickActions
+                        isLoaded={isLoaded}
+                        actions={[
+                            {
+                                label: 'Thêm học viên',
+                                color: 'bg-gradient-to-br from-blue-500 to-blue-600',
+                                icon: UserPlus,
+                                onClick: () => navigate('/students?action=create'),
+                            },
+                            {
+                                label: 'Tạo lớp học',
+                                color: 'bg-gradient-to-br from-purple-500 to-violet-600',
+                                icon: BookOpen,
+                                onClick: () => navigate('/classes?action=create'),
+                            },
+                            {
+                                label: 'Xem báo cáo',
+                                color: 'bg-gradient-to-br from-emerald-500 to-green-600',
+                                icon: Sparkles,
+                                onClick: () => navigate('/classes'),
+                            },
+                            {
+                                label: 'Quản lý lịch',
+                                color: 'bg-gradient-to-br from-amber-500 to-orange-600',
+                                icon: Settings,
+                                onClick: () => navigate('/classes'),
+                            },
+                        ]}
+                    />
+                    <RecentClasses />
+                </div>
 
+                {/* Student Warnings */}
+                <div className="mb-8 relative z-20">
+                    <StudentWarnings onCountChange={(c) => setWarningsCount(c)} />
+                </div>
+
+                {/* Recent Activity */}
+                <div className="mb-8 relative z-20">
+                    <RecentActivity />
+                </div>
 
                 {/* System Status */}
                 <div className="mb-8 relative z-20">

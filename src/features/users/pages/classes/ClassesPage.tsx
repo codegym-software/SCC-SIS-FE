@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import {
     Search,
     X,
@@ -31,6 +31,7 @@ import AssignInstructorModal from '@/features/users/pages/classes/components/Ass
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
 import { useToast } from '@/shared/hooks/useToast';
 import { useUserProfile } from '@/stores/userProfile';
+import { useCenterSelection, useEnsureCenterLoaded } from '@/stores/centerSelection';
 import http from '@/shared/api/http';
 import { getModulesByProgram, type ModuleResponse } from '@/shared/api/modules';
 import {
@@ -99,12 +100,12 @@ const calculateStatusFromDates = (startDate?: string, endDate?: string): ClassSt
     if (!startDate || !endDate) {
         return 'PLANNED';
     }
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const start = new Date(startDate);
     const end = new Date(endDate);
-    
+
     if (today < start) {
         return 'PLANNED';
     } else if (today > end) {
@@ -267,13 +268,30 @@ function MultiSelect({
 }
 
 export default function ClassesPage() {
+    // Ensure center is loaded from localStorage
+    useEnsureCenterLoaded();
+
+    // Get selected center from global store
+    const globalSelectedCenterId = useCenterSelection((s) => s.selectedCenterId);
+
     const location = useLocation();
     const toast = useToast();
     const { me: userProfile } = useUserProfile();
     const isLecturer = userProfile?.roles?.some((r) => r.code === 'LECTURER');
+    const [searchParams, setSearchParams] = useSearchParams();
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [openCreate, setOpenCreate] = useState(false);
+    
+    // Auto-open create modal if action=create in URL
+    useEffect(() => {
+        if (searchParams.get('action') === 'create') {
+            setOpenCreate(true);
+            // Remove query param after opening modal
+            searchParams.delete('action');
+            setSearchParams(searchParams, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
     const [openEdit, setOpenEdit] = useState<Class | null>(null);
     // ManageStudents now renders inline in Students tab; keep state only if needed elsewhere
     const [openAssignInstructor, setOpenAssignInstructor] = useState<Class | null>(null);
@@ -421,7 +439,7 @@ export default function ClassesPage() {
         if (!pauseConfirm) return;
         try {
             const UpdateClassRequest = {
-                status: 'CANCELLED' as const
+                status: 'CANCELLED' as const,
             };
             const response = await updateClass(Number(pauseConfirm.id), UpdateClassRequest);
             const updatedClass = mapClassDtoToUI(response.data);
@@ -462,8 +480,9 @@ export default function ClassesPage() {
             try {
                 setIsLoading(true);
 
-                // Always fetch classes and programs
-                const [classesRes, programsRes] = await Promise.all([listClasses(), getProgramsLite()]);
+                // Fetch classes with optional center filter
+                const classesParams = globalSelectedCenterId ? { centerId: globalSelectedCenterId } : undefined;
+                const [classesRes, programsRes] = await Promise.all([listClasses(classesParams), getProgramsLite()]);
 
                 const mappedClasses = classesRes.data.map(mapClassDtoToUI);
                 setClasses(mappedClasses);
@@ -485,7 +504,11 @@ export default function ClassesPage() {
                 // Fetch student counts and instructors for all classes in parallel
                 const studentCountPromises = mappedClasses.map(async (cls) => {
                     try {
-                        const res = await getClassStudents(parseInt(cls.id, 10), { status: 'ACTIVE', page: 0, size: 1 });
+                        const res = await getClassStudents(parseInt(cls.id, 10), {
+                            status: 'ACTIVE',
+                            page: 0,
+                            size: 1,
+                        });
                         let activeCount = 0;
                         const data: any = res.data;
                         if (data && typeof data.totalElements === 'number') {
@@ -547,13 +570,31 @@ export default function ClassesPage() {
         };
 
         fetchData();
-    }, [hasGlobalScope]);
+    }, [hasGlobalScope, globalSelectedCenterId]); // Refetch when center changes
+
+    // Handle navigation from dashboard - open class detail if selectedClassId is provided
+    useEffect(() => {
+        const state = location.state as { selectedClassId?: number } | null;
+        if (state?.selectedClassId && classes.length > 0) {
+            const classToSelect = classes.find((c) => c.id === String(state.selectedClassId));
+            if (classToSelect) {
+                setSelectedClass(classToSelect);
+                setView('detail');
+                // Clear state after using it
+                window.history.replaceState({}, document.title);
+            }
+        }
+    }, [location.state, classes]);
 
     // Reset view to 'list' when navigating to this page (including clicking sidebar menu)
     // location.key changes every time user navigates, even to the same path
     useEffect(() => {
-        setView('list');
-        setSelectedClass(null);
+        // Don't reset if we're navigating with a selectedClassId
+        const state = location.state as { selectedClassId?: number } | null;
+        if (!state?.selectedClassId) {
+            setView('list');
+            setSelectedClass(null);
+        }
     }, [location.key]); // Runs every time navigation happens
 
     // Filter classes based on search and status
@@ -711,30 +752,30 @@ export default function ClassesPage() {
                     if (!editing && (!programId || isNaN(programId))) {
                         newErrors.program = 'Vui lòng chọn chương trình';
                     }
-                    
+
                     // Chỉ validate startDate và endDate khi TẠO MỚI (không validate khi edit vì bị disabled)
                     if (!editing) {
                         if (!startDate) {
                             newErrors.startDate = 'Vui lòng chọn ngày bắt đầu';
                         }
-                        
+
                         // Validate endDate phải lớn hơn startDate và thời gian hiện tại
                         if (endDate) {
                             const start = new Date(startDate);
                             const end = new Date(endDate);
                             const today = new Date();
                             today.setHours(0, 0, 0, 0);
-                            
+
                             if (end <= start) {
                                 newErrors.startDate = 'Ngày kết thúc phải lớn hơn ngày bắt đầu';
                             }
-                            
+
                             if (end < today) {
                                 newErrors.startDate = 'Ngày kết thúc phải lớn hơn thời gian hiện tại';
                             }
                         }
                     }
-                    
+
                     if (selectedDays.length === 0 || !selectedTime) {
                         newErrors.schedule = 'Vui lòng chọn đầy đủ ngày và giờ học';
                     }
@@ -748,7 +789,7 @@ export default function ClassesPage() {
                     // Khi edit: lấy startDate và endDate từ editing object
                     const validationStartDate = editing ? editing.startDate : startDate;
                     const validationEndDate = editing ? editing.endDate : endDate;
-                    
+
                     if (validationStartDate && validationEndDate && selectedDays.length > 0) {
                         const start = new Date(validationStartDate);
                         const end = new Date(validationEndDate);
@@ -843,7 +884,7 @@ export default function ClassesPage() {
                             // Các status khác (PLANNED, ONGOING, FINISHED) sẽ tự động tính từ ngày
                             // Bây giờ chỉ set status nếu user muốn tạm dừng class
                             // Không có checkbox "Tạm dừng" nên không set gì cả
-                            
+
                             if (studyDays.length > 0) updatePayload.studyDays = studyDays;
                             if (studyTime) updatePayload.studyTime = studyTime;
 
@@ -1232,8 +1273,8 @@ export default function ClassesPage() {
                             >
                                 {selectedClass.status}
                             </Badge>
-                            {selectedClass.status !== 'Hoàn thành' && (
-                                selectedClass.status === 'Tạm dừng' ? (
+                            {selectedClass.status !== 'Hoàn thành' &&
+                                (selectedClass.status === 'Tạm dừng' ? (
                                     <button
                                         onClick={() => setResumeConfirm(selectedClass)}
                                         className="px-2 py-1 text-xs bg-green-50 text-green-700 hover:bg-green-100 rounded-md transition-colors flex items-center gap-1"
@@ -1251,8 +1292,7 @@ export default function ClassesPage() {
                                         <Pause size={12} />
                                         <span>Tạm dừng</span>
                                     </button>
-                                )
-                            )}
+                                ))}
                             <button
                                 onClick={() => setOpenEdit(selectedClass)}
                                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -1477,10 +1517,7 @@ export default function ClassesPage() {
                             ) : (
                                 <div className="divide-y">
                                     {modules.map((module, index) => (
-                                        <div
-                                            key={module.moduleId}
-                                            className="p-3 hover:bg-gray-50 transition-colors"
-                                        >
+                                        <div key={module.moduleId} className="p-3 hover:bg-gray-50 transition-colors">
                                             <div className="flex items-start gap-3">
                                                 {/* Module Number */}
                                                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-semibold">
@@ -1744,161 +1781,158 @@ export default function ClassesPage() {
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                 {currentClasses.map((classItem, idx) => {
-                                const theme = getCardThemeByKey(
-                                    String((classItem as any).id ?? (classItem as any).name ?? idx),
-                                );
-                                return (
-                                    <div
-                                        key={classItem.id}
-                                        className={`rounded-lg border ${theme.border} ${theme.bg} shadow-sm hover:shadow-lg active:shadow-sm active:scale-[0.98] transition-all duration-200 overflow-hidden cursor-pointer`}
-                                        onClick={() => {
-                                            setSelectedClass(classItem);
-                                            setView('detail');
-                                        }}
-                                    >
-                                        {/* Card Header */}
-                                        <div className="p-4 space-y-3">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <h3 className="font-semibold text-sm line-clamp-1">
-                                                            {classItem.name}
-                                                        </h3>
-                                                        <button
-                                                            className="text-gray-400 hover:text-yellow-500 transition-colors"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                            }}
-                                                        >
-                                                            <Star size={14} />
-                                                        </button>
+                                    const theme = getCardThemeByKey(
+                                        String((classItem as any).id ?? (classItem as any).name ?? idx),
+                                    );
+                                    return (
+                                        <div
+                                            key={classItem.id}
+                                            className={`rounded-lg border ${theme.border} ${theme.bg} shadow-sm hover:shadow-lg active:shadow-sm active:scale-[0.98] transition-all duration-200 overflow-hidden cursor-pointer`}
+                                            onClick={() => {
+                                                setSelectedClass(classItem);
+                                                setView('detail');
+                                            }}
+                                        >
+                                            {/* Card Header */}
+                                            <div className="p-4 space-y-3">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <h3 className="font-semibold text-sm line-clamp-1">
+                                                                {classItem.name}
+                                                            </h3>
+                                                            <button
+                                                                className="text-gray-400 hover:text-yellow-500 transition-colors"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                }}
+                                                            >
+                                                                <Star size={14} />
+                                                            </button>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500">Cập nhật 3 giờ trước</p>
                                                     </div>
-                                                    <p className="text-xs text-gray-500">Cập nhật 3 giờ trước</p>
+
+                                                    {/* Dropdown Menu */}
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <button
+                                                                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                }}
+                                                            >
+                                                                <MoreVertical size={16} className="text-gray-500" />
+                                                            </button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-40">
+                                                            <DropdownMenuItem
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setOpenEdit(classItem);
+                                                                }}
+                                                                className="flex items-center gap-2 cursor-pointer"
+                                                            >
+                                                                <Edit size={14} />
+                                                                <span>Chỉnh sửa</span>
+                                                            </DropdownMenuItem>
+                                                            {classItem.status !== 'Hoàn thành' &&
+                                                                (classItem.status === 'Tạm dừng' ? (
+                                                                    <DropdownMenuItem
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setResumeConfirm(classItem);
+                                                                        }}
+                                                                        className="flex items-center gap-2 cursor-pointer text-green-600"
+                                                                    >
+                                                                        <Check size={14} />
+                                                                        <span>Khôi phục</span>
+                                                                    </DropdownMenuItem>
+                                                                ) : (
+                                                                    <DropdownMenuItem
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setPauseConfirm(classItem);
+                                                                        }}
+                                                                        className="flex items-center gap-2 cursor-pointer text-orange-600"
+                                                                    >
+                                                                        <X size={14} />
+                                                                        <span>Tạm dừng</span>
+                                                                    </DropdownMenuItem>
+                                                                ))}
+                                                            <DropdownMenuItem
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                }}
+                                                                className="flex items-center gap-2 cursor-pointer text-red-600"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                                <span>Xóa</span>
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </div>
 
-                                                {/* Dropdown Menu */}
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <button
-                                                            className="p-1 hover:bg-gray-100 rounded transition-colors"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
+                                                {/* Status Badge */}
+                                                <Badge
+                                                    variant={
+                                                        classItem.status === 'Đang học'
+                                                            ? 'primary'
+                                                            : classItem.status === 'Chuẩn bị'
+                                                              ? 'secondary'
+                                                              : classItem.status === 'Hoàn thành'
+                                                                ? 'success'
+                                                                : 'destructive'
+                                                    }
+                                                    className="text-xs"
+                                                >
+                                                    {classItem.status}
+                                                </Badge>
+
+                                                {/* Description */}
+                                                <p className="text-xs text-gray-600 line-clamp-2 min-h-[32px]">
+                                                    {classItem.description || 'Không có mô tả'}
+                                                </p>
+
+                                                {/* Progress */}
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center justify-between text-xs">
+                                                        <span className="text-gray-500">Học viên</span>
+                                                        <span className="font-medium">
+                                                            {classItem.students} / {classItem.maxStudents}
+                                                        </span>
+                                                    </div>
+                                                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
+                                                            style={{
+                                                                width: `${Math.min(100, (classItem.students / classItem.maxStudents) * 100)}%`,
                                                             }}
-                                                        >
-                                                            <MoreVertical size={16} className="text-gray-500" />
-                                                        </button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-40">
-                                                        <DropdownMenuItem
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setOpenEdit(classItem);
-                                                            }}
-                                                            className="flex items-center gap-2 cursor-pointer"
-                                                        >
-                                                            <Edit size={14} />
-                                                            <span>Chỉnh sửa</span>
-                                                        </DropdownMenuItem>
-                                                        {classItem.status !== 'Hoàn thành' && (
-                                                            classItem.status === 'Tạm dừng' ? (
-                                                                <DropdownMenuItem 
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setResumeConfirm(classItem);
-                                                                    }}
-                                                                    className="flex items-center gap-2 cursor-pointer text-green-600"
-                                                                >
-                                                                    <Check size={14} />
-                                                                    <span>Khôi phục</span>
-                                                                </DropdownMenuItem>
-                                                            ) : (
-                                                                <DropdownMenuItem 
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setPauseConfirm(classItem);
-                                                                    }}
-                                                                    className="flex items-center gap-2 cursor-pointer text-orange-600"
-                                                                >
-                                                                    <X size={14} />
-                                                                    <span>Tạm dừng</span>
-                                                                </DropdownMenuItem>
-                                                            )
-                                                        )}
-                                                        <DropdownMenuItem 
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                            }}
-                                                            className="flex items-center gap-2 cursor-pointer text-red-600"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                            <span>Xóa</span>
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Meta Info */}
+                                                <div className="space-y-2 pt-2 border-t border-gray-100">
+                                                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                                                        <Calendar size={12} className="text-gray-400" />
+                                                        <span>{classItem.startDate}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                                                        <ClipboardList size={12} className="text-gray-400" />
+                                                        <span className="line-clamp-1">{classItem.program}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                                                        <Users size={12} className="text-gray-400" />
+                                                        <span>{classItem.instructors?.length || 0} giảng viên</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Instructors */}
                                             </div>
-
-                                            {/* Status Badge */}
-                                            <Badge
-                                                variant={
-                                                    classItem.status === 'Đang học'
-                                                        ? 'primary'
-                                                        : classItem.status === 'Chuẩn bị'
-                                                          ? 'secondary'
-                                                          : classItem.status === 'Hoàn thành'
-                                                            ? 'success'
-                                                            : 'destructive'
-                                                }
-                                                className="text-xs"
-                                            >
-                                                {classItem.status}
-                                            </Badge>
-
-                                            {/* Description */}
-                                            <p className="text-xs text-gray-600 line-clamp-2 min-h-[32px]">
-                                                {classItem.description || 'Không có mô tả'}
-                                            </p>
-
-                                            {/* Progress */}
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between text-xs">
-                                                    <span className="text-gray-500">Học viên</span>
-                                                    <span className="font-medium">
-                                                        {classItem.students} / {classItem.maxStudents}
-                                                    </span>
-                                                </div>
-                                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
-                                                        style={{
-                                                            width: `${Math.min(100, (classItem.students / classItem.maxStudents) * 100)}%`,
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            {/* Meta Info */}
-                                            <div className="space-y-2 pt-2 border-t border-gray-100">
-                                                <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                    <Calendar size={12} className="text-gray-400" />
-                                                    <span>{classItem.startDate}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                    <ClipboardList size={12} className="text-gray-400" />
-                                                    <span className="line-clamp-1">{classItem.program}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                    <Users size={12} className="text-gray-400" />
-                                                    <span>
-                                                        {classItem.instructors?.length || 0} giảng viên
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {/* Instructors */}
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
                             </div>
 
                             {/* Pagination */}
