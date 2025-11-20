@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import {
     Search,
     X,
@@ -278,6 +278,10 @@ export default function ClassesPage() {
     const toast = useToast();
     const { me: userProfile } = useUserProfile();
     const isLecturer = userProfile?.roles?.some((r) => r.code === 'LECTURER');
+
+    // Check query params for auto-open modal
+    const [searchParams, setSearchParams] = useSearchParams();
+
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [openCreate, setOpenCreate] = useState(false);
@@ -415,6 +419,15 @@ export default function ClassesPage() {
             setResumeConfirm(null);
         }
     };
+
+    // Auto-open create modal if ?action=create is present
+    useEffect(() => {
+        if (searchParams.get('action') === 'create') {
+            setOpenCreate(true);
+            // Remove query param after opening modal
+            setSearchParams({});
+        }
+    }, [searchParams, setSearchParams]);
 
     // Fetch classes and programs from API
     useEffect(() => {

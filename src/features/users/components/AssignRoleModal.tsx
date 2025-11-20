@@ -481,60 +481,74 @@ export default function AssignRoleModal({ userId, onClose, onSuccess }: AssignRo
                     </div>
                   )}
 
-                  {/* (B) Thêm vai trò mới */}
+                  {/* (B) Gán vai trò hiện có cho trung tâm khác */}
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-medium">Thêm vai trò mới</h3>
-                      <button
-                        type="button"
-                        onClick={addNewRow}
-                        className="text-sm text-blue-600 hover:text-blue-700"
-                      >
-                        + Thêm vai trò
-                      </button>
+                      <h3 className="text-sm font-medium">
+                        {existing.length > 0 ? 'Gán vai trò hiện có cho trung tâm khác' : 'Khôi phục vai trò đã bị hủy gán'}
+                      </h3>
+                      {(existing.length > 0 || revokedRoles.length > 0) && (
+                        <button
+                          type="button"
+                          onClick={addNewRow}
+                          className="text-sm text-blue-600 hover:text-blue-700"
+                        >
+                          + Thêm phân quyền
+                        </button>
+                      )}
                     </div>
 
-                    {drafts.length === 0 ? (
+                    {existing.length === 0 && revokedRoles.length === 0 ? (
                       <div className="border-2 border-dashed rounded-lg p-6 text-center text-gray-400 text-sm">
-                        Nhấn "+ Thêm vai trò" để gán vai trò mới
+                        Người dùng chưa có vai trò nào. Vui lòng liên hệ quản trị viên để gán vai trò mới.
+                      </div>
+                    ) : drafts.length === 0 ? (
+                      <div className="border-2 border-dashed rounded-lg p-6 text-center text-gray-400 text-sm">
+                        {existing.length > 0 
+                          ? 'Nhấn "+ Thêm phân quyền" để gán vai trò hiện có cho trung tâm khác'
+                          : 'Nhấn "+ Thêm phân quyền" để khôi phục vai trò gốc (vai trò đã bị hủy gán)'}
                       </div>
                     ) : (
                       <div className="space-y-3">
                         {drafts.map((draft, idx) => {
-                          const isGlobal = isGlobalRole(draft.roleId)
-                          const isCenter = !isGlobal && draft.roleId !== undefined
+                          // Lấy vai trò từ existing hoặc revoked roles
+                          let fixedRoleId: number
+                          let fixedRoleName: string
+                          let isGlobal: boolean
+
+                          if (existing.length > 0) {
+                            // Có vai trò hiện tại → dùng vai trò đầu tiên
+                            const defaultRole = existing[0]
+                            fixedRoleId = defaultRole.roleId
+                            fixedRoleName = defaultRole.roleName
+                            isGlobal = defaultRole.scope === 'GLOBAL'
+                          } else if (revokedRoles.length > 0) {
+                            // Không còn vai trò hiện tại → lấy từ revoked roles
+                            const revokedRoleId = revokedRoles[0].roleId
+                            const revokedRole = roles.find(r => r.roleId === revokedRoleId)
+                            fixedRoleId = revokedRoleId
+                            fixedRoleName = revokedRole?.name || `Role ID: ${revokedRoleId}`
+                            isGlobal = revokedRole?.scope === 'GLOBAL' || false
+                          } else {
+                            // Fallback (không nên xảy ra)
+                            return null
+                          }
 
                           return (
                             <div key={idx} className="border rounded-lg p-4">
                               <div className="flex gap-3 items-start">
-                                {/* Role select */}
+                                {/* Role display (read-only) */}
                                 <div className="flex-1">
-                                  <label className="block text-xs text-gray-600 mb-1">Vai trò *</label>
-                                  <select
-                                    value={draft.roleId || ''}
-                                    onChange={(e) => updateDraft(idx, 'roleId', e.target.value ? Number(e.target.value) : null)}
-                                    className={`w-full h-10 rounded-lg border px-3 text-sm ${errors.drafts?.[idx] ? 'border-red-500' : 'border-gray-300'
-                                      }`}
-                                  >
-                                    <option value="">-- Chọn vai trò --</option>
-                                    {roles.map(role => {
-                                      const isRoleRevoked = isRevoked(role.roleId, draft.centerId)
-                                      return (
-                                        <option 
-                                          key={role.roleId} 
-                                          value={role.roleId}
-                                          disabled={isRoleRevoked}
-                                        >
-                                          {role.name}{isRoleRevoked ? ' (Đã bị hủy gán)' : ''}
-                                        </option>
-                                      )
-                                    })}
-                                  </select>
+                                  <label className="block text-xs text-gray-600 mb-1">Vai trò</label>
+                                  <div className="w-full h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm flex items-center text-gray-700 font-medium">
+                                    {fixedRoleName}
+                                    <span className="ml-2 text-xs text-gray-500">(Không thể thay đổi)</span>
+                                  </div>
                                 </div>
 
                                 {/* Center select */}
                                 <div className="flex-1">
-                                  <label className="block text-xs text-gray-600 mb-1">Trung tâm {!isGlobal && '*'}</label>
+                                  <label className="block text-xs text-gray-600 mb-1">Trung tâm *</label>
                                   {isGlobal ? (
                                     <div className="w-full h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm flex items-center text-gray-900 font-medium">
                                       Tất cả trung tâm
@@ -545,13 +559,22 @@ export default function AssignRoleModal({ userId, onClose, onSuccess }: AssignRo
                                         value={draft.centerId === null ? '' : draft.centerId}
                                         onChange={(e) => {
                                           const val = e.target.value
-                                          updateDraft(idx, 'centerId', val === ALL_CENTERS_VALUE ? ALL_CENTERS_VALUE : (val ? Number(val) : null))
+                                          // Tự động set roleId khi chọn center
+                                          setDrafts(prev => prev.map((d, i) => 
+                                            i === idx 
+                                              ? { 
+                                                  roleId: fixedRoleId,
+                                                  centerId: val === ALL_CENTERS_VALUE ? ALL_CENTERS_VALUE : (val ? Number(val) : null),
+                                                  scope: 'CENTER'
+                                                }
+                                              : d
+                                          ))
                                         }}
                                         className={`w-full h-10 rounded-lg border px-3 text-sm ${errors.drafts?.[idx] ? 'border-red-500' : 'border-gray-300'
                                           }`}
                                       >
                                         <option value="">-- Chọn trung tâm --</option>
-                                        {isCenter && <option value={ALL_CENTERS_VALUE}>Tất cả trung tâm ({centers.length})</option>}
+                                        <option value={ALL_CENTERS_VALUE}>Tất cả trung tâm ({centers.length})</option>
                                         {centers.map(center => (
                                           <option key={center.centerId} value={center.centerId}>
                                             {center.name}

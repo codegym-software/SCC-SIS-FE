@@ -6,6 +6,7 @@ interface CenterSelectionState {
     selectedCenterId: number | null; // null means all / default
     selectedCenterName: string | null;
     setCenter: (centerId: number | null, centerName?: string | null) => void;
+    clearCenter: () => void;
     loadFromStorage: () => void;
 }
 
@@ -25,6 +26,14 @@ export const useCenterSelection = create<CenterSelectionState>((set) => ({
             // ignore storage errors
         }
         set({ selectedCenterId: centerId, selectedCenterName: centerName || null });
+    },
+    clearCenter: () => {
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+        } catch (err) {
+            // ignore storage errors
+        }
+        set({ selectedCenterId: null, selectedCenterName: null });
     },
     loadFromStorage: () => {
         try {
