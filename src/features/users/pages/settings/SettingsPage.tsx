@@ -15,11 +15,12 @@ type TabType = 'profile' | 'security' | 'notifications' | 'appearance' | 'privac
 export default function SettingsPage() {
     const toast = useToast();
     const [activeTab, setActiveTab] = useState<TabType>('profile');
-    const { userProfile, loading } = useUserProfile();
+    const { me, loading } = useUserProfile();
+    const mainRole = me?.roles?.[0];
 
     const [formData, setFormData] = useState({
-        fullName: '',
-        email: '',
+        fullName: me?.fullName ?? '',
+        email: me?.email ?? '',
         phone: '',
         bio: '',
         avatar: '',
@@ -99,16 +100,14 @@ export default function SettingsPage() {
 
     // Update form data when profile is loaded
     useEffect(() => {
-        if (userProfile) {
+        if (me) {
             setFormData(prev => ({
                 ...prev,
-                fullName: userProfile.fullName,
-                email: userProfile.email,
-                phone: userProfile.phoneNumber ?? '',
-                avatar: userProfile.avatarUrl ?? '',
+                fullName: me.fullName,
+                email: me.email,
             }));
         }
-    }, [userProfile]);
+    }, [me]);
 
     const tabs = [
         { id: 'profile' as TabType, label: 'Hồ sơ', icon: User },
