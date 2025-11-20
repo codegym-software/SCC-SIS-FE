@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useToast } from '@/shared/hooks/useToast';
 import { getStudentAttendanceHistory, type StudentAttendanceHistory } from '@/shared/api/attendance';
 import type { StudentUI } from '@/shared/types/student-ui';
@@ -13,11 +12,8 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
     const [selectedClass, setSelectedClass] = useState<any | null>(null);
     const [attendanceData, setAttendanceData] = useState<StudentAttendanceHistory | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    
-    // Filter states
-    const currentDate = new Date();
-    const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1); // 1-12
-    const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
+    const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
     // Auto-select first enrollment if available
     useEffect(() => {
@@ -58,61 +54,42 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedClass, student.id]);
 
-    // Filter records by selected month and year
-    const filteredRecords = React.useMemo(() => {
+    // Filter records by selected month/year
+    const filteredRecords = useMemo(() => {
         if (!attendanceData?.records) return [];
         
         return attendanceData.records.filter(record => {
-            const recordDate = new Date(record.attendanceDate);
-            return recordDate.getMonth() + 1 === selectedMonth && recordDate.getFullYear() === selectedYear;
+            const date = new Date(record.attendanceDate);
+            return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
         });
     }, [attendanceData, selectedMonth, selectedYear]);
 
-    // Calculate statistics based on filtered data
-    const filteredStats = React.useMemo(() => {
+    // Calculate statistics for filtered data
+    const filteredStats = useMemo(() => {
         const totalSessions = filteredRecords.length;
         const presentCount = filteredRecords.filter(r => r.status === 'PRESENT').length;
         const absentCount = filteredRecords.filter(r => r.status === 'ABSENT').length;
         const percentage = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
-
-        return {
-            totalSessions,
-            presentCount,
-            absentCount,
-            percentage
-        };
+        
+        return { totalSessions, presentCount, absentCount, percentage };
     }, [filteredRecords]);
 
-    // Month options (1-12)
-    const months = [
-        { value: 1, label: 'Tháng 1' },
-        { value: 2, label: 'Tháng 2' },
-        { value: 3, label: 'Tháng 3' },
-        { value: 4, label: 'Tháng 4' },
-        { value: 5, label: 'Tháng 5' },
-        { value: 6, label: 'Tháng 6' },
-        { value: 7, label: 'Tháng 7' },
-        { value: 8, label: 'Tháng 8' },
-        { value: 9, label: 'Tháng 9' },
-        { value: 10, label: 'Tháng 10' },
-        { value: 11, label: 'Tháng 11' },
-        { value: 12, label: 'Tháng 12' },
-    ];
+    const getAttendancePercentage = () => {
+        if (!attendanceData || attendanceData.totalSessions === 0) return 0;
+        return Math.round((attendanceData.presentCount / attendanceData.totalSessions) * 100);
+    };
 
-    // Generate available years from attendance data
-    const availableYears = React.useMemo(() => {
-        if (!attendanceData?.records || attendanceData.records.length === 0) {
-            return [currentDate.getFullYear()];
-        }
+    // Generate month/year options
+    const months = Array.from({ length: 12 }, (_, i) => ({
+        value: i + 1,
+        label: `Tháng ${i + 1}`
+    }));
 
-        const years = new Set<number>();
-        attendanceData.records.forEach(record => {
-            const year = new Date(record.attendanceDate).getFullYear();
-            years.add(year);
-        });
-
-        return Array.from(years).sort((a, b) => b - a);
-    }, [attendanceData]);
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 5 }, (_, i) => ({
+        value: currentYear - i,
+        label: `${currentYear - i}`
+    }));
 
     return (
         <div className="space-y-5">
@@ -190,40 +167,32 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
                             </div>
 
                             {/* Detailed Records */}
-                            {attendanceData.records.length > 0 ? (
+                            {filteredRecords.length > 0 ? (
                                 <div>
                                     <div className="flex items-center justify-between mb-3">
                                         <h4 className="text-sm font-medium text-gray-900">
                                             Lịch sử điểm danh ({filteredRecords.length} buổi)
                                         </h4>
-                                        
-                                        {/* Month and Year Filters */}
-                                        <div className="flex gap-2">
-                                            {/* Month Filter */}
+                                        {/* Month/Year Filter */}
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm text-gray-600">Tháng:</span>
                                             <select
                                                 value={selectedMonth}
-                                                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                                                className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
                                             >
-                                                <option value={0}>Tất cả tháng</option>
-                                                {months.map((month) => (
-                                                    <option key={month.value} value={month.value}>
-                                                        {month.label}
-                                                    </option>
+                                                {months.map(month => (
+                                                    <option key={month.value} value={month.value}>{month.label}</option>
                                                 ))}
                                             </select>
-
-                                            {/* Year Filter */}
+                                            <span className="text-sm text-gray-600">Năm:</span>
                                             <select
                                                 value={selectedYear}
-                                                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                                                className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
                                             >
-                                                <option value={0}>Tất cả năm</option>
-                                                {availableYears.map((year) => (
-                                                    <option key={year} value={year}>
-                                                        {year}
-                                                    </option>
+                                                {years.map(year => (
+                                                    <option key={year.value} value={year.value}>{year.label}</option>
                                                 ))}
                                             </select>
                                         </div>
@@ -248,37 +217,29 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-gray-100">
-                                                    {filteredRecords.length > 0 ? (
-                                                        filteredRecords.map((record) => (
-                                                            <tr key={record.sessionId} className="hover:bg-gray-50 transition-colors">
-                                                                <td className="px-4 py-3 text-sm text-gray-900">
-                                                                    {new Date(record.attendanceDate).toLocaleDateString('vi-VN', {
-                                                                        day: '2-digit',
-                                                                        month: '2-digit',
-                                                                        year: 'numeric'
-                                                                    })}
-                                                                </td>
-                                                                <td className="px-4 py-3">
-                                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                                                                        record.status === 'PRESENT' 
-                                                                            ? 'bg-green-100 text-green-700' 
-                                                                            : 'bg-red-100 text-red-700'
-                                                                    }`}>
-                                                                        {record.status === 'PRESENT' ? '✓ Có mặt' : '✕ Vắng'}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="px-4 py-3 text-sm text-gray-700">
-                                                                    {record.teacherName || '—'}
-                                                                </td>
-                                                                <td className="px-4 py-3 text-sm text-gray-600">
-                                                                    {record.notes || '—'}
-                                                                </td>
-                                                            </tr>
-                                                        ))
-                                                    ) : (
-                                                        <tr>
-                                                            <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
-                                                                Không có buổi điểm danh nào trong tháng này
+                                                    {filteredRecords.map((record) => (
+                                                        <tr key={record.sessionId} className="hover:bg-gray-50 transition-colors">
+                                                            <td className="px-4 py-3 text-sm text-gray-900">
+                                                                {new Date(record.attendanceDate).toLocaleDateString('vi-VN', {
+                                                                    day: '2-digit',
+                                                                    month: '2-digit',
+                                                                    year: 'numeric'
+                                                                })}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                                                    record.status === 'PRESENT' 
+                                                                        ? 'bg-green-100 text-green-700' 
+                                                                        : 'bg-red-100 text-red-700'
+                                                                }`}>
+                                                                    {record.status === 'PRESENT' ? '✓ Có mặt' : '✕ Vắng'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm text-gray-700">
+                                                                {record.teacherName || '—'}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm text-gray-600">
+                                                                {record.notes || '—'}
                                                             </td>
                                                         </tr>
                                                     )}
@@ -289,9 +250,9 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
                                 </div>
                             ) : (
                                 <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
-                                    <p className="text-sm text-gray-600">Chưa có dữ liệu điểm danh</p>
+                                    <p className="text-sm text-gray-600">Không có dữ liệu điểm danh trong tháng {selectedMonth}/{selectedYear}</p>
                                     <p className="text-xs text-gray-500 mt-1">
-                                        Giảng viên chưa điểm danh cho lớp này
+                                        Thử chọn tháng/năm khác
                                     </p>
                                 </div>
                             )}
