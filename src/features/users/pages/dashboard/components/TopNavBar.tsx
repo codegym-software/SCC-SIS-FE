@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, Bell, Search } from 'lucide-react';
 import { useUserProfile } from '@/stores/userProfile';
@@ -18,9 +18,64 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
     const { userProfile } = useUserProfile();
     const location = useLocation();
     const navigate = useNavigate();
+    const { selectedCenterId } = useCenterSelection();
+    
+    // State for notifications dropdown
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [activeTab, setActiveTab] = useState<'warnings' | 'all'>('warnings');
+    const [warnings, setWarnings] = useState<StudentWarning[]>([]);
+    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+    const notifRef = useRef<HTMLDivElement>(null);
+    
     // Hiển thị CenterSwitcher trên trang tổng quan (path '/') cho các role có quyền xem số liệu theo trung tâm
     const canSelectCenter = userProfile?.roles?.[0]?.code && ['CENTER_MANAGER', 'SUPER_ADMIN'].includes(userProfile.roles[0].code);
     const showCenterSwitcher = canSelectCenter && location.pathname === '/';
+
+    // Load warnings and notifications
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                console.log('[TopNavBar] Loading warnings and notifications...');
+                const [warningsRes, notificationsRes] = await Promise.all([
+                    studentWarningsApi.getWarnings(selectedCenterId || undefined),
+                    notificationsApi.getNotifications(),
+                ]);
+                
+                console.log('[TopNavBar] Warnings response:', warningsRes);
+                console.log('[TopNavBar] Notifications response:', notificationsRes);
+                
+                const warningsData = Array.isArray(warningsRes.data) ? warningsRes.data : [];
+                const notificationsData = Array.isArray(notificationsRes.data) ? notificationsRes.data : [];
+                
+                console.log('[TopNavBar] Parsed warnings:', warningsData);
+                console.log('[TopNavBar] Parsed notifications:', notificationsData);
+                
+                setWarnings(warningsData);
+                setNotifications(notificationsData);
+            } catch (error) {
+                console.error('[TopNavBar] Failed to load notifications:', error);
+                // Set empty arrays on error to prevent undefined issues
+                setWarnings([]);
+                setNotifications([]);
+            }
+        };
+        loadData();
+    }, [selectedCenterId]);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+                setShowNotifications(false);
+            }
+        };
+        if (showNotifications) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [showNotifications]);
+
+    const warningCount = warnings.length;
 
     return (
         <div className="sticky top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
