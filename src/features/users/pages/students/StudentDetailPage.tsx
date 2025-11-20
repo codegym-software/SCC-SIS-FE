@@ -29,6 +29,9 @@ export default function StudentDetailPage() {
     const [selectedClass, setSelectedClass] = useState<any | null>(null);
     const [grades, setGrades] = useState<GradeRecordResponse[]>([]);
     const [gradesLoading, setGradesLoading] = useState(false);
+    const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+    const [selectedClassForScores, setSelectedClassForScores] = useState<string>('ALL');
 
     // Map DTO -> UI
     const mapDto = (dto: StudentWithEnrollmentsDto): StudentUI => ({
@@ -146,6 +149,47 @@ export default function StudentDetailPage() {
                 return status;
         }
     };
+
+    // Filter grades by month/year and class
+    const filteredGrades = grades.filter(grade => {
+        // Filter by class
+        if (selectedClassForScores !== 'ALL' && grade.className !== selectedClassForScores) {
+            return false;
+        }
+        
+        // Filter by month/year if entryDate exists
+        if (grade.entryDate) {
+            const date = new Date(grade.entryDate);
+            return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
+        }
+        
+        return true;
+    });
+
+    // Calculate statistics for filtered grades
+    const gradeStats = {
+        totalExams: filteredGrades.length,
+        passedExams: filteredGrades.filter(g => g.passStatus === 'PASS').length,
+        failedExams: filteredGrades.filter(g => g.passStatus === 'FAIL').length,
+        passRate: filteredGrades.length > 0 
+            ? Math.round((filteredGrades.filter(g => g.passStatus === 'PASS').length / filteredGrades.length) * 100)
+            : 0
+    };
+
+    // Generate month/year options
+    const months = Array.from({ length: 12 }, (_, i) => ({
+        value: i + 1,
+        label: `Tháng ${i + 1}`
+    }));
+
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 5 }, (_, i) => ({
+        value: currentYear - i,
+        label: `${currentYear - i}`
+    }));
+
+    // Get unique class names from grades
+    const classOptions = ['ALL', ...Array.from(new Set(grades.map(g => g.className).filter(Boolean)))];
 
     if (loading) return <div className="bg-white rounded-lg border p-8 text-center">Đang tải dữ liệu...</div>;
     if (!student) return <div className="bg-white rounded-lg border p-8 text-center">Không tìm thấy học viên</div>;
@@ -376,12 +420,49 @@ export default function StudentDetailPage() {
                         {activeTab === 'scores' && (
                             <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                                 <div className="p-6 border-b">
-                                    <h4 className="text-base font-semibold text-gray-900">Bảng điểm</h4>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        Danh sách điểm thi của học viên
-                                    </p>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h4 className="text-base font-semibold text-gray-900">Bảng điểm</h4>
+                                            <p className="text-sm text-gray-500 mt-1">
+                                                Danh sách điểm thi của học viên
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-sm text-gray-600">Lớp học:</span>
+                                            <select
+                                                value={selectedClassForScores}
+                                                onChange={(e) => setSelectedClassForScores(e.target.value)}
+                                                className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                                            >
+                                                <option value="ALL">Tất cả lớp</option>
+                                                {classOptions.filter(c => c !== 'ALL').map(className => (
+                                                    <option key={className} value={className}>{className}</option>
+                                                ))}
+                                            </select>
+                                            <span className="text-sm text-gray-600">Tháng:</span>
+                                            <select
+                                                value={selectedMonth}
+                                                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                                                className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                                            >
+                                                {months.map(month => (
+                                                    <option key={month.value} value={month.value}>{month.label}</option>
+                                                ))}
+                                            </select>
+                                            <span className="text-sm text-gray-600">Năm:</span>
+                                            <select
+                                                value={selectedYear}
+                                                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                                                className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                                            >
+                                                {years.map(year => (
+                                                    <option key={year.value} value={year.value}>{year.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
-                                
+
                                 {gradesLoading ? (
                                     <div className="p-8 text-center text-gray-500">
                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
@@ -393,22 +474,30 @@ export default function StudentDetailPage() {
                                         <p>Chưa có điểm thi nào</p>
                                     </div>
                                 ) : (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th className="text-left py-3 px-6 font-medium text-gray-700">Lớp học</th>
-                                                    <th className="text-left py-3 px-6 font-medium text-gray-700">Module</th>
-                                                    <th className="text-left py-3 px-6 font-medium text-gray-700">Học kỳ</th>
-                                                    <th className="text-center py-3 px-6 font-medium text-gray-700">Lý thuyết</th>
-                                                    <th className="text-center py-3 px-6 font-medium text-gray-700">Thực hành</th>
-                                                    <th className="text-center py-3 px-6 font-medium text-gray-700">Tổng kết</th>
-                                                    <th className="text-center py-3 px-6 font-medium text-gray-700">Kết quả</th>
-                                                    <th className="text-left py-3 px-6 font-medium text-gray-700">Ngày thi</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-200">
-                                                {grades.map((grade, index) => (
+                                    <>
+                                        {filteredGrades.length === 0 ? (
+                                            <div className="p-8 text-center text-gray-500">
+                                                <BarChart3 size={40} className="mx-auto mb-3 text-gray-300" />
+                                                <p>Không có điểm thi trong tháng {selectedMonth}/{selectedYear}</p>
+                                                <p className="text-xs text-gray-400 mt-1">Thử chọn tháng/năm hoặc lớp khác</p>
+                                            </div>
+                                        ) : (
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-sm">
+                                                <thead className="bg-gray-50">
+                                                    <tr>
+                                                        <th className="text-left py-3 px-6 font-medium text-gray-700">Lớp học</th>
+                                                        <th className="text-left py-3 px-6 font-medium text-gray-700">Module</th>
+                                                        <th className="text-left py-3 px-6 font-medium text-gray-700">Học kỳ</th>
+                                                        <th className="text-center py-3 px-6 font-medium text-gray-700">Lý thuyết</th>
+                                                        <th className="text-center py-3 px-6 font-medium text-gray-700">Thực hành</th>
+                                                        <th className="text-center py-3 px-6 font-medium text-gray-700">Tổng kết</th>
+                                                        <th className="text-center py-3 px-6 font-medium text-gray-700">Kết quả</th>
+                                                        <th className="text-left py-3 px-6 font-medium text-gray-700">Ngày thi</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-200">
+                                                    {filteredGrades.map((grade, index) => (
                                                     <tr key={index} className="hover:bg-gray-50">
                                                         <td className="py-3 px-6 text-gray-900">
                                                             {grade.className || '-'}
@@ -445,11 +534,13 @@ export default function StudentDetailPage() {
                                                         <td className="py-3 px-6 text-gray-600">
                                                             {grade.entryDate || '-'}
                                                         </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         )}

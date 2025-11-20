@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useToast } from '@/shared/hooks/useToast';
 import { getStudentAttendanceHistory, type StudentAttendanceHistory } from '@/shared/api/attendance';
 import type { StudentUI } from '@/shared/types/student-ui';
@@ -12,6 +12,8 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
     const [selectedClass, setSelectedClass] = useState<any | null>(null);
     const [attendanceData, setAttendanceData] = useState<StudentAttendanceHistory | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
     // Auto-select first enrollment if available
     useEffect(() => {
@@ -52,10 +54,42 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedClass, student.id]);
 
+    // Filter records by selected month/year
+    const filteredRecords = useMemo(() => {
+        if (!attendanceData?.records) return [];
+        
+        return attendanceData.records.filter(record => {
+            const date = new Date(record.attendanceDate);
+            return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
+        });
+    }, [attendanceData, selectedMonth, selectedYear]);
+
+    // Calculate statistics for filtered data
+    const filteredStats = useMemo(() => {
+        const totalSessions = filteredRecords.length;
+        const presentCount = filteredRecords.filter(r => r.status === 'PRESENT').length;
+        const absentCount = filteredRecords.filter(r => r.status === 'ABSENT').length;
+        const percentage = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
+        
+        return { totalSessions, presentCount, absentCount, percentage };
+    }, [filteredRecords]);
+
     const getAttendancePercentage = () => {
         if (!attendanceData || attendanceData.totalSessions === 0) return 0;
         return Math.round((attendanceData.presentCount / attendanceData.totalSessions) * 100);
     };
+
+    // Generate month/year options
+    const months = Array.from({ length: 12 }, (_, i) => ({
+        value: i + 1,
+        label: `Tháng ${i + 1}`
+    }));
+
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 5 }, (_, i) => ({
+        value: currentYear - i,
+        label: `${currentYear - i}`
+    }));
 
     return (
         <div className="space-y-5">
@@ -113,40 +147,53 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
                             <div className="grid grid-cols-4 gap-4">
                                 <div className="bg-white p-4 rounded-lg border border-gray-200">
                                     <div className="text-xs font-medium text-gray-500 mb-2">Tổng buổi</div>
-                                    <div className="text-2xl font-semibold text-gray-900">{attendanceData.totalSessions}</div>
+                                    <div className="text-2xl font-semibold text-gray-900">{filteredStats.totalSessions}</div>
                                 </div>
                                 <div className="bg-white p-4 rounded-lg border border-gray-200">
                                     <div className="text-xs font-medium text-gray-500 mb-2">Có mặt</div>
-                                    <div className="text-2xl font-semibold text-green-600">{attendanceData.presentCount}</div>
+                                    <div className="text-2xl font-semibold text-green-600">{filteredStats.presentCount}</div>
                                 </div>
                                 <div className="bg-white p-4 rounded-lg border border-gray-200">
                                     <div className="text-xs font-medium text-gray-500 mb-2">Vắng</div>
-                                    <div className="text-2xl font-semibold text-red-600">{attendanceData.absentCount}</div>
+                                    <div className="text-2xl font-semibold text-red-600">{filteredStats.absentCount}</div>
                                 </div>
                                 <div className="bg-white p-4 rounded-lg border border-gray-200">
                                     <div className="text-xs font-medium text-gray-500 mb-2">Tỷ lệ tham dự</div>
-                                    <div className="text-2xl font-semibold text-blue-600">{getAttendancePercentage()}%</div>
+                                    <div className="text-2xl font-semibold text-blue-600">{filteredStats.percentage}%</div>
                                 </div>
                             </div>
 
-                            {/* Progress Bar */}
-                            <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
-                                <div 
-                                    className={`h-2 rounded-full transition-all ${
-                                        getAttendancePercentage() >= 80 ? 'bg-green-500' :
-                                        getAttendancePercentage() >= 60 ? 'bg-yellow-500' :
-                                        'bg-red-500'
-                                    }`}
-                                    style={{ width: `${getAttendancePercentage()}%` }}
-                                ></div>
-                            </div>
-
                             {/* Detailed Records */}
-                            {attendanceData.records.length > 0 ? (
+                            {filteredRecords.length > 0 ? (
                                 <div>
-                                    <h4 className="text-sm font-medium text-gray-900 mb-3">
-                                        Lịch sử điểm danh ({attendanceData.records.length} buổi)
-                                    </h4>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-medium text-gray-900">
+                                            Lịch sử điểm danh ({filteredRecords.length} buổi)
+                                        </h4>
+                                        {/* Month/Year Filter */}
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm text-gray-600">Tháng:</span>
+                                            <select
+                                                value={selectedMonth}
+                                                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                                                className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                                            >
+                                                {months.map(month => (
+                                                    <option key={month.value} value={month.value}>{month.label}</option>
+                                                ))}
+                                            </select>
+                                            <span className="text-sm text-gray-600">Năm:</span>
+                                            <select
+                                                value={selectedYear}
+                                                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                                                className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                                            >
+                                                {years.map(year => (
+                                                    <option key={year.value} value={year.value}>{year.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
                                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                                         <div className="max-h-96 overflow-y-auto">
                                             <table className="w-full">
@@ -167,7 +214,7 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-gray-100">
-                                                    {attendanceData.records.map((record) => (
+                                                    {filteredRecords.map((record) => (
                                                         <tr key={record.sessionId} className="hover:bg-gray-50 transition-colors">
                                                             <td className="px-4 py-3 text-sm text-gray-900">
                                                                 {new Date(record.attendanceDate).toLocaleDateString('vi-VN', {
@@ -200,9 +247,9 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
                                 </div>
                             ) : (
                                 <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
-                                    <p className="text-sm text-gray-600">Chưa có dữ liệu điểm danh</p>
+                                    <p className="text-sm text-gray-600">Không có dữ liệu điểm danh trong tháng {selectedMonth}/{selectedYear}</p>
                                     <p className="text-xs text-gray-500 mt-1">
-                                        Giảng viên chưa điểm danh cho lớp này
+                                        Thử chọn tháng/năm khác
                                     </p>
                                 </div>
                             )}

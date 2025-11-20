@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Plus, Eye, UserMinus, Edit2 } from 'lucide-react';
+import { X, Plus, Eye, UserMinus, Edit2, AlertCircle } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -12,6 +12,8 @@ import AddStudentModal from './AddStudentModal';
 import { getClassStudents, removeStudentFromClass, updateEnrollment } from '@/shared/api/classes';
 import { useToast } from '@/shared/hooks/useToast';
 import type { EnrollmentResponse } from '@/shared/types/classes';
+import { getStudentAttendanceHistory } from '@/shared/api/attendance';
+import { getStudentGradesByStudentId } from '@/shared/api/grade-entries';
 
 type Instructor = {
     id: string;
@@ -73,11 +75,23 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
     const [newStatus, setNewStatus] = useState<string>('');
     const [newNote, setNewNote] = useState<string>('');
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
+    
+    // Warning system states
+    const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+    const [studentWarnings, setStudentWarnings] = useState<Map<number, { absences: number; failedExams: number }>>(new Map());
 
     // Load students from API
     useEffect(() => {
         loadStudents();
     }, [classItem.id]);
+
+    // Load warnings when students or month/year changes
+    useEffect(() => {
+        if (students.length > 0) {
+            loadStudentWarnings();
+        }
+    }, [students.length, selectedMonth, selectedYear]);
 
     const loadStudents = async () => {
         try {
@@ -280,6 +294,57 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
         }
     };
 
+    const loadStudentWarnings = async () => {
+        const warningsMap = new Map<number, { absences: number; failedExams: number }>();
+        
+        await Promise.all(
+            students.map(async (student) => {
+                try {
+                    // Load attendance data
+                    const attendanceResponse = await getStudentAttendanceHistory(
+                        student.studentId,
+                        parseInt(classItem.id)
+                    );
+                    
+                    // Load grades data
+                    const gradesResponse = await getStudentGradesByStudentId(student.studentId);
+                    
+                    // Filter attendance by selected month/year - data is in records array
+                    const absences = (attendanceResponse.data.records || []).filter((record: any) => {
+                        const date = new Date(record.attendanceDate);
+                        return (
+                            date.getMonth() + 1 === selectedMonth &&
+                            date.getFullYear() === selectedYear &&
+                            (record.status === 'ABSENT' || record.status === 'LATE')
+                        );
+                    }).length;
+                    
+                    // Filter failed exams by selected month/year
+                    const failedExams = (gradesResponse || []).filter((grade: any) => {
+                        if (!grade.entryDate) return false;
+                        const date = new Date(grade.entryDate);
+                        return (
+                            date.getMonth() + 1 === selectedMonth &&
+                            date.getFullYear() === selectedYear &&
+                            grade.passStatus === 'FAIL'
+                        );
+                    }).length;
+                    
+                    console.log(`[Warning] Student ${student.studentId} (${student.name}): absences=${absences}, failedExams=${failedExams}`);
+                    
+                    if (absences >= 2 || failedExams >= 2) {
+                        warningsMap.set(student.studentId, { absences, failedExams });
+                    }
+                } catch (error) {
+                    console.error(`Error loading warnings for student ${student.studentId}:`, error);
+                }
+            })
+        );
+        
+        console.log('[Warning] Final warnings map:', warningsMap);
+        setStudentWarnings(warningsMap);
+    };
+
     // Filter students based on status filter
     const filteredStudents = statusFilter === 'ALL' ? students : students.filter((s) => s.status === statusFilter);
 
@@ -327,6 +392,35 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                         <option value="DROPPED">Đã nghỉ</option>
                         <option value="GRADUATED">Tốt nghiệp</option>
                     </select>
+                    <select
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                        className="text-sm border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                        <option value={1}>Tháng 1</option>
+                        <option value={2}>Tháng 2</option>
+                        <option value={3}>Tháng 3</option>
+                        <option value={4}>Tháng 4</option>
+                        <option value={5}>Tháng 5</option>
+                        <option value={6}>Tháng 6</option>
+                        <option value={7}>Tháng 7</option>
+                        <option value={8}>Tháng 8</option>
+                        <option value={9}>Tháng 9</option>
+                        <option value={10}>Tháng 10</option>
+                        <option value={11}>Tháng 11</option>
+                        <option value={12}>Tháng 12</option>
+                    </select>
+                    <select
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                        className="text-sm border rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                        {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                            <option key={year} value={year}>
+                                {year}
+                            </option>
+                        ))}
+                    </select>
                 </div>
                 {!readOnly && (
                     <button
@@ -340,7 +434,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
             </div>
 
             {/* Students List */}
-            <div className="max-h-96 overflow-y-auto">
+            <div className="max-h-96 overflow-y-auto" style={{ overflowX: 'visible', overflowY: 'auto' }}>
                 <div className="px-4 py-2 border-b bg-gray-50 text-xs text-gray-500 grid grid-cols-12 gap-4">
                     <div className="col-span-5">Học viên</div>
                     <div className="col-span-4">Trạng thái</div>
@@ -356,7 +450,7 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                             : `Không có học viên ${getStatusText(statusFilter)}`}
                     </div>
                 ) : (
-                    <div className="divide-y">
+                    <div className="divide-y" style={{ paddingTop: '60px', marginTop: '-60px' }}>
                         {filteredStudents.map((student) => (
                             <div 
                                 key={student.enrollmentId} 
@@ -368,8 +462,38 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                     <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 grid place-items-center text-sm font-medium">
                                         {student.initial}
                                     </div>
-                                    <div>
-                                        <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-gray-900">{student.name}</span>
+                                            {studentWarnings.has(student.studentId) && (
+                                                <div className="group relative inline-block">
+                                                    <AlertCircle className="text-orange-500 cursor-pointer" size={16} />
+                                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-[9999] hidden group-hover:block w-max max-w-xs p-3 bg-white text-gray-800 text-sm rounded-lg shadow-2xl border-2 border-gray-300">
+                                                        <div className="font-bold text-orange-600 mb-2 flex items-center gap-1">
+                                                            <AlertCircle size={14} />
+                                                            Cảnh báo
+                                                        </div>
+                                                        <div className="space-y-1.5">
+                                                            {studentWarnings.get(student.studentId)!.absences > 0 && (
+                                                                <div className="flex items-start gap-2">
+                                                                    <span className="text-orange-500 font-bold">•</span>
+                                                                    <span>Vắng {studentWarnings.get(student.studentId)!.absences} buổi học</span>
+                                                                </div>
+                                                            )}
+                                                            {studentWarnings.get(student.studentId)!.failedExams > 0 && (
+                                                                <div className="flex items-start gap-2">
+                                                                    <span className="text-orange-500 font-bold">•</span>
+                                                                    <span>Trượt {studentWarnings.get(student.studentId)!.failedExams} bài thi</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        {/* Arrow pointer */}
+                                                        <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-white"></div>
+                                                        <div className="absolute left-1/2 -translate-x-1/2 top-full -mt-[1px] w-0 h-0 border-l-[7px] border-r-[7px] border-t-[7px] border-l-transparent border-r-transparent border-t-gray-300"></div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                         <div className="text-xs text-gray-500">{student.email}</div>
                                     </div>
                                 </div>
