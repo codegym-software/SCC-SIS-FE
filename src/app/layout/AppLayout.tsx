@@ -13,6 +13,7 @@ import {
     ChevronRight,
     ClipboardCheck,
     FileText,
+    Bell,
 } from 'lucide-react';
 import { keycloak } from '../../keycloak';
 import { NavLink } from 'react-router-dom';
@@ -176,6 +177,12 @@ function AppLayout({ children }: AppLayoutProps) {
                             label: 'Hồ sơ Học viên',
                             path: '/students',
                             icon: User,
+                        },
+                        {
+                            id: 'broadcast-notification',
+                            label: 'Gửi Thông báo',
+                            path: '/notifications/broadcast',
+                            icon: Bell,
                         },
                     ],
         },

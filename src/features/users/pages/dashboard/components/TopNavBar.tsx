@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Menu, Bell, Search, AlertTriangle } from 'lucide-react';
+import { Menu, Bell, Search, AlertTriangle, Mail, MailOpen } from 'lucide-react';
 import { useUserProfile } from '@/stores/userProfile';
 import CenterSwitcher from './CenterSwitcher';
 import { useCenterSelection } from '@/stores/centerSelection';
@@ -38,10 +38,8 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                 setWarningCount(response.totalCount);
             } catch (error) {
                 console.error('Failed to fetch student warnings:', error);
-                // Fallback to mock data on error
-                const mock = studentWarningsApi.getMockWarnings();
-                setWarnings(mock);
-                setWarningCount(mock.length);
+                setWarnings([]);
+                setWarningCount(0);
             } finally {
                 setLoading(false);
             }
@@ -50,15 +48,15 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
         fetchWarnings();
     }, [selectedCenterId]);
 
-    // Fetch generalized notifications (with mock fallback)
+    // Fetch notifications from backend
     useEffect(() => {
         const fetchNotifications = async () => {
             try {
-                const res = await notificationsApi.fetchNotifications(selectedCenterId);
-                setNotifications(res.notifications);
+                const data = await notificationsApi.getMyNotifications();
+                setNotifications(data);
             } catch (error) {
                 console.error('Failed to fetch notifications:', error);
-                setNotifications(notificationsApi.getMock());
+                setNotifications([]);
             }
         };
         fetchNotifications();
@@ -166,26 +164,58 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                             aria-expanded={showNotifications}
                         >
                             <Bell size={20} className="text-gray-700" />
-                            {(warningCount > 0 || notifications.length > 0) && (
+                            {(warningCount > 0 || (notifications && notifications.some(n => !n.isRead))) && (
                                 <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 grid place-items-center text-[10px] font-semibold bg-red-600 text-white rounded-full shadow">
-                                    {warningCount + notifications.length}
+                                    {warningCount + (notifications?.filter(n => !n.isRead).length || 0)}
                                 </span>
                             )}
                         </button>
                         {showNotifications && (
-                            <div className="absolute right-0 mt-2 w-96 max-w-[90vw] bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
-                                <div className="flex border-b bg-gray-50 text-xs">
+                            <div className="absolute right-0 mt-2 w-[420px] max-w-[90vw] bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                                {/* Header */}
+                                <div className="px-5 py-4 border-b border-gray-100">
+                                    <h3 className="text-lg font-semibold text-gray-900">Thông báo</h3>
+                                </div>
+
+                                {/* Tabs */}
+                                <div className="flex items-center border-b border-gray-100 bg-white">
                                     <button
                                         onClick={() => setActiveTab('warnings')}
-                                        className={`flex-1 px-3 py-2 font-medium transition-colors ${activeTab === 'warnings' ? 'bg-white text-red-600 border-b-2 border-red-500' : 'text-gray-600 hover:text-gray-800'}`}
+                                        className={`flex-1 px-4 py-3 font-medium text-sm transition-all ${
+                                            activeTab === 'warnings' 
+                                                ? 'text-red-600 border-b-2 border-red-500 bg-red-50' 
+                                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                        }`}
                                     >
                                         Cảnh báo ({warningCount})
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('all')}
-                                        className={`flex-1 px-3 py-2 font-medium transition-colors ${activeTab === 'all' ? 'bg-white text-blue-600 border-b-2 border-blue-500' : 'text-gray-600 hover:text-gray-800'}`}
+                                        className={`flex-1 px-4 py-3 font-medium text-sm transition-all flex items-center justify-center gap-2 relative ${
+                                            activeTab === 'all' 
+                                                ? 'text-blue-600 border-b-2 border-blue-500 bg-blue-50' 
+                                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                        }`}
                                     >
-                                        Hoạt động ({notifications.length})
+                                        <span>Hoạt động ({notifications?.filter(n => !n.isRead).length || 0})</span>
+                                        {activeTab === 'all' && notifications && notifications.some(n => !n.isRead) && (
+                                            <div title="Đánh dấu tất cả đã đọc">
+                                                <MailOpen 
+                                                    size={16} 
+                                                    className="text-blue-500 hover:text-blue-700 cursor-pointer ml-1"
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        try {
+                                                            await notificationsApi.markAllAsRead();
+                                                            const updated = await notificationsApi.getMyNotifications();
+                                                            setNotifications(updated);
+                                                        } catch (error) {
+                                                            console.error('Failed to mark all as read:', error);
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
                                     </button>
                                 </div>
                                 <div className="max-h-96 overflow-auto">
@@ -244,44 +274,120 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                         </div>
                                     )}
                                     {activeTab === 'all' && (
-                                        <div>
-                                            <div className="px-4 py-2 text-xs font-medium text-gray-500">
-                                                Hoạt động gần đây
-                                            </div>
-                                            {notifications.length === 0 && (
-                                                <div className="px-4 py-6 text-sm text-gray-500">
-                                                    Không có hoạt động.
+                                        <div className="bg-gray-50">
+                                            {(!notifications || notifications.length === 0) && (
+                                                <div className="px-6 py-12 text-center text-gray-500">
+                                                    <Mail size={48} className="mx-auto mb-3 text-gray-300" />
+                                                    <p className="text-sm">Không có thông báo nào</p>
                                                 </div>
                                             )}
-                                            {notifications.slice(0, 6).map((n) => (
+                                            {notifications?.slice(0, 6).map((n) => (
                                                 <div
                                                     key={n.id}
-                                                    className="px-4 py-3 border-b last:border-b-0 hover:bg-gray-50"
+                                                    className={`relative w-full text-left px-5 py-4 border-b border-gray-100 hover:bg-white transition-all group ${
+                                                        !n.isRead ? 'bg-blue-50' : 'bg-white'
+                                                    }`}
                                                 >
-                                                    <div className="text-xs text-gray-500 flex justify-between">
-                                                        <span>{new Date(n.createdAt).toLocaleTimeString()}</span>
-                                                        {n.unread && (
-                                                            <span className="text-red-600 font-semibold">Mới</span>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-sm font-medium text-gray-900 line-clamp-1">
-                                                        {n.title}
-                                                    </div>
-                                                    <div className="text-xs text-gray-600 line-clamp-2">
-                                                        {n.message}
-                                                    </div>
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                if (!n.isRead) {
+                                                                    await notificationsApi.markAsRead(n.id);
+                                                                    const updated = await notificationsApi.getMyNotifications();
+                                                                    setNotifications(updated);
+                                                                }
+                                                            } catch (error) {
+                                                                console.error('Failed to mark notification as read:', error);
+                                                            }
+                                                        }}
+                                                        className="w-full"
+                                                    >
+                                                        <div className="flex items-start gap-3">
+                                                            {/* Avatar/Icon */}
+                                                            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                                                n.severity === 'high' ? 'bg-red-100' :
+                                                                n.severity === 'medium' ? 'bg-amber-100' :
+                                                                'bg-blue-100'
+                                                            }`}>
+                                                                <span className={`text-lg ${
+                                                                    n.severity === 'high' ? 'text-red-600' :
+                                                                    n.severity === 'medium' ? 'text-amber-600' :
+                                                                    'text-blue-600'
+                                                                }`}>
+                                                                    {n.type === 'GRADE_UPDATED' ? '📊' :
+                                                                     n.type === 'ENROLLED_NEW_CLASS' ? '🎓' :
+                                                                     n.type === 'CLASS_UPDATED' ? '📅' :
+                                                                     n.type === 'CLASS_CREATED' ? '🏫' :
+                                                                     n.type === 'CENTER_CREATED' ? '🏢' :
+                                                                     n.type === 'LECTURER_GRADED' ? '📝' :
+                                                                     n.type === 'ATTENDANCE_RECORDED' ? '✅' :
+                                                                     n.type === 'SYSTEM_ANNOUNCEMENT' ? '📣' :
+                                                                     '📢'}
+                                                                </span>
+                                                            </div>
+
+                                                            {/* Content */}
+                                                            <div className="flex-1 min-w-0 pr-6">
+                                                                <div className="flex items-center justify-between gap-2 mb-1">
+                                                                    <span className={`text-sm font-semibold ${!n.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
+                                                                        {n.title}
+                                                                    </span>
+                                                                    {!n.isRead && (
+                                                                        <span className="flex-shrink-0 h-2 w-2 bg-blue-600 rounded-full"></span>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                                                                    {n.message}
+                                                                </p>
+                                                                <span className="text-xs text-gray-400">
+                                                                    {(() => {
+                                                                        const date = new Date(n.createdAt);
+                                                                        const now = new Date();
+                                                                        const diffMs = now.getTime() - date.getTime();
+                                                                        const diffMins = Math.floor(diffMs / 60000);
+                                                                        const diffHours = Math.floor(diffMs / 3600000);
+                                                                        
+                                                                        if (diffMins < 1) return 'Vừa xong';
+                                                                        if (diffMins < 60) return `${diffMins} phút trước`;
+                                                                        if (diffHours < 24) return `${diffHours} giờ trước`;
+                                                                        return date.toLocaleDateString('vi-VN');
+                                                                    })()}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                    
+                                                    {/* X button to delete notification from dropdown */}
+                                                    <button
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            try {
+                                                                await notificationsApi.deleteNotification(n.id);
+                                                                const updated = await notificationsApi.getMyNotifications();
+                                                                setNotifications(updated);
+                                                            } catch (error) {
+                                                                console.error('Failed to delete notification:', error);
+                                                            }
+                                                        }}
+                                                        className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 rounded-full"
+                                                        title="Xóa thông báo"
+                                                    >
+                                                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
                                                 </div>
                                             ))}
-                                            {notifications.length > 0 && (
-                                                <div className="px-4 py-2">
+                                            {notifications && notifications.length > 0 && (
+                                                <div className="bg-white border-t border-gray-100 p-4">
                                                     <button
                                                         onClick={() => {
                                                             setShowNotifications(false);
                                                             navigate('/activity-log');
                                                         }}
-                                                        className="w-full text-sm font-semibold text-blue-700 hover:text-blue-800"
+                                                        className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-sm font-medium rounded-lg transition-all shadow-md hover:shadow-lg"
                                                     >
-                                                        Xem Activity Log
+                                                        Xem tất cả hoạt động
                                                     </button>
                                                 </div>
                                             )}
