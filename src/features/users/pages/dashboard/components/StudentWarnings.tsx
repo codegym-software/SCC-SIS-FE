@@ -61,7 +61,7 @@ export default function StudentWarnings({ onCountChange }: Props) {
         };
 
         fetchWarnings();
-    }, [onCountChange, selectedCenterId]);
+    }, [selectedCenterId]); // Remove onCountChange from deps to prevent unnecessary re-fetches
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
@@ -95,7 +95,7 @@ export default function StudentWarnings({ onCountChange }: Props) {
                 ) : (
                     warnings.map((w) => (
                         <div
-                            key={w.studentId}
+                            key={`${w.studentId}-${w.classCode}`}
                             onClick={() => navigate(`/students/${w.studentId}`)}
                             className={`relative flex flex-col sm:flex-row gap-4 px-6 py-5 cursor-pointer group ${severityStyles[w.severity]}`}
                         >

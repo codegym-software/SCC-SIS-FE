@@ -76,7 +76,7 @@ export const notificationsApi = {
             const res = await http.get<NotificationsResponse>('/api/notifications', { params });
             return res.data;
         } catch (e) {
-            console.warn('Notifications API not available, using mock data', e);
+            // Fallback to mock data (suppress expected 500 error)
             return { notifications: mockNotifications, total: mockNotifications.length };
         }
     },

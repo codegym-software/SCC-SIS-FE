@@ -319,9 +319,11 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                         );
                     }).length;
                     
-                    // Filter failed exams by selected month/year
+                    // Filter failed exams by selected month/year and THIS CLASS ONLY
                     const failedExams = (gradesResponse || []).filter((grade: any) => {
                         if (!grade.entryDate) return false;
+                        // Only count exams from THIS class
+                        if (grade.classId !== parseInt(classItem.id)) return false;
                         const date = new Date(grade.entryDate);
                         return (
                             date.getMonth() + 1 === selectedMonth &&
