@@ -2,24 +2,45 @@ import React, { useState, useEffect } from 'react';
 import { Users2, TrendingUp, TrendingDown, AlertCircle, Download } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { getAttendanceStatistics, type AttendanceStatisticsResponse } from '@/api/attendance-statistics';
+import { useUserProfile } from '@/stores/userProfile';
+import http from '@/shared/api/http';
+import { getCentersLite } from '@/shared/api/centers';
+
+type ClassLiteDto = {
+    classId: number;
+    name: string;
+    programName?: string;
+    centerName?: string;
+    status: string;
+};
+
+type CenterLiteDto = {
+    centerId: number;
+    name: string;
+};
 
 export default function AttendanceStatisticsPage() {
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
 
-    const [selectedClass, setSelectedClass] = useState('WEB101');
+    const { me } = useUserProfile();
+    const [selectedCenter, setSelectedCenter] = useState<number | ''>('');
+    const [selectedClass, setSelectedClass] = useState<string>('');
     const [selectedMonth, setSelectedMonth] = useState(currentMonth);
     const [selectedYear, setSelectedYear] = useState(currentYear);
     const [viewType, setViewType] = useState<'daily' | 'monthly'>('daily');
     const [loading, setLoading] = useState(false);
     const [statistics, setStatistics] = useState<AttendanceStatisticsResponse | null>(null);
 
-    // Mock class list
-    const classes = [
-        { id: 'WEB101', name: 'WEB101 - Lập trình Web cơ bản - Sáng T2,T4,T6' },
-        { id: 'JAVA201', name: 'JAVA201 - Java Backend - Chiều T3,T5,T7' },
-        { id: 'REACT301', name: 'REACT301 - React Advanced - Tối T2,T4,T6' },
-    ];
+    // Data
+    const [centers, setCenters] = useState<CenterLiteDto[]>([]);
+    const [classes, setClasses] = useState<ClassLiteDto[]>([]);
+
+    // Check user roles
+    const isAdmin = me?.roles?.some((role) => role.code === 'SUPER_ADMIN') ?? false;
+    const isStaff = me?.roles?.some((role) => role.code === 'ACADEMIC_STAFF') ?? false;
+    const isLecturer = me?.roles?.some((role) => role.code === 'LECTURER') ?? false;
+    const userCenterId = me?.centerId;
 
     const months = [
         { value: 1, label: 'Tháng 1' },
@@ -37,6 +58,67 @@ export default function AttendanceStatisticsPage() {
     ];
 
     const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
+    // Fetch centers (for Admin only)
+    useEffect(() => {
+        if (!isAdmin) return;
+
+        const fetchCenters = async () => {
+            try {
+                const { data } = await getCentersLite();
+                setCenters(data);
+            } catch (error) {
+                console.error('Error fetching centers:', error);
+            }
+        };
+
+        fetchCenters();
+    }, [isAdmin]);
+
+    // Fetch classes based on role
+    useEffect(() => {
+        const fetchClasses = async () => {
+            try {
+                let response;
+
+                if (isLecturer) {
+                    // Lecturer: fetch classes they are teaching
+                    response = await http.get('/api/classes/my-classes');
+                } else if (isStaff && userCenterId) {
+                    // Staff: fetch classes in their center
+                    response = await http.get('/api/classes', {
+                        params: { centerId: userCenterId },
+                    });
+                } else if (isAdmin) {
+                    // Admin: fetch classes by selected center or all
+                    const params = selectedCenter ? { centerId: selectedCenter } : {};
+                    response = await http.get('/api/classes', { params });
+                } else {
+                    setClasses([]);
+                    return;
+                }
+
+                const classesData: ClassLiteDto[] = response.data;
+                setClasses(classesData);
+
+                // Auto-select first class if none selected
+                if (classesData.length > 0 && !selectedClass) {
+                    setSelectedClass(classesData[0].classId.toString());
+                }
+            } catch (error) {
+                console.error('Error fetching classes:', error);
+                setClasses([]);
+            }
+        };
+
+        // Only fetch when:
+        // - Lecturer (no center selection needed)
+        // - Staff with centerId
+        // - Admin with or without selected center
+        if (isLecturer || (isStaff && userCenterId) || isAdmin) {
+            fetchClasses();
+        }
+    }, [isLecturer, isStaff, isAdmin, userCenterId, selectedCenter]);
 
     // Fetch statistics
     useEffect(() => {
@@ -96,7 +178,30 @@ export default function AttendanceStatisticsPage() {
 
             {/* Filters */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    {/* Center selection (Admin only) */}
+                    {isAdmin && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Trung tâm</label>
+                            <select
+                                value={selectedCenter}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setSelectedCenter(value ? Number(value) : '');
+                                    setSelectedClass(''); // Reset class selection
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                                <option value="">Tất cả trung tâm</option>
+                                {centers.map((center) => (
+                                    <option key={center.centerId} value={center.centerId}>
+                                        {center.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
                     {/* Class selection */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Lớp học</label>
@@ -104,12 +209,20 @@ export default function AttendanceStatisticsPage() {
                             value={selectedClass}
                             onChange={(e) => setSelectedClass(e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            disabled={classes.length === 0}
                         >
-                            {classes.map((cls) => (
-                                <option key={cls.id} value={cls.id}>
-                                    {cls.name}
-                                </option>
-                            ))}
+                            {classes.length === 0 ? (
+                                <option value="">Không có lớp học</option>
+                            ) : (
+                                <>
+                                    <option value="">-- Chọn lớp học --</option>
+                                    {classes.map((cls) => (
+                                        <option key={cls.classId} value={cls.classId}>
+                                            {cls.name} {cls.centerName ? `- ${cls.centerName}` : ''}
+                                        </option>
+                                    ))}
+                                </>
+                            )}
                         </select>
                     </div>
 

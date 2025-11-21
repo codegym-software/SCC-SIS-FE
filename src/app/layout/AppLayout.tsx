@@ -90,12 +90,12 @@ function AppLayout({ children }: AppLayoutProps) {
     }, []);
 
     // Get user profile data
-    const { userProfile, loading } = useUserProfile();
-    const mainRole = userProfile?.roles?.[0];
+    const { me, loading } = useUserProfile();
+    const mainRole = me?.roles?.[0];
 
     // Check if user is STUDENT
-    const isStudent = userProfile?.roles?.some((role) => role.code === 'STUDENT') ?? false;
-    const isLecturer = userProfile?.roles?.some((role) => role.code === 'LECTURER') ?? false;
+    const isStudent = me?.roles?.some((role) => role.code === 'STUDENT') ?? false;
+    const isLecturer = me?.roles?.some((role) => role.code === 'LECTURER') ?? false;
 
     // Menu configuration - easily extensible
     const menuGroups: MenuGroup[] = [
@@ -183,6 +183,12 @@ function AppLayout({ children }: AppLayoutProps) {
                             label: 'Hồ sơ Học viên',
                             path: '/students',
                             icon: User,
+                        },
+                        {
+                            id: 'statistics',
+                            label: 'Thống kê',
+                            path: '/statistics',
+                            icon: BarChart3,
                         },
                     ],
         },

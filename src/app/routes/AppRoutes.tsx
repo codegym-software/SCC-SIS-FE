@@ -54,7 +54,7 @@ export default function AppRoutes() {
             <Route
                 path="/statistics"
                 element={
-                    <ProtectedRoute allowedRoles={['LECTURER']}>
+                    <ProtectedRoute allowedRoles={['LECTURER', 'ACADEMIC_STAFF', 'SUPER_ADMIN']}>
                         <AttendanceStatisticsPage />
                     </ProtectedRoute>
                 }
