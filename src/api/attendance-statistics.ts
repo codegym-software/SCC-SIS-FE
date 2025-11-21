@@ -57,15 +57,224 @@ export type AttendanceStatisticsResponse = {
     };
 };
 
+// Backend response types
+type BackendDailyAttendance = {
+    date: string; // LocalDate from backend
+    sessionCount: number;
+    presentCount: number;
+    absentCount: number;
+    attendanceRate: number;
+};
+
+type BackendStudentStatistic = {
+    studentId: number;
+    studentName: string;
+    studentCode: string;
+    totalSessions: number;
+    presentCount: number;
+    absentCount: number;
+    attendanceRate: number;
+};
+
+type BackendStatisticsResponse = {
+    classId: number;
+    className: string;
+    month: number;
+    year: number;
+    totalStudents: number;
+    totalSessions: number;
+    averageAttendanceRate: number;
+    studentsNeedingHelp: number;
+    dailyAttendance: BackendDailyAttendance[];
+    studentStatistics: BackendStudentStatistic[];
+};
+
 // Get attendance statistics
 export const getAttendanceStatistics = async (
     params: AttendanceStatisticsParams,
 ): Promise<{ data: AttendanceStatisticsResponse }> => {
     try {
-        const response = await api.get('/attendance/statistics', { params });
-        return response.data;
+        // For monthly view, fetch all 12 months
+        if (params.viewType === 'monthly') {
+            const monthlyPromises = Array.from({ length: 12 }, (_, i) => 
+                api.get<BackendStatisticsResponse>(
+                    `/api/classes/${params.classId}/attendance/statistics`,
+                    {
+                        params: {
+                            month: i + 1,
+                            year: params.year,
+                        },
+                    }
+                ).catch(() => null) // Handle errors for months without data
+            );
+
+            const responses = await Promise.all(monthlyPromises);
+            
+            // Aggregate monthly data
+            const monthlyData: MonthlyAttendanceData[] = responses
+                .map((response, index) => {
+                    if (!response || !response.data) return null;
+                    const data = response.data;
+                    return {
+                        month: index + 1,
+                        year: params.year,
+                        attendanceRate: data.averageAttendanceRate,
+                        totalSessions: data.totalSessions,
+                        averagePresent: data.totalSessions > 0 
+                            ? (data.averageAttendanceRate / 100) * data.totalStudents 
+                            : 0,
+                    };
+                })
+                .filter((item): item is MonthlyAttendanceData => item !== null);
+
+            // Aggregate student data from all months
+            const studentMap = new Map<string, {
+                studentId: string;
+                studentCode: string;
+                fullName: string;
+                totalSessions: number;
+                presentCount: number;
+                absentCount: number;
+            }>();
+
+            let firstValidData: BackendStatisticsResponse | null = null;
+
+            responses.forEach(response => {
+                if (!response || !response.data) return;
+                
+                if (!firstValidData) {
+                    firstValidData = response.data;
+                }
+
+                response.data.studentStatistics.forEach(student => {
+                    const key = student.studentId.toString();
+                    const existing = studentMap.get(key);
+
+                    if (existing) {
+                        existing.totalSessions += student.totalSessions;
+                        existing.presentCount += student.presentCount;
+                        existing.absentCount += student.absentCount;
+                    } else {
+                        studentMap.set(key, {
+                            studentId: student.studentId.toString(),
+                            studentCode: student.studentCode,
+                            fullName: student.studentName,
+                            totalSessions: student.totalSessions,
+                            presentCount: student.presentCount,
+                            absentCount: student.absentCount,
+                        });
+                    }
+                });
+            });
+
+            if (!firstValidData) {
+                throw new Error('No data available for any month');
+            }
+
+            // Convert aggregated data to StudentAttendanceDetail
+            const studentDetails: StudentAttendanceDetail[] = Array.from(studentMap.values()).map(student => ({
+                ...student,
+                lateCount: 0,
+                attendanceRate: student.totalSessions > 0 
+                    ? Math.round((student.presentCount / student.totalSessions) * 1000) / 10
+                    : 0,
+            }));
+
+            const totalSessions = Array.from(studentMap.values()).reduce((sum, s) => sum + s.totalSessions, 0);
+            const totalStudents = studentMap.size;
+            const overallRate = totalStudents > 0 
+                ? studentDetails.reduce((sum, s) => sum + s.attendanceRate, 0) / totalStudents
+                : 0;
+
+            const excellentStudents = studentDetails.filter((s) => s.attendanceRate >= 90).length;
+            const goodStudents = studentDetails.filter((s) => s.attendanceRate >= 80 && s.attendanceRate < 90).length;
+            const averageStudents = studentDetails.filter((s) => s.attendanceRate >= 70 && s.attendanceRate < 80).length;
+            const needSupportStudents = studentDetails.filter((s) => s.attendanceRate < 80).length;
+
+            return {
+                data: {
+                    classId: firstValidData.classId.toString(),
+                    className: firstValidData.className,
+                    period: {
+                        year: params.year,
+                    },
+                    overallRate: Math.round(overallRate * 10) / 10,
+                    monthlyData,
+                    studentDetails,
+                    summary: {
+                        totalSessions: Math.round(totalSessions / totalStudents),
+                        totalStudents,
+                        excellentStudents,
+                        goodStudents,
+                        averageStudents,
+                        needSupportStudents,
+                    },
+                },
+            };
+        }
+
+        // For daily view, fetch single month
+        const response = await api.get<BackendStatisticsResponse>(
+            `/api/classes/${params.classId}/attendance/statistics`,
+            {
+                params: {
+                    month: params.month,
+                    year: params.year,
+                },
+            }
+        );
+
+        const backendData = response.data;
+
+        // Map backend response to frontend format
+        const dailyData: DailyAttendanceData[] = backendData.dailyAttendance.map((daily) => ({
+            date: daily.date,
+            attendanceRate: daily.attendanceRate,
+            totalStudents: backendData.totalStudents,
+            presentCount: daily.presentCount,
+            absentCount: daily.absentCount,
+            lateCount: 0,
+        }));
+
+        const studentDetails: StudentAttendanceDetail[] = backendData.studentStatistics.map((student) => ({
+            studentId: student.studentId.toString(),
+            studentCode: student.studentCode,
+            fullName: student.studentName,
+            totalSessions: student.totalSessions,
+            presentCount: student.presentCount,
+            absentCount: student.absentCount,
+            lateCount: 0,
+            attendanceRate: student.attendanceRate,
+        }));
+
+        const excellentStudents = studentDetails.filter((s) => s.attendanceRate >= 90).length;
+        const goodStudents = studentDetails.filter((s) => s.attendanceRate >= 80 && s.attendanceRate < 90).length;
+        const averageStudents = studentDetails.filter((s) => s.attendanceRate >= 70 && s.attendanceRate < 80).length;
+
+        return {
+            data: {
+                classId: backendData.classId.toString(),
+                className: backendData.className,
+                period: {
+                    month: backendData.month,
+                    year: backendData.year,
+                },
+                overallRate: backendData.averageAttendanceRate,
+                dailyData,
+                studentDetails,
+                summary: {
+                    totalSessions: backendData.totalSessions,
+                    totalStudents: backendData.totalStudents,
+                    excellentStudents,
+                    goodStudents,
+                    averageStudents,
+                    needSupportStudents: backendData.studentsNeedingHelp,
+                },
+            },
+        };
     } catch (error) {
-        console.warn('Backend not available, using mock data');
+        console.error('Error fetching attendance statistics:', error);
+        console.warn('Using mock data as fallback');
         return generateMockStatistics(params);
     }
 };

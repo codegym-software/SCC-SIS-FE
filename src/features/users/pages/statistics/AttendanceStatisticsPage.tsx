@@ -122,6 +122,12 @@ export default function AttendanceStatisticsPage() {
 
     // Fetch statistics
     useEffect(() => {
+        // Don't fetch if no class is selected
+        if (!selectedClass) {
+            setStatistics(null);
+            return;
+        }
+
         const fetchStatistics = async () => {
             setLoading(true);
             try {
@@ -134,6 +140,7 @@ export default function AttendanceStatisticsPage() {
                 setStatistics(data);
             } catch (error) {
                 console.error('Error fetching statistics:', error);
+                setStatistics(null);
             } finally {
                 setLoading(false);
             }
@@ -154,9 +161,35 @@ export default function AttendanceStatisticsPage() {
                   'Tỷ lệ chuyên cần': Number(d.attendanceRate.toFixed(1)),
               }));
 
-    // Export to Excel (placeholder)
-    const handleExport = () => {
-        alert('Chức năng xuất Excel đang được phát triển');
+    // Export to Excel
+    const handleExport = async () => {
+        if (!selectedClass || !selectedMonth || !selectedYear) {
+            alert('Vui lòng chọn lớp học, tháng và năm');
+            return;
+        }
+
+        try {
+            const response = await http.get(`/api/classes/${selectedClass}/attendance/export/excel`, {
+                params: {
+                    month: selectedMonth,
+                    year: selectedYear,
+                },
+                responseType: 'blob',
+            });
+
+            // Create download link
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `attendance_statistics_class${selectedClass}_${selectedMonth}_${selectedYear}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error exporting to Excel:', error);
+            alert('Không thể xuất file Excel. Vui lòng thử lại.');
+        }
     };
 
     return (
@@ -289,7 +322,14 @@ export default function AttendanceStatisticsPage() {
                 </div>
             </div>
 
-            {loading ? (
+            {!selectedClass ? (
+                <div className="flex items-center justify-center h-64 bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="text-center">
+                        <p className="text-gray-500 text-lg mb-2">Vui lòng chọn lớp học để xem thống kê</p>
+                        <p className="text-gray-400 text-sm">Chọn trung tâm và lớp học từ bộ lọc phía trên</p>
+                    </div>
+                </div>
+            ) : loading ? (
                 <div className="flex items-center justify-center h-64">
                     <div className="text-gray-500">Đang tải dữ liệu...</div>
                 </div>
