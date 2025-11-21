@@ -23,9 +23,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     }
 
     // Check if user has required role
+
     if (allowedRoles && allowedRoles.length > 0) {
         const hasAccess = me?.roles?.some((role) => allowedRoles.includes(role.code)) ?? false;
-
         if (!hasAccess) {
             // Redirect to home if user doesn't have access
             return <Navigate to="/" replace />;
