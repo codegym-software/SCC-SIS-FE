@@ -14,6 +14,7 @@ import ProtectedRoute from './ProtectedRoute';
 import AttendancePage from '../../features/users/pages/attendance/AttendancePage';
 import TakeAttendancePage from '../../features/users/pages/attendance/TakeAttendancePage';
 import ExamManagementPage from '../../features/users/pages/exams/ExamManagementPage';
+import AttendanceStatisticsPage from '../../features/users/pages/statistics/AttendanceStatisticsPage';
 
 export default function AppRoutes() {
     return (
@@ -47,6 +48,14 @@ export default function AppRoutes() {
                 element={
                     <ProtectedRoute allowedRoles={['LECTURER']}>
                         <ExamManagementPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/statistics"
+                element={
+                    <ProtectedRoute allowedRoles={['LECTURER']}>
+                        <AttendanceStatisticsPage />
                     </ProtectedRoute>
                 }
             />

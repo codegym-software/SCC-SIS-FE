@@ -13,6 +13,7 @@ import {
     ChevronRight,
     ClipboardCheck,
     FileText,
+    BarChart3,
 } from 'lucide-react';
 import { keycloak } from '../../keycloak';
 import { NavLink } from 'react-router-dom';
@@ -89,12 +90,12 @@ function AppLayout({ children }: AppLayoutProps) {
     }, []);
 
     // Get user profile data
-    const { me, loading } = useUserProfile();
-    const mainRole = me?.roles?.[0];
+    const { userProfile, loading } = useUserProfile();
+    const mainRole = userProfile?.roles?.[0];
 
     // Check if user is STUDENT
-    const isStudent = me?.roles?.some((role) => role.code === 'STUDENT') ?? false;
-    const isLecturer = me?.roles?.some((role) => role.code === 'LECTURER') ?? false;
+    const isStudent = userProfile?.roles?.some((role) => role.code === 'STUDENT') ?? false;
+    const isLecturer = userProfile?.roles?.some((role) => role.code === 'LECTURER') ?? false;
 
     // Menu configuration - easily extensible
     const menuGroups: MenuGroup[] = [
@@ -130,6 +131,12 @@ function AppLayout({ children }: AppLayoutProps) {
                             label: 'Quản lý Lớp học',
                             path: '/classes',
                             icon: BookOpen,
+                        },
+                        {
+                            id: 'statistics',
+                            label: 'Thống kê',
+                            path: '/statistics',
+                            icon: BarChart3,
                         },
                     ]
                   : [
@@ -212,6 +219,16 @@ function AppLayout({ children }: AppLayoutProps) {
                 <aside
                     className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r bg-gradient-to-b from-gray-50 to-white hidden md:flex md:flex-col fixed left-0 top-14 bottom-0 overflow-y-auto z-40 transition-all duration-300 shadow-sm`}
                 >
+                    {/* Logo Section */}
+                    <div className="h-[56px] flex items-center px-4 bg-white">
+                        <div className={`flex items-center w-full ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
+                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 grid place-items-center text-white font-bold text-lg shadow-md flex-shrink-0">
+                                E
+                            </div>
+                            {!sidebarCollapsed && <span className="text-lg font-bold text-gray-900">EduCenter</span>}
+                        </div>
+                    </div>
+
                     {/* Added extra top spacing so all menu items sit a bit lower */}
                     <nav className="flex-1 px-2 pt-8 pb-3 space-y-1">
                         {menuGroups.map((group) => (

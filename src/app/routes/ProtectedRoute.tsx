@@ -8,7 +8,7 @@ type ProtectedRouteProps = {
 };
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
-    const { me, loading } = useUserProfile();
+    const { userProfile, loading } = useUserProfile();
 
     // Show loading state while fetching user profile
     if (loading) {
@@ -23,9 +23,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     }
 
     // Check if user has required role
-    if (allowedRoles && allowedRoles.length > 0) {
-        const hasAccess = me?.roles?.some((role) => allowedRoles.includes(role.code)) ?? false;
 
+    if (allowedRoles && allowedRoles.length > 0) {
+        const hasAccess = userProfile?.roles?.some((role) => allowedRoles.includes(role.code)) ?? false;
         if (!hasAccess) {
             // Redirect to home if user doesn't have access
             return <Navigate to="/" replace />;
