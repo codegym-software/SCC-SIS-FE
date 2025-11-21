@@ -3,6 +3,7 @@ import http from './http';
 import { getAllStudentsWithEnrollments } from './students';
 import { getStudentAttendanceHistory } from './attendance';
 import { getStudentGradesByStudentId } from './grade-entries';
+import { listClasses } from './classes';
 
 export interface StudentWarning {
     studentId: number;
@@ -33,8 +34,7 @@ export const studentWarningsApi = {
             const response = await http.get<StudentWarningsResponse>('/api/student-warnings', { params });
             return response.data;
         } catch (error) {
-            // Fallback: Calculate warnings from attendance and grades
-            console.warn('Student warnings API not available, calculating from attendance & grades:', error);
+            // Fallback: Calculate warnings from attendance and grades (suppress expected 500 error)
             
             try {
                 const studentsResponse = await getAllStudentsWithEnrollments();
@@ -45,6 +45,23 @@ export const studentWarningsApi = {
                 const currentMonth = now.getMonth() + 1;
                 const currentYear = now.getFullYear();
                 
+                // Load all classes to get centerId mapping
+                let classToCenterMap: Map<number, number> = new Map();
+                if (centerId) {
+                    try {
+                        const classesResponse = await listClasses({ centerId });
+                        const classes = classesResponse.data;
+                        classes.forEach((cls: any) => {
+                            classToCenterMap.set(cls.classId, cls.centerId);
+                        });
+                    } catch (err) {
+                        console.error('Failed to load classes for center filtering:', err);
+                    }
+                }
+                
+                // Cache grades by studentId to prevent duplicate API calls
+                const gradesCache = new Map<number, any[]>();
+                
                 await Promise.all(
                     students.map(async (student) => {
                         try {
@@ -52,17 +69,28 @@ export const studentWarningsApi = {
                             const activeEnrollments = student.enrollments.filter(e => e.status === 'ACTIVE');
                             if (activeEnrollments.length === 0) return;
                             
-                            for (const enrollment of activeEnrollments) {
-                                // Load attendance
+                            // Filter by centerId if provided
+                            const relevantEnrollments = centerId 
+                                ? activeEnrollments.filter(e => classToCenterMap.get(e.classId) === centerId)
+                                : activeEnrollments;
+                            
+                            if (relevantEnrollments.length === 0) return;
+                            
+                            // Load grades once per student and cache it
+                            if (!gradesCache.has(student.studentId)) {
+                                const gradesResponse = await getStudentGradesByStudentId(student.studentId);
+                                gradesCache.set(student.studentId, gradesResponse);
+                            }
+                            const allGrades = gradesCache.get(student.studentId) || [];
+                            
+                            for (const enrollment of relevantEnrollments) {
+                                // Load attendance for this specific class
                                 const attendanceResponse = await getStudentAttendanceHistory(
                                     student.studentId,
                                     enrollment.classId
                                 );
                                 
-                                // Load grades
-                                const gradesResponse = await getStudentGradesByStudentId(student.studentId);
-                                
-                                // Count absences in current month
+                                // Count absences in current month for this class
                                 const absences = (attendanceResponse.data.records || []).filter((record: any) => {
                                     const date = new Date(record.attendanceDate);
                                     return (
@@ -72,9 +100,11 @@ export const studentWarningsApi = {
                                     );
                                 }).length;
                                 
-                                // Count failed exams in current month
-                                const failedExams = (gradesResponse || []).filter((grade: any) => {
+                                // Count failed exams in current month for this class only (use cached grades)
+                                const failedExams = (allGrades || []).filter((grade: any) => {
                                     if (!grade.entryDate) return false;
+                                    // Filter by classId to only count exams in this class
+                                    if (grade.classId !== enrollment.classId) return false;
                                     const date = new Date(grade.entryDate);
                                     return (
                                         date.getMonth() + 1 === currentMonth &&
@@ -114,8 +144,7 @@ export const studentWarningsApi = {
                                         classCode: enrollment.className,
                                         severity,
                                     });
-                                    
-                                    break; // Only add once per student
+                                    // Don't break - check all classes for this student
                                 }
                             }
                         } catch (err) {

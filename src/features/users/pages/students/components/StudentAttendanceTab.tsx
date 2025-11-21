@@ -163,37 +163,38 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
                                 </div>
                             </div>
 
+                            {/* Month/Year Filter - Always visible */}
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-medium text-gray-900">
+                                    Lịch sử điểm danh ({filteredRecords.length} buổi)
+                                </h4>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-gray-600">Tháng:</span>
+                                    <select
+                                        value={selectedMonth}
+                                        onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                                        className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                                    >
+                                        {months.map(month => (
+                                            <option key={month.value} value={month.value}>{month.label}</option>
+                                        ))}
+                                    </select>
+                                    <span className="text-sm text-gray-600">Năm:</span>
+                                    <select
+                                        value={selectedYear}
+                                        onChange={(e) => setSelectedYear(Number(e.target.value))}
+                                        className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                                    >
+                                        {years.map(year => (
+                                            <option key={year.value} value={year.value}>{year.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
                             {/* Detailed Records */}
                             {filteredRecords.length > 0 ? (
                                 <div>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h4 className="text-sm font-medium text-gray-900">
-                                            Lịch sử điểm danh ({filteredRecords.length} buổi)
-                                        </h4>
-                                        {/* Month/Year Filter */}
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm text-gray-600">Tháng:</span>
-                                            <select
-                                                value={selectedMonth}
-                                                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                                                className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
-                                            >
-                                                {months.map(month => (
-                                                    <option key={month.value} value={month.value}>{month.label}</option>
-                                                ))}
-                                            </select>
-                                            <span className="text-sm text-gray-600">Năm:</span>
-                                            <select
-                                                value={selectedYear}
-                                                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                                                className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
-                                            >
-                                                {years.map(year => (
-                                                    <option key={year.value} value={year.value}>{year.label}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
                                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                                         <div className="max-h-96 overflow-y-auto">
                                             <table className="w-full">

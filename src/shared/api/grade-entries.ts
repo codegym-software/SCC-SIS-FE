@@ -267,9 +267,7 @@ export const exportGrades = async (classId: number, semester: number, moduleId?:
  * Lấy tất cả điểm thi của một học viên cụ thể
  */
 export const getStudentGradesByStudentId = async (studentId: number): Promise<GradeRecordResponse[]> => {
-    console.log('API: Fetching grades for student ID:', studentId);
     const response = await api.get<GradeRecordResponse[]>(`/api/grade-entries/student/${studentId}`);
-    console.log('API: Response received:', response.data);
     return response.data;
 };
 
