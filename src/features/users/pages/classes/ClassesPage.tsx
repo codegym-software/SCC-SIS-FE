@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import {
     Search,
     X,
@@ -278,10 +278,6 @@ export default function ClassesPage() {
     const toast = useToast();
     const { me: userProfile } = useUserProfile();
     const isLecturer = userProfile?.roles?.some((r) => r.code === 'LECTURER');
-
-    // Check query params for auto-open modal
-    const [searchParams, setSearchParams] = useSearchParams();
-
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
     const [openCreate, setOpenCreate] = useState(false);
@@ -380,53 +376,6 @@ export default function ClassesPage() {
     // Check if user has GLOBAL scope (can select center)
     const hasGlobalScope = !userProfile?.centerId;
 
-    // Refetch student count and instructors for a specific class
-    const refetchClassDetails = async (classId: string) => {
-        try {
-            // Fetch student count
-            const studentRes = await getClassStudents(parseInt(classId, 10), { status: 'ACTIVE', page: 0, size: 1 });
-            let activeCount = 0;
-            const data: any = studentRes.data;
-            if (data && typeof data.totalElements === 'number') {
-                activeCount = data.totalElements;
-            } else if (data && Array.isArray(data)) {
-                activeCount = data.filter((e: any) => e.status === 'ACTIVE').length;
-            } else if (data && Array.isArray(data.content) && typeof data.totalElements === 'number') {
-                activeCount = data.totalElements;
-            }
-
-            // Fetch instructors
-            const instructorRes = await http.get(`/api/classes/${classId}/lecturers`);
-            const apiData: any[] = instructorRes.data.items || [];
-            const instructors: Instructor[] = apiData
-                .filter((item) => item.active)
-                .map((item) => ({
-                    id: item.assignmentId.toString(),
-                    name: item.lecturer.fullName,
-                    initial: item.lecturer.fullName.charAt(0).toUpperCase(),
-                    avatar: item.lecturer.avatarUrl || undefined,
-                }));
-
-            // Update class in state
-            setClasses((prev) =>
-                prev.map((cls) =>
-                    cls.id === classId
-                        ? { ...cls, students: activeCount, instructors }
-                        : cls
-                )
-            );
-
-            // Update selectedClass if it's the one being refetched
-            setSelectedClass((prev) =>
-                prev?.id === classId
-                    ? { ...prev, students: activeCount, instructors }
-                    : prev
-            );
-        } catch (error) {
-            console.error(`Failed to refetch details for class ${classId}:`, error);
-        }
-    };
-
     // Confirm pause class
     const confirmPause = async () => {
         if (!pauseConfirm) return;
@@ -466,15 +415,6 @@ export default function ClassesPage() {
             setResumeConfirm(null);
         }
     };
-
-    // Auto-open create modal if ?action=create is present
-    useEffect(() => {
-        if (searchParams.get('action') === 'create') {
-            setOpenCreate(true);
-            // Remove query param after opening modal
-            setSearchParams({});
-        }
-    }, [searchParams, setSearchParams]);
 
     // Fetch classes and programs from API
     useEffect(() => {
@@ -876,16 +816,7 @@ export default function ClassesPage() {
                             const updatedClass = mapClassDtoToUI(response.data);
 
                             setClasses((prev) => prev.map((x) => (x.id === editing.id ? updatedClass : x)));
-                            
-                            // Sync selectedClass if it's the one being edited
-                            if (selectedClass?.id === editing.id) {
-                                setSelectedClass(updatedClass);
-                            }
-                            
                             setOpenEdit(null);
-
-                            // Refetch student count and instructors
-                            await refetchClassDetails(editing.id);
 
                             toast.success('Cập nhật thành công!', `Lớp học ${name} đã được cập nhật`);
                         } else {
@@ -925,9 +856,6 @@ export default function ClassesPage() {
 
                             setClasses((prev) => [newClass, ...prev]);
                             setOpenCreate(false);
-
-                            // Refetch student count and instructors for new class
-                            await refetchClassDetails(newClass.id);
 
                             toast.success('Tạo thành công!', `Lớp học ${name} đã được thêm vào hệ thống`);
                         }

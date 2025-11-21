@@ -109,57 +109,6 @@ export default function StudentDetailPage() {
         fetchGrades();
     }, [activeTab, id]);
 
-    // Filter grades based on selected class and month/year
-    const filteredGrades = grades.filter(grade => {
-        // Filter by class
-        if (selectedScoresClassId && grade.classId !== selectedScoresClassId) {
-            return false;
-        }
-
-        // Filter by month and year
-        if (selectedMonth !== 0 || selectedYear !== 0) {
-            if (!grade.entryDate) return false;
-            
-            const [year, month] = grade.entryDate.split('-').map(Number);
-            
-            if (selectedYear !== 0 && year !== selectedYear) {
-                return false;
-            }
-            
-            if (selectedMonth !== 0 && month !== selectedMonth) {
-                return false;
-            }
-        }
-
-        return true;
-    });
-
-    // Get available years from grades
-    const availableYears = Array.from(
-        new Set(
-            grades
-                .filter(g => g.entryDate)
-                .map(g => parseInt(g.entryDate.split('-')[0]))
-        )
-    ).sort((a, b) => b - a);
-
-    // Months array
-    const months = [
-        { value: 0, label: 'Tất cả tháng' },
-        { value: 1, label: 'Tháng 1' },
-        { value: 2, label: 'Tháng 2' },
-        { value: 3, label: 'Tháng 3' },
-        { value: 4, label: 'Tháng 4' },
-        { value: 5, label: 'Tháng 5' },
-        { value: 6, label: 'Tháng 6' },
-        { value: 7, label: 'Tháng 7' },
-        { value: 8, label: 'Tháng 8' },
-        { value: 9, label: 'Tháng 9' },
-        { value: 10, label: 'Tháng 10' },
-        { value: 11, label: 'Tháng 11' },
-        { value: 12, label: 'Tháng 12' },
-    ];
-
     const calculateOverallStatus = (enrollments: StudentEnrollment[]): 'Đang chờ' | 'Đang học' | 'Nghỉ học' => {
         if (!enrollments || enrollments.length === 0) return 'Đang chờ';
         const hasActive = enrollments.some((e) => e.status === 'ACTIVE');
@@ -519,10 +468,10 @@ export default function StudentDetailPage() {
                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
                                         Đang tải điểm...
                                     </div>
-                                ) : filteredGrades.length === 0 ? (
+                                ) : grades.length === 0 ? (
                                     <div className="p-8 text-center text-gray-500">
                                         <BarChart3 size={40} className="mx-auto mb-3 text-gray-300" />
-                                        <p>{grades.length === 0 ? 'Chưa có điểm thi nào' : 'Không có điểm thi nào phù hợp với bộ lọc'}</p>
+                                        <p>Chưa có điểm thi nào</p>
                                     </div>
                                 ) : (
                                     <>
@@ -550,28 +499,28 @@ export default function StudentDetailPage() {
                                                 <tbody className="divide-y divide-gray-200">
                                                     {filteredGrades.map((grade, index) => (
                                                     <tr key={index} className="hover:bg-gray-50">
-                                                        <td className="py-2 px-4 text-gray-900">
+                                                        <td className="py-3 px-6 text-gray-900">
                                                             {grade.className || '-'}
                                                         </td>
-                                                        <td className="py-2 px-4 text-gray-900">
+                                                        <td className="py-3 px-6 text-gray-900">
                                                             <div className="font-medium">{grade.moduleName || '-'}</div>
                                                             {grade.moduleCode && (
                                                                 <div className="text-xs text-gray-500">{grade.moduleCode}</div>
                                                             )}
                                                         </td>
-                                                        <td className="py-2 px-4 text-gray-600">
+                                                        <td className="py-3 px-6 text-gray-600">
                                                             {grade.semester ? `Học kỳ ${grade.semester}` : '-'}
                                                         </td>
-                                                        <td className="py-2 px-4 text-center text-gray-900">
+                                                        <td className="py-3 px-6 text-center text-gray-900">
                                                             {grade.theoryScore.toFixed(1)}
                                                         </td>
-                                                        <td className="py-2 px-4 text-center text-gray-900">
+                                                        <td className="py-3 px-6 text-center text-gray-900">
                                                             {grade.practiceScore.toFixed(1)}
                                                         </td>
-                                                        <td className="py-2 px-4 text-center font-semibold text-gray-900">
+                                                        <td className="py-3 px-6 text-center font-semibold text-gray-900">
                                                             {grade.finalScore.toFixed(1)}
                                                         </td>
-                                                        <td className="py-2 px-4 text-center">
+                                                        <td className="py-3 px-6 text-center">
                                                             <span
                                                                 className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
                                                                     grade.passStatus === 'PASS'
@@ -582,7 +531,7 @@ export default function StudentDetailPage() {
                                                                 {grade.passStatus === 'PASS' ? 'Đạt' : 'Chưa đạt'}
                                                             </span>
                                                         </td>
-                                                        <td className="py-2 px-4 text-gray-600">
+                                                        <td className="py-3 px-6 text-gray-600">
                                                             {grade.entryDate || '-'}
                                                         </td>
                                                         </tr>

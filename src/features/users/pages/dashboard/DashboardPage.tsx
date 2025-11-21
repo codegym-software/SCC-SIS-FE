@@ -27,7 +27,6 @@ import RecentClasses from '@/features/users/pages/dashboard/components/RecentCla
 import { listActiveCenters } from '../../../../shared/api/centers';
 import { listUserViews } from '../../../../shared/api/userViews';
 import { getRoles } from '../../../../shared/api/roles';
-import { getAllStudentsWithEnrollments } from '../../../../shared/api/students';
 import { useUserProfile } from '../../../../stores/userProfile';
 
 export default function DashboardPage() {
@@ -93,60 +92,28 @@ export default function DashboardPage() {
                 setCentersCount(0);
             }
 
-            // Fetch students count - only ACTIVE (đang học) and PENDING (đang chờ)
-            // Logic:
-            // - PENDING (đang chờ): học viên chưa vào lớp → đếm tất cả (không phụ thuộc trung tâm)
-            // - ACTIVE (đang học): học viên đang trong lớp → đếm theo trung tâm của lớp
+            // Fetch users (student) count filtered by selected center if any
             try {
-                const [studentsWithEnrollmentsResponse, classesResponse] = await Promise.all([
-                    getAllStudentsWithEnrollments(),
-                    listClasses(selectedCenterId ? { centerId: selectedCenterId } : undefined)
-                ]);
+                const usersResponse = await listUserViews(selectedCenterId ? { centerId: selectedCenterId } : {});
 
-                let count = 0;
+                if (usersResponse && usersResponse.data) {
+                    const data = usersResponse.data as any;
 
-                if (studentsWithEnrollmentsResponse && studentsWithEnrollmentsResponse.data) {
-                    const allStudents = studentsWithEnrollmentsResponse.data as any[];
-
-                    // 1. Đếm học viên PENDING (đang chờ) - không phụ thuộc trung tâm
-                    const pendingStudents = allStudents.filter((student: any) => {
-                        return student.overallStatus?.toUpperCase() === 'PENDING';
-                    });
-                    count += pendingStudents.length;
-
-                    // 2. Đếm học viên ACTIVE (đang học) theo trung tâm của lớp
-                    if (classesResponse && classesResponse.data) {
-                        const classes = Array.isArray(classesResponse.data) 
-                            ? classesResponse.data 
-                            : classesResponse.data.items || [];
-
-                        // Tạo Map: classId -> class để tra cứu nhanh
-                        const classMap = new Map();
-                        classes.forEach((cls: any) => {
-                            classMap.set(cls.classId, cls);
-                        });
-
-                        // Đếm học viên có enrollment ACTIVE trong các lớp đã filter
-                        const activeStudentIds = new Set<number>();
-                        allStudents.forEach((student: any) => {
-                            if (student.enrollments && Array.isArray(student.enrollments)) {
-                                student.enrollments.forEach((enrollment: any) => {
-                                    // Kiểm tra enrollment có status ACTIVE và thuộc lớp đã filter
-                                    if (enrollment.status?.toUpperCase() === 'ACTIVE' && 
-                                        classMap.has(enrollment.classId)) {
-                                        activeStudentIds.add(student.studentId);
-                                    }
-                                });
-                            }
-                        });
-
-                        count += activeStudentIds.size;
+                    // Handle different response structures like UsersPage does
+                    let count = 0;
+                    if (Array.isArray(data)) {
+                        count = data.length;
+                    } else if (data.items && Array.isArray(data.items)) {
+                        count = data.items.length;
+                    } else if (data.total !== undefined) {
+                        count = data.total;
                     }
-                }
 
-                setActiveUsersCount(count);
+                    setActiveUsersCount(count);
+                } else {
+                    setActiveUsersCount(0);
+                }
             } catch (usersError) {
-                console.error('Error fetching students:', usersError);
                 setActiveUsersCount(0);
             }
 
@@ -387,13 +354,13 @@ export default function DashboardPage() {
                                 label: 'Thêm học viên',
                                 color: 'bg-gradient-to-br from-blue-500 to-blue-600',
                                 icon: UserPlus,
-                                onClick: () => navigate('/students?action=create'),
+                                onClick: () => navigate('/students'),
                             },
                             {
                                 label: 'Tạo lớp học',
                                 color: 'bg-gradient-to-br from-purple-500 to-violet-600',
                                 icon: BookOpen,
-                                onClick: () => navigate('/classes?action=create'),
+                                onClick: () => navigate('/classes'),
                             },
                             {
                                 label: 'Xem báo cáo',
