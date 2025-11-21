@@ -6,8 +6,16 @@ import './index.css';
 
 async function bootstrap() {
     try {
+        // Clear any corrupted OAuth state
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('error')) {
+            console.error('OAuth error:', urlParams.get('error'));
+            window.history.replaceState({}, document.title, window.location.pathname);
+            localStorage.removeItem('kc-callback');
+        }
+
         // Lưu URL hiện tại trước khi Keycloak init
-        const currentUrl = window.location.href;
+        const currentUrl = window.location.origin + window.location.pathname;
 
         // init Keycloak, bắt buộc login trước khi render app
         const authenticated = await keycloak.init({
