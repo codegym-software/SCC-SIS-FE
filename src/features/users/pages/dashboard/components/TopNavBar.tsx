@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Menu, Bell, Search, AlertTriangle } from 'lucide-react';
+import { Menu, Bell, Settings, Search, AlertTriangle } from 'lucide-react';
 import { useUserProfile } from '@/stores/userProfile';
 import CenterSwitcher from './CenterSwitcher';
 import { useCenterSelection } from '@/stores/centerSelection';
@@ -25,7 +25,6 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [activeTab, setActiveTab] = useState<'warnings' | 'all'>('warnings');
     const [loading, setLoading] = useState(false);
-    const [userAvatar, setUserAvatar] = useState<string | null>(null);
     const notifRef = useRef<HTMLDivElement | null>(null);
 
     // Fetch student warnings from API (with mock fallback)
@@ -64,34 +63,6 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
         fetchNotifications();
     }, [selectedCenterId]);
 
-    // Load user avatar from localStorage
-    useEffect(() => {
-        const savedAvatar = localStorage.getItem('userAvatar');
-        if (savedAvatar) {
-            setUserAvatar(savedAvatar);
-        }
-    }, []);
-
-    // Listen for avatar changes
-    useEffect(() => {
-        const handleStorageChange = () => {
-            const savedAvatar = localStorage.getItem('userAvatar');
-            setUserAvatar(savedAvatar);
-        };
-
-        const handleAvatarUpdate = (event: CustomEvent) => {
-            setUserAvatar(event.detail.avatar);
-        };
-
-        window.addEventListener('storage', handleStorageChange);
-        window.addEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
-
-        return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            window.removeEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
-        };
-    }, []);
-
     // Close dropdown on outside click
     useEffect(() => {
         function onDocClick(e: MouseEvent) {
@@ -104,7 +75,6 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
         }
         return () => document.removeEventListener('mousedown', onDocClick);
     }, [showNotifications]);
-    
     // Hiển thị CenterSwitcher trên trang tổng quan (path '/') cho các role có quyền xem số liệu theo trung tâm
     const canSelectCenter = me?.roles?.some((r) => ['CENTER_MANAGER', 'SUPER_ADMIN'].includes(r.code));
     const showCenterSwitcher = canSelectCenter && location.pathname === '/';
@@ -144,14 +114,11 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                     </button>
                 </div>
 
-                {/* Center: Empty spacer */}
-                <div className="flex-1" />
+                {/* Center: CenterSwitcher - chỉ hiển thị ở trang tổng quan cho CENTER_MANAGER */}
+                <div className="flex-1 flex justify-center max-w-md">{showCenterSwitcher && <CenterSwitcher />}</div>
 
                 {/* Right: Notifications + Settings + Avatar */}
                 <div className="flex items-center gap-3">
-                    {/* Center Switcher - chỉ hiển thị cho CENTER_MANAGER/SUPER_ADMIN */}
-                    {showCenterSwitcher && <CenterSwitcher />}
-                    
                     {/* Language Selector */}
                     <button className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
                         <span className="text-sm font-medium text-gray-700">VN</span>
@@ -292,27 +259,21 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                         )}
                     </div>
 
-                    {/* Avatar - Click to go to Settings */}
-                    <button 
-                        onClick={() => navigate('/settings')}
-                        className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                        {userAvatar ? (
-                            <img 
-                                src={userAvatar} 
-                                alt="Avatar" 
-                                className="h-9 w-9 rounded-full object-cover shadow-md"
-                            />
-                        ) : (
-                            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 grid place-items-center text-white font-semibold text-sm shadow-md">
-                                {me?.fullName
-                                    ?.split(' ')
-                                    .map((n) => n[0])
-                                    .join('')
-                                    .toUpperCase()
-                                    .slice(0, 2) || 'U'}
-                            </div>
-                        )}
+                    {/* Settings */}
+                    <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                        <Settings size={20} className="text-gray-700" />
+                    </button>
+
+                    {/* Avatar */}
+                    <button className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 grid place-items-center text-white font-semibold text-sm shadow-md">
+                            {me?.fullName
+                                ?.split(' ')
+                                .map((n) => n[0])
+                                .join('')
+                                .toUpperCase()
+                                .slice(0, 2) || 'U'}
+                        </div>
                         <div className="hidden lg:block text-left">
                             <div className="text-sm font-semibold text-gray-900">{me?.fullName || 'User'}</div>
                             <div className="text-xs text-gray-500">{me?.roles?.[0]?.code || 'Quản lý Trung tâm'}</div>

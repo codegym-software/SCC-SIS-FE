@@ -210,20 +210,8 @@ function AppLayout({ children }: AppLayoutProps) {
             <div className="flex min-h-screen m-0 p-0">
                 {/* Sidebar - Fixed position */}
                 <aside
-                    className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r bg-gradient-to-b from-gray-50 to-white hidden md:flex md:flex-col fixed left-0 top-0 bottom-0 overflow-y-auto z-50 transition-all duration-300 shadow-sm`}
+                    className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r bg-gradient-to-b from-gray-50 to-white hidden md:flex md:flex-col fixed left-0 top-14 bottom-0 overflow-y-auto z-40 transition-all duration-300 shadow-sm`}
                 >
-                    {/* Logo Section */}
-                    <div className="h-[56px] flex items-center px-4 bg-white">
-                        <div className={`flex items-center w-full ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
-                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 grid place-items-center text-white font-bold text-lg shadow-md flex-shrink-0">
-                                E
-                            </div>
-                            {!sidebarCollapsed && (
-                                <span className="text-lg font-bold text-gray-900">EduCenter</span>
-                            )}
-                        </div>
-                    </div>
-                    
                     {/* Added extra top spacing so all menu items sit a bit lower */}
                     <nav className="flex-1 px-2 pt-8 pb-3 space-y-1">
                         {menuGroups.map((group) => (

@@ -10,8 +10,6 @@ import {
 import StudentDetailsModal from './StudentDetailsModal';
 import AddStudentModal from './AddStudentModal';
 import { getClassStudents, removeStudentFromClass, updateEnrollment } from '@/shared/api/classes';
-import { getStudentAttendanceHistory } from '@/shared/api/attendance';
-import { getStudentGradesByStudentId } from '@/shared/api/grade-entries';
 import { useToast } from '@/shared/hooks/useToast';
 import type { EnrollmentResponse } from '@/shared/types/classes';
 import { getStudentAttendanceHistory } from '@/shared/api/attendance';
@@ -197,77 +195,6 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const loadWarningData = async () => {
-        const warnings: Record<number, { absences: number; failedExams: number }> = {};
-        const yearsSet = new Set<number>();
-        
-        for (const student of students) {
-            try {
-                let absences = 0;
-                let failedExams = 0;
-
-                // Get attendance data
-                try {
-                    const attendanceResponse = await getStudentAttendanceHistory(student.studentId, parseInt(classItem.id));
-                    const attendanceData = attendanceResponse.data;
-                    if (attendanceData && attendanceData.records) {
-                        // Collect all years from attendance records
-                        attendanceData.records.forEach(record => {
-                            const recordDate = new Date(record.attendanceDate);
-                            yearsSet.add(recordDate.getFullYear());
-                        });
-
-                        // Count absences for selected month/year
-                        absences = attendanceData.records.filter(record => {
-                            if (record.status !== 'ABSENT') return false;
-                            const recordDate = new Date(record.attendanceDate);
-                            return recordDate.getMonth() + 1 === selectedMonth && 
-                                   recordDate.getFullYear() === selectedYear;
-                        }).length;
-                    }
-                } catch (err) {
-                    console.error('Error loading attendance for student:', student.studentId, err);
-                }
-
-                // Get grades data
-                try {
-                    const gradesData = await getStudentGradesByStudentId(student.studentId);
-                    if (gradesData) {
-                        // Collect all years from grade records
-                        gradesData.forEach(grade => {
-                            if (grade.entryDate) {
-                                const [year] = grade.entryDate.split('-').map(Number);
-                                yearsSet.add(year);
-                            }
-                        });
-
-                        // Count failed exams for selected month/year
-                        failedExams = gradesData.filter(grade => {
-                            if (grade.passStatus !== 'FAIL') return false;
-                            if (!grade.entryDate) return false;
-                            const [year, month] = grade.entryDate.split('-').map(Number);
-                            return month === selectedMonth && year === selectedYear;
-                        }).length;
-                    }
-                } catch (err) {
-                    console.error('Error loading grades for student:', student.studentId, err);
-                }
-
-                // Only store if there are warnings
-                if (absences >= 2 || failedExams >= 2) {
-                    warnings[student.studentId] = { absences, failedExams };
-                }
-            } catch (err) {
-                console.error('Error loading warning data for student:', student.studentId, err);
-            }
-        }
-
-        // Update available years (sorted descending)
-        const years = Array.from(yearsSet).sort((a, b) => b - a);
-        setAvailableYears(years);
-        setWarningData(warnings);
     };
 
     const handleAddStudents = () => {
@@ -527,8 +454,8 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                         {filteredStudents.map((student) => (
                             <div 
                                 key={student.enrollmentId} 
-                                className={`px-4 py-3 grid grid-cols-12 gap-4 items-center transition-colors ${!readOnly ? 'cursor-pointer hover:bg-gray-50' : ''}`}
-                                onClick={!readOnly ? () => handleViewDetails(student) : undefined}
+                                className="px-4 py-3 grid grid-cols-12 gap-4 items-center cursor-pointer hover:bg-gray-50 transition-colors"
+                                onClick={() => handleViewDetails(student)}
                             >
                                 {/* Student Info */}
                                 <div className="col-span-5 flex items-center gap-3">
@@ -655,12 +582,10 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                                 <span className="text-gray-400">⋯</span>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent className="w-48">
-                                                {!readOnly && (
-                                                    <DropdownMenuItem onClick={() => handleViewDetails(student)}>
-                                                        <Eye size={14} className="mr-2" />
-                                                        Xem chi tiết
-                                                    </DropdownMenuItem>
-                                                )}
+                                                <DropdownMenuItem onClick={() => handleViewDetails(student)}>
+                                                    <Eye size={14} className="mr-2" />
+                                                    Xem chi tiết
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     onClick={() => handleRemoveFromClass(student)}
                                                     className="text-red-600"
@@ -670,6 +595,18 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
+                                    )}
+                                    {readOnly && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Prevent double navigation
+                                                handleViewDetails(student);
+                                            }}
+                                            className="h-8 px-3 text-xs rounded border hover:bg-gray-50 flex items-center gap-1"
+                                        >
+                                            <Eye size={14} />
+                                            Xem
+                                        </button>
                                     )}
                                 </div>
                             </div>

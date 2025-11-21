@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Calendar, Users as UsersIcon, Clock, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { listClasses, type ClassDto, type ClassStatus } from '@/shared/api/classes';
-import { getAllStudentsWithEnrollments } from '@/shared/api/students';
 import { useCenterSelection } from '@/stores/centerSelection';
 
 type UiStatus = {
@@ -17,59 +16,28 @@ const statusMap: Record<ClassStatus, UiStatus> = {
   CANCELLED: { label: 'Tạm dừng', className: 'bg-amber-50 text-amber-700' },
 };
 
-type ClassWithStudentCount = ClassDto & { activeStudentCount: number };
-
 export default function RecentClasses() {
   const navigate = useNavigate();
   const selectedCenterId = useCenterSelection((s) => s.selectedCenterId);
-  const [classes, setClasses] = useState<ClassWithStudentCount[]>([]);
+  const [classes, setClasses] = useState<ClassDto[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const run = async () => {
       setLoading(true);
       try {
-        const [classesRes, studentsRes] = await Promise.all([
-          listClasses(selectedCenterId ? { centerId: selectedCenterId } : undefined),
-          getAllStudentsWithEnrollments()
-        ]);
-
-        const data = Array.isArray(classesRes.data) ? classesRes.data : [];
-        const allStudents = studentsRes?.data || [];
-
-        // Tính số học viên ACTIVE cho mỗi lớp
-        const classesWithCount = data.map(cls => {
-          let activeCount = 0;
-          if (Array.isArray(allStudents)) {
-            allStudents.forEach((student: any) => {
-              if (student.enrollments && Array.isArray(student.enrollments)) {
-                const hasActiveEnrollment = student.enrollments.some((enrollment: any) => 
-                  enrollment.classId === cls.classId && 
-                  enrollment.status?.toUpperCase() === 'ACTIVE'
-                );
-                if (hasActiveEnrollment) {
-                  activeCount++;
-                }
-              }
-            });
-          }
-          console.log(`[RecentClasses] Class ${cls.classId} (${cls.name}): ${activeCount} active students`);
-          return { ...cls, activeStudentCount: activeCount };
-        });
-
-        // Sắp xếp: Ưu tiên PLANNED (sắp khai giảng) trước, sau đó ONGOING (đang học)
-        // Nếu nhiều lớp cùng trạng thái thì sắp xếp theo startDate gần nhất
-        const sorted = classesWithCount.sort((a, b) => {
-          const prio = (s: ClassStatus) => (s === 'PLANNED' ? 0 : s === 'ONGOING' ? 1 : 2);
+        const res = await listClasses(selectedCenterId ? { centerId: selectedCenterId } : undefined);
+        const data = Array.isArray(res.data) ? res.data : [];
+        // Sắp xếp: lớp đang diễn ra trước, rồi đến sắp khai giảng gần nhất
+        const sorted = data.sort((a, b) => {
+          const prio = (s: ClassStatus) => (s === 'ONGOING' ? 0 : s === 'PLANNED' ? 1 : 2);
           const d = prio(a.status) - prio(b.status);
           if (d !== 0) return d;
           const getDate = (c: ClassDto) => new Date(c.startDate || c.createdAt).getTime();
           return getDate(a) - getDate(b);
         });
-        
         setClasses(sorted.slice(0, 3));
       } catch (e) {
-        console.error('[RecentClasses] Error:', e);
         setClasses([]);
       } finally {
         setLoading(false);
@@ -113,10 +81,9 @@ export default function RecentClasses() {
               <div className="text-xs text-gray-500">{c.programName}</div>
               <div className="flex items-center gap-6 text-xs text-gray-600">
                 <span className="inline-flex items-center gap-1"><Calendar size={14} />{c.startDate || 'Chưa đặt lịch'}</span>
-                <span className="inline-flex items-center gap-1">
-                  <UsersIcon size={14} />
-                  {c.activeStudentCount}/{c.capacity || 30}
-                </span>
+                {c.capacity ? (
+                  <span className="inline-flex items-center gap-1"><UsersIcon size={14} />{c.capacity}/30</span>
+                ) : null}
                 {daysText && (
                   <span className="inline-flex items-center gap-1"><Clock size={14} />{daysText}</span>
                 )}
