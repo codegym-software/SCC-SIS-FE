@@ -18,7 +18,6 @@ import { useCenterSelection, useEnsureCenterLoaded } from '../../../../stores/ce
 // Import components
 import Stats from '@/features/users/pages/dashboard/components/stats';
 import SystemStatus from '@/features/users/pages/dashboard/components/system-status';
-import RecentActivity from '@/features/users/pages/dashboard/components/RecentActivity';
 import StudentWarnings from '@/features/users/pages/dashboard/components/StudentWarnings';
 import QuickActions from '@/features/users/pages/dashboard/components/quick-actions';
 import RecentClasses from '@/features/users/pages/dashboard/components/RecentClasses';
@@ -116,9 +115,10 @@ export default function DashboardPage() {
 
                     // 2. Đếm học viên ACTIVE (đang học) theo trung tâm của lớp
                     if (classesResponse && classesResponse.data) {
-                        const classes = Array.isArray(classesResponse.data) 
-                            ? classesResponse.data 
-                            : classesResponse.data.items || [];
+                        const classesData = classesResponse.data as any;
+                        const classes = Array.isArray(classesData) 
+                            ? classesData 
+                            : classesData.items || [];
 
                         // Tạo Map: classId -> class để tra cứu nhanh
                         const classMap = new Map();
@@ -399,7 +399,7 @@ export default function DashboardPage() {
                                 label: 'Xem báo cáo',
                                 color: 'bg-gradient-to-br from-emerald-500 to-green-600',
                                 icon: Sparkles,
-                                onClick: () => navigate('/classes'),
+                                onClick: () => navigate('/statistics'),
                             },
                             {
                                 label: 'Quản lý lịch',
@@ -415,11 +415,6 @@ export default function DashboardPage() {
                 {/* Student Warnings */}
                 <div className="mb-8 relative z-20">
                     <StudentWarnings onCountChange={(c) => setWarningsCount(c)} />
-                </div>
-
-                {/* Recent Activity */}
-                <div className="mb-8 relative z-20">
-                    <RecentActivity />
                 </div>
 
                 {/* System Status */}
