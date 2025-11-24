@@ -138,12 +138,6 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                     >
                         <Menu size={20} className="text-gray-700" />
                     </button>
-                    <button
-                        className="p-2 rounded-lg hover:bg-gray-100 transition-colors hidden sm:inline-flex"
-                        aria-label="Search"
-                    >
-                        <Search size={20} className="text-gray-700" />
-                    </button>
                 </div>
 
                 {/* Center: Empty spacer */}
