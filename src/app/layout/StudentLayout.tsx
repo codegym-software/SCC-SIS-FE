@@ -99,7 +99,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
                             {/* User Menu */}
                             <div className="relative">
-                                <button 
+                                <button
                                     onClick={() => setUserMenuOpen(!userMenuOpen)}
                                     className="flex items-center space-x-3 rounded-full p-1 hover:bg-gray-100"
                                 >
