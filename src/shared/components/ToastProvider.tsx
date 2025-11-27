@@ -16,9 +16,20 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
     const [toasts, setToasts] = useState<Toast[]>([]);
+    // Track recently shown toasts to prevent duplicate spam within a short window
+    const recentMapRef = React.useRef<Map<string, number>>(new Map());
 
     const show = useCallback((t: Omit<Toast, 'id'>) => {
-        const id = String(Date.now() + Math.random());
+        const key = `${t.variant ?? 'info'}|${t.title ?? ''}|${t.description ?? ''}`;
+        const now = Date.now();
+        const lastShown = recentMapRef.current.get(key) ?? 0;
+        // Ignore duplicates within 3 seconds
+        if (now - lastShown < 3000) {
+            return;
+        }
+        recentMapRef.current.set(key, now);
+
+        const id = String(now + Math.random());
         const toast: Toast = { id, durationMs: 3000, variant: 'info', ...t };
         setToasts((prev) => [...prev, toast]);
         const timeout = setTimeout(() => {

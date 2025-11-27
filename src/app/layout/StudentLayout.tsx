@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { BookOpen, Trophy, TrendingUp, Bell, Settings, LogOut, Search, Menu, X } from 'lucide-react';
+import { BookOpen, Bell, Settings, LogOut, Search, Menu, X } from 'lucide-react';
 import { keycloak } from '../../keycloak';
 import { useUserProfile } from '../../stores/userProfile';
+import { getMyClasses, type ClassDto } from '@/shared/api/classes';
 
 type StudentLayoutProps = {
     children: React.ReactNode;
@@ -12,6 +13,8 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [userAvatar, setUserAvatar] = useState<string | null>(null);
+    const [classes, setClasses] = useState<ClassDto[]>([]);
+    const [loadingClasses, setLoadingClasses] = useState(false);
     const { me, loading } = useUserProfile();
     const navigate = useNavigate();
 
@@ -22,6 +25,25 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             setUserAvatar(savedAvatar);
         }
     }, []);
+
+    // Load classes for sidebar
+    useEffect(() => {
+        if (me?.userId) {
+            loadClasses();
+        }
+    }, [me?.userId]);
+
+    const loadClasses = async () => {
+        try {
+            setLoadingClasses(true);
+            const response = await getMyClasses();
+            setClasses(response.data);
+        } catch (error) {
+            console.error('Error loading classes for sidebar:', error);
+        } finally {
+            setLoadingClasses(false);
+        }
+    };
 
     const handleLogout = () => {
         keycloak.logout({ redirectUri: window.location.origin });
@@ -35,11 +57,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             : names[0][0].toUpperCase();
     };
 
-    const navigationItems = [
-        { name: 'Lớp học của tôi', path: '/my-classes', icon: BookOpen },
-        { name: 'Tiến trình', path: '/progress', icon: TrendingUp },
-        { name: 'Thành tích', path: '/achievements', icon: Trophy },
-    ];
+    const navigationItems = [{ name: 'Lớp học của tôi', path: '/my-classes', icon: BookOpen }];
 
     if (loading) {
         return (
@@ -50,47 +68,42 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
             {/* Top Navigation Bar */}
-            <header className="sticky top-0 z-50 bg-white shadow-sm">
+            <header className="sticky top-0 z-50 bg-gradient-to-r from-blue-50 to-cyan-50 shadow-sm backdrop-blur-sm bg-opacity-95">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 items-center justify-between">
-                        {/* Logo and Brand */}
-                        <div className="flex items-center">
-                            <button
-                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                                className="mr-4 rounded-lg p-2 hover:bg-gray-100 lg:hidden"
-                            >
-                                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                            </button>
+                        {/* Mobile Menu Button */}
+                        <button
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="mr-4 rounded-lg p-2 hover:bg-gray-100 lg:hidden"
+                        >
+                            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                        </button>
+
+                        {/* Logo and Brand - Centered */}
+                        <div className="flex-1 flex justify-center">
                             <button
                                 onClick={() => navigate('/my-classes')}
-                                className="group flex items-center space-x-2 rounded-md px-2 py-1 transition-colors hover:bg-gray-100"
-                                aria-label="Trang chủ eduMange"
+                                className="group flex items-center space-x-3 rounded-md px-3 py-1.5 transition-colors hover:bg-white/50"
+                                aria-label="Trang chủ Education Management"
                             >
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-800 text-white transition-colors group-hover:bg-gray-700">
-                                    <span className="text-lg font-bold">E</span>
+                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-md transition-all group-hover:shadow-xl group-hover:from-purple-600 group-hover:to-pink-500 group-hover:scale-110">
+                                    <span className="text-xl font-bold">EM</span>
                                 </div>
-                                <span className="text-xl font-semibold tracking-tight text-gray-900 group-hover:text-gray-800">
-                                    eduMange
-                                </span>
+                                <div className="text-left">
+                                    <div className="text-lg font-bold tracking-tight text-gray-900 group-hover:text-blue-600 transition-colors">
+                                        Education Management
+                                    </div>
+                                    <div className="text-xs text-gray-500 group-hover:text-blue-500 transition-colors">
+                                        Student Portal
+                                    </div>
+                                </div>
                             </button>
-                        </div>
-
-                        {/* Search Bar - Hidden on mobile */}
-                        <div className="hidden flex-1 px-8 md:block lg:max-w-md">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Tìm kiếm"
-                                    className="w-full rounded-full border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                />
-                            </div>
                         </div>
 
                         {/* Right Side Actions */}
-                        <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-3">
                             {/* Notifications */}
                             <button className="relative rounded-full p-2 hover:bg-gray-100" aria-label="Thông báo">
                                 <Bell className="h-6 w-6 text-gray-600" />
@@ -147,7 +160,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
 
                 {/* Mobile Navigation */}
                 {mobileMenuOpen && (
-                    <div className="border-t border-gray-200 bg-white lg:hidden">
+                    <div className="border-t border-blue-100 bg-white/95 backdrop-blur-sm lg:hidden">
                         <nav className="space-y-1 px-4 py-4">
                             {navigationItems.map((item) => (
                                 <NavLink
@@ -170,33 +183,73 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             </header>
 
             {/* Main Content Area */}
-            <div className="mx-auto max-w-7xl">
+            <div className="mx-auto max-w-[1600px] px-4">
                 <div className="flex">
-                    {/* Left Sidebar - Desktop Only */}
-                    <aside className="hidden w-64 shrink-0 lg:block">
-                        <nav className="sticky top-20 space-y-1 p-4">
-                            <div className="mb-4 px-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                Quá trình tự học
-                            </div>
-                            {navigationItems.map((item) => (
-                                <NavLink
-                                    key={item.path}
-                                    to={item.path}
-                                    className={({ isActive }) =>
-                                        `flex items-center rounded-md px-4 py-2.5 text-sm font-medium transition-colors ${
-                                            isActive ? 'bg-gray-200 text-gray-900' : 'text-gray-700 hover:bg-gray-100'
-                                        }`
-                                    }
+                    {/* Left Sidebar - Desktop Only - Increased width */}
+                    <aside className="hidden w-80 shrink-0 border-r border-blue-100 bg-white/50 backdrop-blur-sm lg:block">
+                        <nav className="sticky top-20 space-y-8 p-8">
+                            {/* User Profile Section */}
+                            <div className="space-y-5">
+                                <div className="flex items-center gap-4">
+                                    {userAvatar ? (
+                                        <img
+                                            src={userAvatar}
+                                            alt="Avatar"
+                                            className="h-16 w-16 rounded-full object-cover ring-2 ring-blue-200"
+                                        />
+                                    ) : (
+                                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-xl font-bold text-white ring-2 ring-blue-200 shadow-md">
+                                            {getUserInitials()}
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-base font-bold text-gray-900 truncate">
+                                            {me?.fullName || 'Student'}
+                                        </p>
+                                        <p className="text-sm text-gray-500 mt-0.5">Học viên</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => navigate('/settings')}
+                                    className="w-full rounded-lg border border-purple-200 bg-purple-50 px-5 py-2.5 text-sm font-medium text-purple-700 transition hover:bg-purple-100"
                                 >
-                                    <item.icon className="mr-3 h-5 w-5" />
-                                    {item.name}
-                                </NavLink>
-                            ))}
+                                    Chỉnh sửa hồ sơ
+                                </button>
+                            </div>
+
+                            {/* Navigation Links */}
+                            <div>
+                                <h4 className="mb-4 px-4 text-xs font-bold uppercase tracking-wider text-gray-500">
+                                    Học tập
+                                </h4>
+                                <div className="space-y-2">
+                                    <NavLink
+                                        to="/my-classes"
+                                        className={({ isActive }) =>
+                                            `flex items-center rounded-xl px-4 py-3 text-base font-semibold transition-all ${
+                                                isActive
+                                                    ? 'bg-blue-50 text-blue-700 shadow-sm'
+                                                    : 'text-gray-700 hover:bg-gray-50'
+                                            }`
+                                        }
+                                    >
+                                        <BookOpen className="mr-4 h-6 w-6" />
+                                        Lớp học của tôi
+                                    </NavLink>
+                                </div>
+                            </div>
                         </nav>
                     </aside>
 
                     {/* Main Content */}
-                    <main className="min-h-[calc(100vh-4rem)] flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+                    <main className="min-h-[calc(100vh-4rem)] flex-1 px-6 py-8 sm:px-8 lg:px-12 relative">
+                        {/* Decorative Elements */}
+                        <div className="absolute top-10 right-10 w-64 h-64 bg-blue-200/20 rounded-full blur-3xl pointer-events-none"></div>
+                        <div className="absolute bottom-20 left-10 w-48 h-48 bg-cyan-200/20 rounded-full blur-3xl pointer-events-none"></div>
+
+                        {/* Content */}
+                        <div className="relative z-10">{children}</div>
+                    </main>
                 </div>
             </div>
         </div>

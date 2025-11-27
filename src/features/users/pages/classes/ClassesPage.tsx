@@ -32,6 +32,7 @@ import ConfirmDialog from '@/shared/components/ConfirmDialog';
 import { useToast } from '@/shared/hooks/useToast';
 import { useUserProfile } from '@/stores/userProfile';
 import { useCenterSelection, useEnsureCenterLoaded } from '@/stores/centerSelection';
+import CenterSwitcher from '@/features/users/pages/dashboard/components/CenterSwitcher';
 import http from '@/shared/api/http';
 import { getModulesByProgram, type ModuleResponse } from '@/shared/api/modules';
 import {
@@ -1616,14 +1617,18 @@ export default function ClassesPage() {
                         <p className="text-xs text-gray-500">Quản lý thông tin lớp học và danh sách học viên</p>
                     </div>
                 </div>
-                {!isLecturer && (
-                    <button
-                        onClick={() => setOpenCreate(true)}
-                        className="inline-flex items-center gap-2 rounded-md bg-black text-white text-sm px-4 py-2 hover:bg-gray-800 transition-all duration-300"
-                    >
-                        + Thêm Mới
-                    </button>
-                )}
+                <div className="flex items-center gap-3">
+                    {/* Center Switcher - chỉ hiển thị cho user có GLOBAL scope */}
+                    {hasGlobalScope && <CenterSwitcher />}
+                    {!isLecturer && (
+                        <button
+                            onClick={() => setOpenCreate(true)}
+                            className="inline-flex items-center gap-2 rounded-md bg-black text-white text-sm px-4 py-2 hover:bg-gray-800 transition-all duration-300"
+                        >
+                            + Thêm Mới
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Search, Filter and View Toggle */}
