@@ -40,10 +40,10 @@ async function bootstrap() {
         // Expose token to window
         (window as any).token = keycloak.token;
 
-        // Fetch user profile after Keycloak is ready
-        import('./stores/userProfile').then(({ useUserProfile }) => {
-            useUserProfile.getState().fetchMe();
-        });
+        // Fetch user profile after Keycloak is ready and WAIT for it
+        const { useUserProfile } = await import('./stores/userProfile');
+        await useUserProfile.getState().fetchMe();
+        console.log('Profile loaded, rendering app...');
 
         ReactDOM.createRoot(document.getElementById('root')!).render(
             <React.StrictMode>
