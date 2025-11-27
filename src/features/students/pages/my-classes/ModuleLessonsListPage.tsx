@@ -1,26 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, PlayCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, PlayCircle, CheckCircle, FileText, Video, ClipboardList, PenTool } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
 import { getModulesByProgram, type ModuleResponse } from '@/shared/api/modules';
+import { getLessonsByModule } from '@/shared/api/lessons';
+import type { Lesson } from '@/shared/types/lesson';
 import { useProgressStore } from '../../hooks/useProgressStore';
-
-interface LessonItem {
-    id: string;
-    title: string;
-    duration?: string;
-    type?: 'video' | 'article' | 'quiz';
-}
-
-// Mock lesson generator
-const generateMockLessons = (moduleId: number, count: number): LessonItem[] => {
-    return Array.from({ length: count }).map((_, i) => ({
-        id: `M${moduleId}-L${i + 1}`,
-        title: `Bài học ${i + 1}`,
-        duration: `${8 + (i % 5)}m`,
-        type: (i % 3 === 0 ? 'video' : i % 3 === 1 ? 'article' : 'quiz') as 'video' | 'article' | 'quiz',
-    }));
-};
 
 export default function ModuleLessonsListPage() {
     const { classId, moduleId } = useParams();
@@ -30,27 +15,35 @@ export default function ModuleLessonsListPage() {
 
     const [loading, setLoading] = useState(false);
     const [module, setModule] = useState<ModuleResponse | null>(null);
-    const [lessons, setLessons] = useState<LessonItem[]>([]);
+    const [lessons, setLessons] = useState<Lesson[]>([]);
 
     useEffect(() => {
-        const loadModule = async () => {
+        const loadData = async () => {
             if (!classId || !moduleId) return;
 
             try {
                 setLoading(true);
-                // This would normally fetch single module, but we'll search through all
-                // In real implementation, there should be a getModuleById endpoint
+                
+                // Load module info
                 const urlParams = new URLSearchParams(window.location.search);
                 const programId = urlParams.get('programId');
 
                 if (programId) {
-                    const response = await getModulesByProgram({ programId: parseInt(programId) });
-                    const foundModule = response.data.find((m: ModuleResponse) => m.moduleId.toString() === moduleId);
+                    const moduleResponse = await getModulesByProgram({ programId: parseInt(programId) });
+                    const foundModule = moduleResponse.data.find((m: ModuleResponse) => m.moduleId.toString() === moduleId);
 
                     if (foundModule) {
                         setModule(foundModule);
-                        const lessonCount = foundModule.credits ? Math.min(10, foundModule.credits * 2) : 6;
-                        setLessons(generateMockLessons(foundModule.moduleId, lessonCount));
+                        
+                        // Load lessons from backend
+                        try {
+                            const lessonsResponse = await getLessonsByModule(parseInt(moduleId));
+                            setLessons(lessonsResponse.data || []);
+                        } catch (lessonError) {
+                            console.error('Failed to load lessons:', lessonError);
+                            toast.error('Không thể tải danh sách bài học');
+                            setLessons([]);
+                        }
                     } else {
                         toast.error('Không tìm thấy module');
                     }
@@ -62,11 +55,35 @@ export default function ModuleLessonsListPage() {
             }
         };
 
-        loadModule();
+        loadData();
     }, [classId, moduleId]);
 
-    const handleLessonClick = (lessonId: string) => {
-        navigate(`/my-classes/${classId}/modules/${moduleId}/lessons/${lessonId}`);
+    const handleLessonClick = (lesson: Lesson) => {
+        // Nếu là QUIZ, chuyển đến trang quiz
+        if (lesson.lessonType === 'QUIZ') {
+            navigate(`/my-classes/${classId}/modules/${moduleId}/lessons/${lesson.lessonId}/quiz`);
+        } else {
+            // Các loại khác (VIDEO, DOCUMENT, etc.) vào lesson viewer
+            navigate(`/my-classes/${classId}/modules/${moduleId}/lessons/${lesson.lessonId}`);
+        }
+    };
+    
+    const getLessonTypeIcon = (type: string) => {
+        switch (type) {
+            case 'VIDEO': return <Video size={16} className="text-blue-600" />;
+            case 'DOCUMENT': return <FileText size={16} className="text-green-600" />;
+            case 'QUIZ': return <ClipboardList size={16} className="text-purple-600" />;
+            case 'ASSIGNMENT': return <PenTool size={16} className="text-orange-600" />;
+            default: return <FileText size={16} className="text-gray-600" />;
+        }
+    };
+    
+    const formatDuration = (minutes?: number): string => {
+        if (!minutes) return '';
+        if (minutes < 60) return `${minutes}m`;
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
     };
 
     if (loading) {
@@ -109,61 +126,87 @@ export default function ModuleLessonsListPage() {
 
                 {/* Lessons list */}
                 <div className="space-y-3">
-                    {lessons.map((lesson, idx) => {
-                        const status = classId ? getLessonStatus(classId, moduleId!, lesson.id) : 'not-started';
-                        const isCompleted = status === 'completed';
-                        const isInProgress = status === 'in-progress';
+                    {lessons.length === 0 ? (
+                        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+                            <FileText size={48} className="mx-auto text-gray-400 mb-3" />
+                            <p className="text-sm text-gray-600">Module này chưa có bài học nào</p>
+                        </div>
+                    ) : (
+                        lessons.map((lesson, idx) => {
+                            const lessonIdStr = lesson.lessonId.toString();
+                            const status = classId ? getLessonStatus(classId, moduleId!, lessonIdStr) : 'not-started';
+                            const isCompleted = status === 'completed';
+                            const isInProgress = status === 'in-progress';
 
-                        return (
-                            <div
-                                key={lesson.id}
-                                onClick={() => handleLessonClick(lesson.id)}
-                                className="bg-white rounded-lg border-2 border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer p-4 group"
-                            >
-                                <div className="flex items-center gap-4">
-                                    {/* Number/Status icon */}
-                                    <div className="flex-shrink-0">
-                                        {isCompleted ? (
-                                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                                                <CheckCircle size={20} className="text-green-600" />
+                            return (
+                                <div
+                                    key={lesson.lessonId}
+                                    onClick={() => handleLessonClick(lesson)}
+                                    className="bg-white rounded-lg border-2 border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer p-4 group"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        {/* Number/Status icon */}
+                                        <div className="flex-shrink-0">
+                                            {isCompleted ? (
+                                                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                                                    <CheckCircle size={20} className="text-green-600" />
+                                                </div>
+                                            ) : isInProgress ? (
+                                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                                    <PlayCircle size={20} className="text-blue-600" />
+                                                </div>
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-semibold text-sm">
+                                                    {lesson.lessonOrder}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Lesson info */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="font-medium text-gray-900 group-hover:text-blue-600 transition">
+                                                    {lesson.lessonTitle}
+                                                </h3>
+                                                {lesson.isMandatory && (
+                                                    <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full font-medium">
+                                                        Bắt buộc
+                                                    </span>
+                                                )}
                                             </div>
-                                        ) : isInProgress ? (
-                                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                                <PlayCircle size={20} className="text-blue-600" />
+                                            <div className="flex items-center gap-3 text-xs text-gray-500">
+                                                <span className="flex items-center gap-1">
+                                                    {getLessonTypeIcon(lesson.lessonType)}
+                                                    {lesson.lessonType}
+                                                </span>
+                                                {lesson.durationMinutes && (
+                                                    <span>⏱️ {formatDuration(lesson.durationMinutes)}</span>
+                                                )}
+                                                {lesson.contentType && (
+                                                    <span>📺 {lesson.contentType}</span>
+                                                )}
                                             </div>
-                                        ) : (
-                                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-semibold text-sm">
-                                                {idx + 1}
+                                            {lesson.description && (
+                                                <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                                                    {lesson.description}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Status badge */}
+                                        {isCompleted && (
+                                            <div className="flex-shrink-0 text-xs font-medium text-green-600">
+                                                Đã hoàn thành
                                             </div>
                                         )}
+                                        {isInProgress && (
+                                            <div className="flex-shrink-0 text-xs font-medium text-blue-600">Đang học</div>
+                                        )}
                                     </div>
-
-                                    {/* Lesson info */}
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="font-medium text-gray-900 group-hover:text-blue-600 transition mb-1">
-                                            {lesson.title}
-                                        </h3>
-                                        <div className="flex items-center gap-3 text-xs text-gray-500">
-                                            {lesson.type === 'video' && <span>🎥 Video</span>}
-                                            {lesson.type === 'article' && <span>📄 Bài viết</span>}
-                                            {lesson.type === 'quiz' && <span>✏️ Bài tập</span>}
-                                            {lesson.duration && <span>⏱️ {lesson.duration}</span>}
-                                        </div>
-                                    </div>
-
-                                    {/* Status badge */}
-                                    {isCompleted && (
-                                        <div className="flex-shrink-0 text-xs font-medium text-green-600">
-                                            Đã hoàn thành
-                                        </div>
-                                    )}
-                                    {isInProgress && (
-                                        <div className="flex-shrink-0 text-xs font-medium text-blue-600">Đang học</div>
-                                    )}
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })
+                    )}
                 </div>
             </div>
         </div>

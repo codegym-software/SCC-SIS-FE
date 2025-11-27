@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { BookOpen, Bell, Settings, LogOut, Search, Menu, X } from 'lucide-react';
+import { BookOpen, Bell, Settings, LogOut, Search, Menu, X, MailOpen } from 'lucide-react';
 import { keycloak } from '../../keycloak';
 import { useUserProfile } from '../../stores/userProfile';
 import { getMyClasses, type ClassDto } from '@/shared/api/classes';
+import { notificationsApi } from '@/shared/api/notifications';
+import type { NotificationItem } from '@/shared/api/notifications';
+import { studentWarningsApi, type MyWarning } from '@/shared/api/student-warnings';
 
 type StudentLayoutProps = {
     children: React.ReactNode;
@@ -17,6 +20,17 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     const [loadingClasses, setLoadingClasses] = useState(false);
     const { me, loading } = useUserProfile();
     const navigate = useNavigate();
+    
+    // Notification states
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+    const [myWarnings, setMyWarnings] = useState<MyWarning[]>([]);
+    const [activeTab, setActiveTab] = useState<'warnings' | 'all'>('warnings');
+    const [hiddenNotificationIds, setHiddenNotificationIds] = useState<number[]>(() => {
+        const saved = localStorage.getItem('hiddenNotifications');
+        return saved ? JSON.parse(saved) : [];
+    });
+    const notifRef = useRef<HTMLDivElement | null>(null);
 
     // Load user avatar
     useEffect(() => {
@@ -32,6 +46,47 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             loadClasses();
         }
     }, [me?.userId]);
+
+    // Fetch notifications
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            try {
+                const data = await notificationsApi.getMyNotifications();
+                setNotifications(data);
+            } catch (error) {
+                console.error('Failed to fetch notifications:', error);
+                setNotifications([]);
+            }
+        };
+        fetchNotifications();
+    }, []);
+
+    // Fetch my warnings (absences > 2 or failures > 2)
+    useEffect(() => {
+        const fetchWarnings = async () => {
+            try {
+                const data = await studentWarningsApi.getMyWarnings();
+                setMyWarnings(data);
+            } catch (error) {
+                console.error('Failed to fetch warnings:', error);
+                setMyWarnings([]);
+            }
+        };
+        fetchWarnings();
+    }, []);
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        function onDocClick(e: MouseEvent) {
+            if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+                setShowNotifications(false);
+            }
+        }
+        if (showNotifications) {
+            document.addEventListener('mousedown', onDocClick);
+        }
+        return () => document.removeEventListener('mousedown', onDocClick);
+    }, [showNotifications]);
 
     const loadClasses = async () => {
         try {
@@ -105,10 +160,218 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                         {/* Right Side Actions */}
                         <div className="flex items-center space-x-3">
                             {/* Notifications */}
-                            <button className="relative rounded-full p-2 hover:bg-gray-100" aria-label="Thông báo">
-                                <Bell className="h-6 w-6 text-gray-600" />
-                                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-blue-500"></span>
-                            </button>
+                            <div className="relative" ref={notifRef}>
+                                <button 
+                                    className="relative rounded-full p-2 hover:bg-gray-100" 
+                                    aria-label="Thông báo"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowNotifications((s) => !s);
+                                    }}
+                                >
+                                    <Bell className="h-6 w-6 text-gray-600" />
+                                    {(notifications && notifications.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length > 0) || (myWarnings && myWarnings.length > 0) ? (
+                                        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-blue-500"></span>
+                                    ) : null}
+                                    {(notifications && notifications.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length > 0) || (myWarnings && myWarnings.length > 0) ? (
+                                        <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 grid place-items-center text-[10px] font-semibold bg-red-600 text-white rounded-full shadow">
+                                            {notifications.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length + (myWarnings?.length || 0)}
+                                        </span>
+                                    ) : null}
+                                </button>
+
+                                {/* Notification Dropdown */}
+                                {showNotifications && (
+                                    <div 
+                                        className="absolute right-0 mt-2 w-[420px] max-w-[90vw] bg-white border border-gray-200 rounded-2xl shadow-2xl z-[100] overflow-hidden"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        {/* Header */}
+                                        <div className="px-5 py-4 border-b border-gray-100">
+                                            <h3 className="text-lg font-semibold text-gray-900">Thông báo</h3>
+                                        </div>
+
+                                        {/* Tabs */}
+                                        <div className="flex items-center border-b border-gray-100 bg-white">
+                                            <button
+                                                onClick={() => setActiveTab('warnings')}
+                                                className={`flex-1 px-4 py-3 font-medium text-sm transition-all ${
+                                                    activeTab === 'warnings' 
+                                                        ? 'text-red-600 border-b-2 border-red-500 bg-red-50' 
+                                                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                Cảnh báo ({myWarnings?.length || 0})
+                                            </button>
+                                            <button
+                                                onClick={() => setActiveTab('all')}
+                                                className={`flex-1 px-4 py-3 font-medium text-sm transition-all flex items-center justify-center gap-2 relative ${
+                                                    activeTab === 'all' 
+                                                        ? 'text-blue-600 border-b-2 border-blue-500 bg-blue-50' 
+                                                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                <span>Hoạt động ({notifications?.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length || 0})</span>
+                                                {activeTab === 'all' && notifications && notifications.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length > 0 && (
+                                                    <div title="Đánh dấu tất cả đã đọc">
+                                                        <MailOpen 
+                                                            size={16} 
+                                                            className="text-blue-500 hover:text-blue-700 cursor-pointer ml-1"
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                try {
+                                                                    await notificationsApi.markAllAsRead();
+                                                                    const updated = await notificationsApi.getMyNotifications();
+                                                                    setNotifications(updated);
+                                                                } catch (error) {
+                                                                    console.error('Failed to mark all as read:', error);
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </button>
+                                        </div>
+
+                                        <div className="max-h-96 overflow-auto">
+                                            {activeTab === 'warnings' && (
+                                                <div>
+                                                    {(!myWarnings || myWarnings.length === 0) && (
+                                                        <div className="px-6 py-12 text-center text-gray-500">
+                                                            <p className="text-sm">Không có cảnh báo nào</p>
+                                                        </div>
+                                                    )}
+                                                    {myWarnings?.map((warning) => (
+                                                        <div
+                                                            key={warning.classId}
+                                                            className="relative w-full text-left px-5 py-4 border-b border-gray-100 bg-red-50 hover:bg-red-100 transition-all"
+                                                        >
+                                                            <div className="space-y-2">
+                                                                <h4 className="text-sm font-semibold text-gray-900">
+                                                                    {warning.className}
+                                                                </h4>
+                                                                <p className="text-xs text-gray-600">
+                                                                    {warning.programName}
+                                                                </p>
+                                                                <div className="flex flex-wrap gap-2 pt-1">
+                                                                    {warning.hasAbsenceWarning && (
+                                                                        <span className="inline-block px-2 py-1 bg-amber-100 rounded text-xs font-medium text-amber-800">
+                                                                            Vắng {warning.absentCount} buổi
+                                                                        </span>
+                                                                    )}
+                                                                    {warning.hasFailWarning && (
+                                                                        <span className="inline-block px-2 py-1 bg-red-100 rounded text-xs font-medium text-red-800">
+                                                                            Trượt {warning.failCount} bài
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {activeTab === 'all' && (
+                                                <div className="bg-gray-50">
+                                                    {(!notifications || notifications.length === 0) && (
+                                                        <div className="px-6 py-12 text-center text-gray-500">
+                                                            <span className="text-4xl">📢</span>
+                                                            <p className="text-sm mt-3">Không có thông báo nào</p>
+                                                        </div>
+                                                    )}
+                                                    {notifications?.filter(n => !hiddenNotificationIds.includes(n.id)).slice(0, 6).map((n) => (
+                                                        <div
+                                                            key={n.id}
+                                                            className={`relative w-full text-left px-5 py-4 border-b border-gray-100 hover:bg-white transition-all group ${
+                                                                !n.isRead ? 'bg-blue-50' : 'bg-white'
+                                                            }`}
+                                                        >
+                                                            <button
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        if (!n.isRead) {
+                                                                            await notificationsApi.markAsRead(n.id);
+                                                                            const updated = await notificationsApi.getMyNotifications();
+                                                                            setNotifications(updated);
+                                                                        }
+                                                                    } catch (error) {
+                                                                        console.error('Failed to mark notification as read:', error);
+                                                                    }
+                                                                }}
+                                                                className="w-full"
+                                                            >
+                                                                <div className="flex items-start gap-3">
+                                                                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                                                        n.severity === 'high' ? 'bg-red-100' :
+                                                                        n.severity === 'medium' ? 'bg-amber-100' :
+                                                                        'bg-blue-100'
+                                                                    }`}>
+                                                                        <span className={`text-lg ${
+                                                                            n.severity === 'high' ? 'text-red-600' :
+                                                                            n.severity === 'medium' ? 'text-amber-600' :
+                                                                            'text-blue-600'
+                                                                        }`}>
+                                                                            {n.type === 'GRADE_UPDATED' ? '📊' :
+                                                                             n.type === 'ENROLLED_NEW_CLASS' ? '🎓' :
+                                                                             n.type === 'CLASS_UPDATED' ? '📅' :
+                                                                             n.type === 'ATTENDANCE_RECORDED' ? '✅' :
+                                                                             n.type === 'ATTENDANCE_UPDATED' ? '🔄' :
+                                                                             n.type === 'ATTENDANCE_WARNING' ? '⚠️' :
+                                                                             n.type === 'GRADE_WARNING' ? '❌' :
+                                                                             '📢'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0 pr-6">
+                                                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                                                            <span className={`text-sm font-semibold ${!n.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
+                                                                                {n.title}
+                                                                            </span>
+                                                                            {!n.isRead && (
+                                                                                <span className="flex-shrink-0 h-2 w-2 bg-blue-600 rounded-full"></span>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                                                                            {n.message}
+                                                                        </p>
+                                                                        <span className="text-xs text-gray-400">
+                                                                            {(() => {
+                                                                                const date = new Date(n.createdAt);
+                                                                                const now = new Date();
+                                                                                const diffMs = now.getTime() - date.getTime();
+                                                                                const diffMins = Math.floor(diffMs / 60000);
+                                                                                const diffHours = Math.floor(diffMs / 3600000);
+                                                                                
+                                                                                if (diffMins < 1) return 'Vừa xong';
+                                                                                if (diffMins < 60) return `${diffMins} phút trước`;
+                                                                                if (diffHours < 24) return `${diffHours} giờ trước`;
+                                                                                return date.toLocaleDateString('vi-VN');
+                                                                            })()}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </button>
+                                                            
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const updated = [...hiddenNotificationIds, n.id];
+                                                                    setHiddenNotificationIds(updated);
+                                                                    localStorage.setItem('hiddenNotifications', JSON.stringify(updated));
+                                                                }}
+                                                                className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 rounded-full"
+                                                                title="Ẩn khỏi danh sách"
+                                                            >
+                                                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
                             {/* User Menu */}
                             <div className="relative">

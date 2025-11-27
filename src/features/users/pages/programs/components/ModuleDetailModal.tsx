@@ -1,11 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Upload, FileText, Link2, Youtube, FolderOpen, ExternalLink, Trash2, Calendar, User, Download, Eye } from 'lucide-react';
+import { X, Upload, FileText, Link2, Youtube, FolderOpen, ExternalLink, Trash2, Calendar, User, Download, Eye, Plus, Edit2, Video, ClipboardList, PenTool, FileQuestion } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
 import { attachResource, removeResourceByUrl } from '@/shared/api/modules';
 import { uploadSyllabusFile } from '@/shared/api/files';
+import { createLesson, getLessonsByModule, updateLesson, deleteLesson } from '@/shared/api/lessons';
+import { createQuiz, importQuizQuestionsFromWord } from '@/shared/api/quiz';
 import type { ModuleResponse, ModuleResource } from '@/shared/types/module';
+import type { Lesson } from '@/shared/types/lesson';
 import DocumentViewer from '@/components/DocumentViewer';
 import ConfirmDialog from '@/shared/components/ConfirmDialog';
+import LessonFormModal, { type LessonFormData } from './LessonFormModal';
 
 type ResourceType = 'upload' | 'youtube' | 'drive' | 'link';
 
@@ -34,6 +38,27 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
     
     // State cho ConfirmDialog
     const [deleteConfirm, setDeleteConfirm] = useState<ModuleResource | null>(null);
+    
+    // State cho Lessons
+    const [lessons, setLessons] = useState<Lesson[]>([]);
+    const [isLoadingLessons, setIsLoadingLessons] = useState(false);
+    const [showLessonForm, setShowLessonForm] = useState(false);
+    const [editingLesson, setEditingLesson] = useState<Lesson | undefined>(undefined);
+    const [deleteLessonConfirm, setDeleteLessonConfirm] = useState<Lesson | null>(null);
+    const [mainTab, setMainTab] = useState<'resources' | 'lessons'>('lessons');
+    
+    // State cho Quiz
+    const [showQuizForm, setShowQuizForm] = useState(false);
+    const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+    const [quizFormData, setQuizFormData] = useState({
+        quizTitle: '',
+        quizType: 'SINGLE_CHOICE' as 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE',
+        timeLimitMinutes: 15,
+        passingScore: 70,
+        maxAttempts: 3,
+    });
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
 
     // Reset khi module thay đổi
     useEffect(() => {
@@ -44,7 +69,27 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
         // DEBUG: Log để kiểm tra
         console.log('📦 Module data:', module);
         console.log('📚 Resources:', module.resources);
-    }, [module]);
+        
+        // Load lessons khi mở modal
+        if (open) {
+            loadLessons();
+        }
+    }, [module, open]);
+    
+    // Load danh sách lessons
+    const loadLessons = async () => {
+        try {
+            setIsLoadingLessons(true);
+            const response = await getLessonsByModule(module.moduleId);
+            setLessons(response.data || []);
+        } catch (error: any) {
+            console.error('Failed to load lessons:', error);
+            // Không hiện lỗi nếu chưa có lessons
+            setLessons([]);
+        } finally {
+            setIsLoadingLessons(false);
+        }
+    };
 
     if (!open) return null;
 
@@ -208,6 +253,153 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
         setPreviewUrl(resource.url);
         setPreviewFileName(resource.fileName || 'Document');
     };
+    
+    // === Lesson Operations ===
+    const handleCreateLesson = async (data: LessonFormData) => {
+        try {
+            await createLesson(data);
+            showSuccess('Thêm bài học thành công', `Bài học "${data.lessonTitle}" đã được thêm vào module`);
+            await loadLessons();
+            setShowLessonForm(false);
+        } catch (error: any) {
+            showError('Lỗi thêm bài học', error?.response?.data?.message || 'Không thể thêm bài học');
+            throw error;
+        }
+    };
+    
+    const handleUpdateLesson = async (data: LessonFormData) => {
+        if (!editingLesson) return;
+        
+        try {
+            await updateLesson(editingLesson.lessonId, data);
+            showSuccess('Cập nhật bài học thành công', `Bài học "${data.lessonTitle}" đã được cập nhật`);
+            await loadLessons();
+            setShowLessonForm(false);
+            setEditingLesson(undefined);
+        } catch (error: any) {
+            showError('Lỗi cập nhật bài học', error?.response?.data?.message || 'Không thể cập nhật bài học');
+            throw error;
+        }
+    };
+    
+    const handleDeleteLesson = async () => {
+        if (!deleteLessonConfirm) return;
+        
+        try {
+            await deleteLesson(deleteLessonConfirm.lessonId);
+            showSuccess('Xóa bài học thành công', `Bài học "${deleteLessonConfirm.lessonTitle}" đã được xóa`);
+            await loadLessons();
+            setDeleteLessonConfirm(null);
+        } catch (error: any) {
+            showError('Lỗi xóa bài học', error?.response?.data?.message || 'Không thể xóa bài học');
+            setDeleteLessonConfirm(null);
+        }
+    };
+    
+    // Quiz handlers
+    const handleOpenQuizForm = (lesson: Lesson) => {
+        if (lesson.lessonType !== 'QUIZ') {
+            showError('Lỗi', 'Chỉ có thể tạo quiz cho lesson type QUIZ');
+            return;
+        }
+        
+        setSelectedLesson(lesson);
+        setQuizFormData({
+            quizTitle: lesson.lessonTitle,
+            quizType: 'SINGLE_CHOICE',
+            timeLimitMinutes: 15,
+            passingScore: lesson.passingScore || 70,
+            maxAttempts: 3,
+        });
+        setImportFile(null);
+        setShowQuizForm(true);
+    };
+    
+    const handleSubmitQuiz = async () => {
+        if (!selectedLesson) return;
+        
+        if (!quizFormData.quizTitle.trim()) {
+            showError('Lỗi', 'Vui lòng nhập tiêu đề quiz');
+            return;
+        }
+        
+        try {
+            setIsSubmittingQuiz(true);
+            
+            // Tạo quiz
+            const quizResponse = await createQuiz({
+                lessonId: selectedLesson.lessonId,
+                ...quizFormData,
+            });
+            
+            showSuccess('Tạo quiz thành công', `Quiz "${quizFormData.quizTitle}" đã được tạo`);
+            
+            // Nếu có file import, tiến hành import câu hỏi
+            if (importFile && quizResponse.data?.quizId) {
+                await handleImportQuestions(quizResponse.data.quizId);
+            } else {
+                setShowQuizForm(false);
+                setSelectedLesson(null);
+                setImportFile(null);
+            }
+            
+        } catch (error: any) {
+            showError('Lỗi tạo quiz', error?.response?.data?.message || 'Không thể tạo quiz');
+        } finally {
+            setIsSubmittingQuiz(false);
+        }
+    };
+    
+    const handleImportQuestions = async (quizId: number) => {
+        if (!importFile) {
+            showError('Lỗi', 'Vui lòng chọn file câu hỏi');
+            return;
+        }
+        
+        try {
+            setIsSubmittingQuiz(true);
+            await importQuizQuestionsFromWord(quizId, importFile);
+            
+            showSuccess('Import câu hỏi thành công', 'Các câu hỏi đã được thêm vào quiz');
+            setShowQuizForm(false);
+            setSelectedLesson(null);
+            setImportFile(null);
+        } catch (error: any) {
+            showError('Lỗi import câu hỏi', error?.response?.data?.message || 'Không thể import câu hỏi');
+        } finally {
+            setIsSubmittingQuiz(false);
+        }
+    };
+    
+    const openAddLessonForm = () => {
+        setEditingLesson(undefined);
+        setShowLessonForm(true);
+    };
+    
+    const openEditLessonForm = (lesson: Lesson) => {
+        setEditingLesson(lesson);
+        setShowLessonForm(true);
+    };
+    
+    const getLessonTypeIcon = (type: string) => {
+        switch (type) {
+            case 'VIDEO': return <Video size={18} className="text-blue-600" />;
+            case 'DOCUMENT': return <FileText size={18} className="text-green-600" />;
+            case 'QUIZ': return <ClipboardList size={18} className="text-purple-600" />;
+            case 'ASSIGNMENT': return <PenTool size={18} className="text-orange-600" />;
+            default: return <FileText size={18} className="text-gray-600" />;
+        }
+    };
+    
+    const getLessonTypeBadge = (type: string) => {
+        switch (type) {
+            case 'VIDEO': return 'bg-blue-100 text-blue-700';
+            case 'DOCUMENT': return 'bg-green-100 text-green-700';
+            case 'QUIZ': return 'bg-purple-100 text-purple-700';
+            case 'ASSIGNMENT': return 'bg-orange-100 text-orange-700';
+            default: return 'bg-gray-100 text-gray-700';
+        }
+    };
 
     const resources = currentModule.resources || [];
 
@@ -233,6 +425,32 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                         >
                             <X size={18} />
                         </button>
+                    </div>
+
+                    {/* Main Tabs */}
+                    <div className="border-b bg-gray-50">
+                        <div className="px-6 flex gap-1">
+                            <button
+                                onClick={() => setMainTab('lessons')}
+                                className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                                    mainTab === 'lessons'
+                                        ? 'border-blue-600 text-blue-600'
+                                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                📚 Bài học ({lessons.length})
+                            </button>
+                            <button
+                                onClick={() => setMainTab('resources')}
+                                className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                                    mainTab === 'resources'
+                                        ? 'border-blue-600 text-blue-600'
+                                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                📎 Tài liệu ({resources.length})
+                            </button>
+                        </div>
                     </div>
 
                     <div className="p-6 space-y-6">
@@ -286,7 +504,125 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                             </div>
                         </div>
 
-                        {/* Syllabus Section - SỬA MỚI */}
+                        {/* Lessons Tab */}
+                        {mainTab === 'lessons' && (
+                            <div>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-base font-semibold flex items-center gap-2">
+                                        📚 Danh sách bài học
+                                    </h3>
+                                    <button
+                                        onClick={openAddLessonForm}
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                                    >
+                                        <Plus size={16} />
+                                        Thêm bài học
+                                    </button>
+                                </div>
+                                
+                                {isLoadingLessons ? (
+                                    <div className="text-center py-12 text-gray-500">
+                                        Đang tải danh sách bài học...
+                                    </div>
+                                ) : lessons.length === 0 ? (
+                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                                        <FileText size={48} className="mx-auto text-gray-400 mb-3" />
+                                        <p className="text-sm font-medium text-gray-700 mb-1">
+                                            Chưa có bài học nào
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            Click "Thêm bài học" để tạo bài học đầu tiên
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {lessons
+                                            .sort((a, b) => a.lessonOrder - b.lessonOrder)
+                                            .map((lesson) => (
+                                            <div
+                                                key={lesson.lessonId}
+                                                className="flex items-start gap-4 p-4 border-2 rounded-lg hover:border-blue-300 hover:bg-blue-50/30 transition-all group"
+                                            >
+                                                <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center font-semibold text-gray-600">
+                                                    {lesson.lessonOrder}
+                                                </div>
+                                                
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        {getLessonTypeIcon(lesson.lessonType)}
+                                                        <h4 className="font-medium text-gray-900">
+                                                            {lesson.lessonTitle}
+                                                        </h4>
+                                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getLessonTypeBadge(lesson.lessonType)}`}>
+                                                            {lesson.lessonType}
+                                                        </span>
+                                                        {lesson.isMandatory && (
+                                                            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">
+                                                                Bắt buộc
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    {lesson.description && (
+                                                        <p className="text-sm text-gray-600 mb-2">
+                                                            {lesson.description}
+                                                        </p>
+                                                    )}
+                                                    
+                                                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                                                        {lesson.contentUrl && (
+                                                            <a
+                                                                href={lesson.contentUrl}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="flex items-center gap-1 text-blue-600 hover:underline"
+                                                            >
+                                                                <ExternalLink size={12} />
+                                                                {lesson.contentType || 'Link'}
+                                                            </a>
+                                                        )}
+                                                        {lesson.passingScore !== undefined && lesson.passingScore > 0 && (
+                                                            <span>
+                                                                Điểm đạt: {lesson.passingScore}%
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {lesson.lessonType === 'QUIZ' && (
+                                                        <button
+                                                            onClick={() => handleOpenQuizForm(lesson)}
+                                                            className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
+                                                            title="Tạo Quiz"
+                                                        >
+                                                            <FileQuestion size={16} />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => openEditLessonForm(lesson)}
+                                                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                                        title="Chỉnh sửa"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setDeleteLessonConfirm(lesson)}
+                                                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                                                        title="Xóa"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
+                        {/* Resources Tab - Syllabus Section */}
+                        {mainTab === 'resources' && (
                         <div>
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-base font-semibold flex items-center gap-2">
@@ -583,6 +919,7 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                                 </div>
                             )}
                         </div>
+                        )}
                     </div>
 
                     {/* Footer */}
@@ -617,6 +954,221 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                 cancelText="Hủy"
                 variant="danger"
             />
+            
+            {/* Delete Lesson Confirmation Dialog */}
+            <ConfirmDialog
+                open={!!deleteLessonConfirm}
+                onClose={() => setDeleteLessonConfirm(null)}
+                onConfirm={handleDeleteLesson}
+                title="Xác nhận xóa bài học"
+                description={`Bạn có chắc chắn muốn xóa bài học "${deleteLessonConfirm?.lessonTitle}"? Hành động này không thể hoàn tác.`}
+                confirmText="Xóa"
+                cancelText="Hủy"
+                variant="danger"
+            />
+            
+            {/* Lesson Form Modal */}
+            {showLessonForm && (
+                <LessonFormModal
+                    open={showLessonForm}
+                    onClose={() => {
+                        setShowLessonForm(false);
+                        setEditingLesson(undefined);
+                    }}
+                    onSubmit={editingLesson ? handleUpdateLesson : handleCreateLesson}
+                    lesson={editingLesson}
+                    moduleId={currentModule.moduleId}
+                    moduleName={currentModule.name}
+                    existingLessons={lessons}
+                />
+            )}
+            
+            {/* Quiz Form Modal */}
+            {showQuizForm && selectedLesson && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center">
+                    <div className="fixed inset-0 bg-black/50" onClick={() => {
+                        if (!isSubmittingQuiz) {
+                            setShowQuizForm(false);
+                            setSelectedLesson(null);
+                            setImportFile(null);
+                        }
+                    }} />
+                    <div className="relative bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                        {/* Header */}
+                        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900">Tạo Quiz</h3>
+                                <p className="text-sm text-gray-600 mt-1">
+                                    Lesson: {selectedLesson.lessonTitle}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    if (!isSubmittingQuiz) {
+                                        setShowQuizForm(false);
+                                        setSelectedLesson(null);
+                                        setImportFile(null);
+                                    }
+                                }}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                disabled={isSubmittingQuiz}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 space-y-4">
+                            {/* Quiz Title */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Tiêu đề Quiz <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={quizFormData.quizTitle}
+                                    onChange={(e) => setQuizFormData({ ...quizFormData, quizTitle: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    placeholder="Nhập tiêu đề quiz"
+                                    disabled={isSubmittingQuiz}
+                                />
+                            </div>
+
+                            {/* Quiz Type */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Loại Quiz <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    value={quizFormData.quizType}
+                                    onChange={(e) => setQuizFormData({ ...quizFormData, quizType: e.target.value as 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    disabled={isSubmittingQuiz}
+                                >
+                                    <option value="SINGLE_CHOICE">Một đáp án đúng</option>
+                                    <option value="MULTIPLE_CHOICE">Nhiều đáp án đúng</option>
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4">
+                                {/* Time Limit */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Thời gian (phút) <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="180"
+                                        value={quizFormData.timeLimitMinutes}
+                                        onChange={(e) => setQuizFormData({ ...quizFormData, timeLimitMinutes: parseInt(e.target.value) || 0 })}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        disabled={isSubmittingQuiz}
+                                    />
+                                </div>
+
+                                {/* Passing Score */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Điểm đạt (%) <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={quizFormData.passingScore}
+                                        onChange={(e) => setQuizFormData({ ...quizFormData, passingScore: parseInt(e.target.value) || 0 })}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        disabled={isSubmittingQuiz}
+                                    />
+                                </div>
+
+                                {/* Max Attempts */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Số lần làm <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="10"
+                                        value={quizFormData.maxAttempts}
+                                        onChange={(e) => setQuizFormData({ ...quizFormData, maxAttempts: parseInt(e.target.value) || 0 })}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        disabled={isSubmittingQuiz}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Import File */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    File câu hỏi (.docx)
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <label className="flex-1 flex items-center gap-3 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                        <Upload size={20} className="text-gray-400" />
+                                        <span className="text-sm text-gray-600">
+                                            {importFile ? importFile.name : 'Chọn file câu hỏi (.docx)'}
+                                        </span>
+                                        <input
+                                            type="file"
+                                            accept=".docx"
+                                            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                                            className="hidden"
+                                            disabled={isSubmittingQuiz}
+                                        />
+                                    </label>
+                                    {importFile && (
+                                        <button
+                                            onClick={() => setImportFile(null)}
+                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            disabled={isSubmittingQuiz}
+                                        >
+                                            <X size={20} />
+                                        </button>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Format: Câu 1: ..., A. ..., B. ..., Đáp án: A
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-end gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowQuizForm(false);
+                                    setSelectedLesson(null);
+                                    setImportFile(null);
+                                }}
+                                className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                disabled={isSubmittingQuiz}
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleSubmitQuiz}
+                                disabled={isSubmittingQuiz || !quizFormData.quizTitle.trim()}
+                                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                            >
+                                {isSubmittingQuiz ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        Đang xử lý...
+                                    </>
+                                ) : (
+                                    <>
+                                        <FileQuestion size={16} />
+                                        {importFile ? 'Tạo Quiz & Import' : 'Tạo Quiz'}
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

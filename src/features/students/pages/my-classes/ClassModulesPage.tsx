@@ -4,6 +4,7 @@ import { ArrowLeft, BookOpen, Calendar, Users, CheckCircle } from 'lucide-react'
 import { useToast } from '@/shared/hooks/useToast';
 import { getMyClasses, type ClassDto } from '@/shared/api/classes';
 import { getModulesByProgram, type ModuleResponse } from '@/shared/api/modules';
+import { getLessonsByModule, getModuleProgress as getModuleProgressAPI, type Lesson } from '@/shared/api/lessons';
 import { useUserProfile } from '@/stores/userProfile';
 import { useProgressStore } from '../../hooks/useProgressStore';
 
@@ -11,23 +12,6 @@ import { useProgressStore } from '../../hooks/useProgressStore';
 interface ModuleWithStatus extends ModuleResponse {
     status?: 'Hoàn thành' | 'Đang học' | 'Chưa học';
 }
-
-interface LessonItem {
-    id: string;
-    title: string;
-    duration?: string;
-    type?: 'video' | 'article' | 'quiz';
-}
-
-// Mock lesson generator (replace with real API later)
-const generateMockLessons = (moduleId: number, count: number): LessonItem[] => {
-    return Array.from({ length: count }).map((_, i) => ({
-        id: `M${moduleId}-L${i + 1}`,
-        title: `Bài học ${i + 1}`,
-        duration: `${8 + (i % 5)}m`,
-        type: i % 3 === 0 ? 'video' : i % 3 === 1 ? 'article' : 'quiz',
-    }));
-};
 
 const getStudyTimeRange = (studyTime?: string): string => {
     const timeMap: Record<string, string> = {
@@ -62,7 +46,8 @@ export default function ClassModulesPage() {
     const [loading, setLoading] = useState(false);
     const [cls, setCls] = useState<ClassDto | null>(null);
     const [modules, setModules] = useState<ModuleWithStatus[]>([]);
-    const [moduleLessons, setModuleLessons] = useState<Record<number, LessonItem[]>>({});
+    const [moduleLessons, setModuleLessons] = useState<Record<number, Lesson[]>>({});
+    const [moduleProgressData, setModuleProgressData] = useState<Record<number, { total: number; completed: number; percentage: number }>>({});
 
     // Ref to track if we already fetched to prevent re-fetch on re-render
     const hasFetchedRef = useRef(false);
@@ -102,13 +87,37 @@ export default function ClassModulesPage() {
                         status: 'Chưa học', // Will update based on progress
                     }));
                     setModules(modulesData);
-                    // Generate mock lessons for each module
-                    const lessonsMap: Record<number, LessonItem[]> = {};
-                    modulesData.forEach((m) => {
-                        const lessonCount = m.credits ? Math.min(10, m.credits * 2) : 6;
-                        lessonsMap[m.moduleId] = generateMockLessons(m.moduleId, lessonCount);
-                    });
+                    // Fetch real lessons and progress for each module
+                    const lessonsMap: Record<number, Lesson[]> = {};
+                    const progressMap: Record<number, { total: number; completed: number; percentage: number }> = {};
+                    
+                    await Promise.all(
+                        modulesData.map(async (m) => {
+                            try {
+                                const lessonsRes = await getLessonsByModule(m.moduleId);
+                                lessonsMap[m.moduleId] = lessonsRes.data;
+                                
+                                // Fetch progress from API
+                                try {
+                                    const progressRes = await getModuleProgressAPI(m.moduleId);
+                                    progressMap[m.moduleId] = {
+                                        total: progressRes.data.totalLessons || 0,
+                                        completed: progressRes.data.completedLessons || 0,
+                                        percentage: progressRes.data.progressPercentage || 0,
+                                    };
+                                } catch (err) {
+                                    console.error(`Failed to load progress for module ${m.moduleId}:`, err);
+                                    progressMap[m.moduleId] = { total: 0, completed: 0, percentage: 0 };
+                                }
+                            } catch (err) {
+                                console.error(`Failed to load lessons for module ${m.moduleId}:`, err);
+                                lessonsMap[m.moduleId] = [];
+                                progressMap[m.moduleId] = { total: 0, completed: 0, percentage: 0 };
+                            }
+                        })
+                    );
                     setModuleLessons(lessonsMap);
+                    setModuleProgressData(progressMap);
                 }
 
                 // Mark as fetched
@@ -143,22 +152,8 @@ export default function ClassModulesPage() {
         navigate(`/my-classes/${classId}/modules/${moduleId}/lessons/${lessonId}`);
     };
 
-    // Memoize module progress to prevent recalculation on every render
-    const moduleProgressMap = useMemo(() => {
-        const map: Record<number, { total: number; completed: number; percentage: number }> = {};
-        modules.forEach((module) => {
-            const lessons = moduleLessons[module.moduleId] || [];
-            const progress = classId
-                ? getModuleProgress(
-                      classId,
-                      module.moduleId.toString(),
-                      lessons.map((l) => l.id),
-                  )
-                : { total: 0, completed: 0, percentage: 0 };
-            map[module.moduleId] = progress;
-        });
-        return map;
-    }, [modules, moduleLessons, classId, getModuleProgress]);
+    // Use progress data from API
+    const moduleProgressMap = moduleProgressData;
 
     if (loading) {
         return (

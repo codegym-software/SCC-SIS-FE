@@ -3,26 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, PlayCircle } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
 import { useProgressStore } from '../../hooks/useProgressStore';
-
-// Mock lesson data
-interface LessonContent {
-    id: string;
-    title: string;
-    description: string;
-    videoUrl?: string;
-    duration?: string;
-}
-
-// Mock generator
-const generateLessonContent = (lessonId: string, moduleId: string): LessonContent => {
-    return {
-        id: lessonId,
-        title: `Bài học ${lessonId}`,
-        description: `Nội dung chi tiết của bài học ${lessonId} thuộc module ${moduleId}. Đây là nội dung mẫu để minh họa giao diện học tập.`,
-        videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', // Demo video
-        duration: '10:30',
-    };
-};
+import { getLessonById } from '@/shared/api/lessons';
+import type { Lesson } from '@/shared/types/lesson';
 
 export default function LessonViewerPage() {
     const { classId, moduleId, lessonId } = useParams();
@@ -30,28 +12,40 @@ export default function LessonViewerPage() {
     const toast = useToast();
     const progressStore = useProgressStore();
 
-    const [lesson, setLesson] = useState<LessonContent | null>(null);
+    const [lesson, setLesson] = useState<Lesson | null>(null);
+    const [loading, setLoading] = useState(true);
     const [currentStatus, setCurrentStatus] = useState<'not-started' | 'in-progress' | 'completed'>('not-started');
 
     useEffect(() => {
-        if (!classId || !moduleId || !lessonId) return;
+        const loadLesson = async () => {
+            if (!classId || !moduleId || !lessonId) return;
 
-        // Load lesson (mock)
-        const lessonData = generateLessonContent(lessonId, moduleId);
-        setLesson(lessonData);
+            try {
+                setLoading(true);
+                
+                // Load lesson from backend
+                const response = await getLessonById(parseInt(lessonId));
+                setLesson(response.data);
 
-        // Get current status
-        const status = progressStore.getLessonStatus(classId, moduleId, lessonId);
-        console.log('🔍 Lesson status loaded:', { classId, moduleId, lessonId, status });
-        setCurrentStatus(status);
+                // Get current status
+                const status = progressStore.getLessonStatus(classId, moduleId, lessonId);
+                setCurrentStatus(status);
 
-        // If not started, mark as in-progress
-        if (status === 'not-started') {
-            progressStore.setLessonStatus(classId, moduleId, lessonId, 'in-progress');
-            setCurrentStatus('in-progress');
-            console.log('✅ Marked as in-progress');
-        }
-    }, [classId, moduleId, lessonId]); // Remove progressStore from deps
+                // If not started, mark as in-progress
+                if (status === 'not-started') {
+                    progressStore.setLessonStatus(classId, moduleId, lessonId, 'in-progress');
+                    setCurrentStatus('in-progress');
+                }
+            } catch (error: any) {
+                console.error('Failed to load lesson:', error);
+                toast.error(error?.response?.data?.message || 'Không thể tải bài học');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadLesson();
+    }, [classId, moduleId, lessonId]);
 
     const handleComplete = () => {
         if (!classId || !moduleId || !lessonId) return;
@@ -73,7 +67,30 @@ export default function LessonViewerPage() {
         }, 1500);
     };
 
-    if (!lesson) {
+    // Function to convert Vimeo URL to embed URL
+    const getVimeoEmbedUrl = (url: string): string => {
+        // Extract video ID from various Vimeo URL formats
+        const patterns = [
+            /vimeo\.com\/(\d+)/,           // https://vimeo.com/123456789
+            /player\.vimeo\.com\/video\/(\d+)/, // https://player.vimeo.com/video/123456789
+        ];
+        
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && match[1]) {
+                return `https://player.vimeo.com/video/${match[1]}`;
+            }
+        }
+        
+        // If already embed URL, return as is
+        if (url.includes('player.vimeo.com')) {
+            return url;
+        }
+        
+        return url;
+    };
+
+    if (loading || !lesson) {
         return (
             <div className="fixed inset-0 bg-gray-50 flex items-center justify-center">
                 <div className="text-sm text-gray-600">Đang tải bài học...</div>
@@ -116,37 +133,61 @@ export default function LessonViewerPage() {
                 <div className="max-w-6xl mx-auto px-6 py-8">
                     {/* Lesson title */}
                     <div className="mb-6">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">{lesson.title}</h1>
-                        <p className="text-gray-600">{lesson.description}</p>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">{lesson.lessonTitle}</h1>
+                        {lesson.description && (
+                            <p className="text-gray-600">{lesson.description}</p>
+                        )}
+                        <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+                            <span>📘 {lesson.lessonType}</span>
+                            {lesson.durationMinutes && (
+                                <span>⏱️ {lesson.durationMinutes} phút</span>
+                            )}
+                            {lesson.contentType && (
+                                <span>📺 {lesson.contentType}</span>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Video player */}
-                    {lesson.videoUrl && (
+                    {/* Video player - Vimeo */}
+                    {lesson.contentUrl && lesson.lessonType === 'VIDEO' && (
                         <div
                             className="bg-black rounded-xl overflow-hidden shadow-2xl mb-8"
                             style={{ aspectRatio: '16/9' }}
                         >
                             <iframe
-                                src={lesson.videoUrl}
-                                title={lesson.title}
+                                src={getVimeoEmbedUrl(lesson.contentUrl)}
+                                title={lesson.lessonTitle}
                                 className="w-full h-full"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allow="autoplay; fullscreen; picture-in-picture"
                                 allowFullScreen
                             />
                         </div>
                     )}
 
-                    {/* Lesson content */}
-                    <div className="bg-white rounded-xl p-8 shadow-sm">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">Nội dung bài học</h2>
-                        <div className="prose max-w-none text-gray-700">
-                            <p>{lesson.description}</p>
-                            <p className="mt-4">
-                                Đây là nội dung chi tiết của bài học. Trong thực tế, phần này sẽ chứa các tài liệu,
-                                hướng dẫn, bài tập và các tài nguyên học tập khác.
-                            </p>
+                    {/* Document viewer for other content types */}
+                    {lesson.contentUrl && lesson.lessonType === 'DOCUMENT' && (
+                        <div className="bg-white rounded-xl p-8 shadow-sm mb-8">
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">Tài liệu học tập</h2>
+                            <a 
+                                href={lesson.contentUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline"
+                            >
+                                Xem tài liệu →
+                            </a>
                         </div>
-                    </div>
+                    )}
+
+                    {/* Lesson content */}
+                    {lesson.description && (
+                        <div className="bg-white rounded-xl p-8 shadow-sm">
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">Nội dung bài học</h2>
+                            <div className="prose max-w-none text-gray-700">
+                                <p className="whitespace-pre-wrap">{lesson.description}</p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Complete button at bottom */}
                     {currentStatus !== 'completed' && (

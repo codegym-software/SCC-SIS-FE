@@ -32,8 +32,13 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
         return saved ? JSON.parse(saved) : [];
     });
 
-    // Fetch student warnings from API (with mock fallback)
+    // Check if user is admin/teacher or student
+    const isAdminOrTeacher = me?.roles?.some((r) => ['SUPER_ADMIN', 'CENTER_MANAGER', 'LECTURER'].includes(r.code));
+
+    // Fetch student warnings from API (only for admin/teacher)
     useEffect(() => {
+        if (!isAdminOrTeacher) return;
+        
         const fetchWarnings = async () => {
             setLoading(true);
             try {
@@ -50,7 +55,7 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
         };
 
         fetchWarnings();
-    }, [selectedCenterId]);
+    }, [selectedCenterId, isAdminOrTeacher]);
 
     // Fetch notifications from backend
     useEffect(() => {
@@ -58,13 +63,19 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
             try {
                 const data = await notificationsApi.getMyNotifications();
                 setNotifications(data);
+                
+                // For students: count high-severity notifications as warnings
+                if (!isAdminOrTeacher) {
+                    const highSeverityCount = data.filter(n => n.severity === 'high' && !n.isRead).length;
+                    setWarningCount(highSeverityCount);
+                }
             } catch (error) {
                 console.error('Failed to fetch notifications:', error);
                 setNotifications([]);
             }
         };
         fetchNotifications();
-    }, [selectedCenterId]);
+    }, [selectedCenterId, isAdminOrTeacher]);
 
     // Load user avatar from localStorage
     useEffect(() => {
@@ -157,7 +168,10 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                     <div className="relative" ref={notifRef}>
                         <button
                             className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                            onClick={() => setShowNotifications((s) => !s)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowNotifications((s) => !s);
+                            }}
                             aria-haspopup="menu"
                             aria-expanded={showNotifications}
                         >
@@ -169,7 +183,10 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                             )}
                         </button>
                         {showNotifications && (
-                            <div className="absolute right-0 mt-2 w-[420px] max-w-[90vw] bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                            <div 
+                                className="absolute right-0 mt-2 w-[420px] max-w-[90vw] bg-white border border-gray-200 rounded-2xl shadow-2xl z-[100] overflow-hidden"
+                                onClick={(e) => e.stopPropagation()}
+                            >
                                 {/* Header */}
                                 <div className="px-5 py-4 border-b border-gray-100">
                                     <h3 className="text-lg font-semibold text-gray-900">Thông báo</h3>
@@ -219,55 +236,130 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                 <div className="max-h-96 overflow-auto">
                                     {activeTab === 'warnings' && (
                                         <div>
-                                            <div className="px-4 py-2 text-xs font-medium text-gray-500">
-                                                Học sinh bị cảnh báo
-                                            </div>
-                                            {warnings.length === 0 && (
-                                                <div className="px-4 py-6 text-sm text-gray-500">Chưa có cảnh báo.</div>
-                                            )}
-                                            {warnings.slice(0, 5).map((w) => (
-                                                <button
-                                                    key={w.studentId}
-                                                    onClick={() => {
-                                                        setShowNotifications(false);
-                                                        navigate(`/students/${w.studentId}`);
-                                                    }}
-                                                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-start gap-3"
-                                                >
-                                                    <div
-                                                        className={`mt-0.5 h-6 w-6 rounded-full grid place-items-center text-white text-[10px] font-semibold shadow ${
-                                                            w.severity === 'HIGH'
-                                                                ? 'bg-red-600'
-                                                                : w.severity === 'MEDIUM'
-                                                                  ? 'bg-amber-500'
-                                                                  : 'bg-blue-500'
-                                                        }`}
-                                                    >
-                                                        !
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="text-sm font-medium text-gray-900 truncate">
-                                                            {w.name} <span className="text-gray-500">#{w.code}</span>
+                                            {isAdminOrTeacher ? (
+                                                <>
+                                                    {warnings.length === 0 && (
+                                                        <div className="px-6 py-12 text-center text-gray-500">
+                                                            <p className="text-sm">Chưa có cảnh báo nào</p>
                                                         </div>
-                                                        <div className="text-xs text-red-600">{w.reason}</div>
-                                                        <div className="text-xs text-gray-600 truncate">
-                                                            {w.detail} — {w.program} • {w.classCode}
+                                                    )}
+                                                    {warnings.slice(0, 5).map((w) => (
+                                                        <button
+                                                            key={w.studentId}
+                                                            onClick={() => {
+                                                                setShowNotifications(false);
+                                                                navigate(`/students/${w.studentId}`);
+                                                            }}
+                                                            className="w-full text-left px-5 py-4 border-b border-gray-100 bg-red-50 hover:bg-red-100 transition-all"
+                                                        >
+                                                            <div className="space-y-2">
+                                                                <div>
+                                                                    <h4 className="text-sm font-semibold text-gray-900">
+                                                                        {w.name}
+                                                                    </h4>
+                                                                    <p className="text-xs text-gray-600">
+                                                                        #{w.code} • {w.program} • {w.classCode}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                                                                        w.reason?.includes('vắng')
+                                                                            ? 'bg-amber-100 text-amber-800'
+                                                                            : 'bg-red-100 text-red-800'
+                                                                    }`}>
+                                                                        {w.reason}
+                                                                    </span>
+                                                                </div>
+                                                                {w.detail && (
+                                                                    <p className="text-xs text-gray-600">{w.detail}</p>
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                    {warnings.length > 0 && (
+                                                        <div className="px-4 py-2 border-t border-gray-200">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setShowNotifications(false);
+                                                                    navigate('/students');
+                                                                }}
+                                                                className="w-full text-sm font-semibold text-blue-700 hover:text-blue-800 py-2"
+                                                            >
+                                                                Xem tất cả học sinh cảnh báo
+                                                            </button>
                                                         </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="px-4 py-2 text-xs font-medium text-gray-500">
+                                                        Cảnh báo của bạn
                                                     </div>
-                                                </button>
-                                            ))}
-                                            {warnings.length > 0 && (
-                                                <div className="px-4 py-2">
-                                                    <button
-                                                        onClick={() => {
-                                                            setShowNotifications(false);
-                                                            navigate('/students');
-                                                        }}
-                                                        className="w-full text-sm font-semibold text-blue-700 hover:text-blue-800"
-                                                    >
-                                                        Xem tất cả học sinh cảnh báo
-                                                    </button>
-                                                </div>
+                                                    {(!notifications || notifications.filter(n => n.severity === 'high').length === 0) && (
+                                                        <div className="px-4 py-6 text-sm text-gray-500">Không có cảnh báo nào</div>
+                                                    )}
+                                                    {notifications?.filter(n => n.severity === 'high').slice(0, 6).map((n) => (
+                                                        <div
+                                                            key={n.id}
+                                                            className={`relative w-full text-left px-5 py-4 border-b border-gray-100 hover:bg-white transition-all ${
+                                                                !n.isRead ? 'bg-red-50' : 'bg-white'
+                                                            }`}
+                                                        >
+                                                            <button
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        if (!n.isRead) {
+                                                                            await notificationsApi.markAsRead(n.id);
+                                                                            const updated = await notificationsApi.getMyNotifications();
+                                                                            setNotifications(updated);
+                                                                            const highSeverityCount = updated.filter(x => x.severity === 'high' && !x.isRead).length;
+                                                                            setWarningCount(highSeverityCount);
+                                                                        }
+                                                                    } catch (error) {
+                                                                        console.error('Failed to mark notification as read:', error);
+                                                                    }
+                                                                }}
+                                                                className="w-full"
+                                                            >
+                                                                <div className="flex items-start gap-3">
+                                                                    <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-red-100">
+                                                                        <span className="text-lg text-red-600">
+                                                                            {n.type === 'ATTENDANCE_WARNING' ? '⚠️' : 
+                                                                             n.type === 'GRADE_WARNING' ? '❌' : '⚠️'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                                                            <span className={`text-sm font-semibold ${!n.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
+                                                                                {n.title}
+                                                                            </span>
+                                                                            {!n.isRead && (
+                                                                                <span className="flex-shrink-0 h-2 w-2 bg-red-600 rounded-full"></span>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                                                                            {n.message}
+                                                                        </p>
+                                                                        <span className="text-xs text-gray-400">
+                                                                            {(() => {
+                                                                                const date = new Date(n.createdAt);
+                                                                                const now = new Date();
+                                                                                const diffMs = now.getTime() - date.getTime();
+                                                                                const diffMins = Math.floor(diffMs / 60000);
+                                                                                const diffHours = Math.floor(diffMs / 3600000);
+                                                                                
+                                                                                if (diffMins < 1) return 'Vừa xong';
+                                                                                if (diffMins < 60) return `${diffMins} phút trước`;
+                                                                                if (diffHours < 24) return `${diffHours} giờ trước`;
+                                                                                return date.toLocaleDateString('vi-VN');
+                                                                            })()}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </>
                                             )}
                                         </div>
                                     )}
@@ -319,6 +411,9 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                                      n.type === 'CENTER_CREATED' ? '🏢' :
                                                                      n.type === 'LECTURER_GRADED' ? '📝' :
                                                                      n.type === 'ATTENDANCE_RECORDED' ? '✅' :
+                                                                     n.type === 'ATTENDANCE_UPDATED' ? '🔄' :
+                                                                     n.type === 'ATTENDANCE_WARNING' ? '⚠️' :
+                                                                     n.type === 'GRADE_WARNING' ? '❌' :
                                                                      n.type === 'SYSTEM_ANNOUNCEMENT' ? '📣' :
                                                                      '📢'}
                                                                 </span>

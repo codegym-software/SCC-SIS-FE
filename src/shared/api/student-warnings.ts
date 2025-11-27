@@ -21,9 +21,28 @@ export interface StudentWarningsResponse {
     totalCount: number;
 }
 
+export interface MyWarning {
+    classId: number;
+    className: string;
+    programName: string;
+    absentCount: number;
+    failCount: number;
+    hasAbsenceWarning: boolean;
+    hasFailWarning: boolean;
+}
+
 export const studentWarningsApi = {
     /**
-     * GET /api/student-warnings?centerId={centerId}
+     * GET /api/students/my-warnings
+     * Lấy cảnh báo của học viên hiện tại (vắng > 2, trượt > 2)
+     */
+    getMyWarnings: async (): Promise<MyWarning[]> => {
+        const response = await http.get<MyWarning[]>('/api/students/my-warnings');
+        return response.data;
+    },
+
+    /**
+     * GET /api/students/warnings?centerId={centerId}
      * Lấy danh sách học sinh bị cảnh báo theo trung tâm
      * Tổng hợp từ attendance (vắng mặt) và grades (thi trượt)
      */
@@ -31,7 +50,7 @@ export const studentWarningsApi = {
         try {
             // Try backend API first
             const params = centerId ? { centerId } : {};
-            const response = await http.get<StudentWarningsResponse>('/api/student-warnings', { params });
+            const response = await http.get<StudentWarningsResponse>('/api/students/warnings', { params });
             return response.data;
         } catch (error) {
             // Fallback: Calculate warnings from attendance and grades (suppress expected 500 error)

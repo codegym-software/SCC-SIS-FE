@@ -14,6 +14,8 @@ export type NotificationType =
   | 'LECTURER_GRADED'         // Giảng viên nhập điểm (activity log cho admin)
   | 'ATTENDANCE_RECORDED'     // Điểm danh
   | 'ATTENDANCE_UPDATED'      // Cập nhật điểm danh
+  | 'ATTENDANCE_WARNING'      // Cảnh báo vắng học quá nhiều
+  | 'GRADE_WARNING'           // Cảnh báo trượt quá nhiều bài thi
   | 'SYSTEM_ANNOUNCEMENT'     // Thông báo broadcast từ admin
   | 'SYSTEM'                  // Thông báo hệ thống
   | 'OTHER';                  // Khác

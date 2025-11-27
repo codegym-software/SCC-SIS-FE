@@ -291,6 +291,7 @@ export default function ClassesPage() {
     const [openAssignInstructor, setOpenAssignInstructor] = useState<Class | null>(null);
     const [pauseConfirm, setPauseConfirm] = useState<Class | null>(null);
     const [resumeConfirm, setResumeConfirm] = useState<Class | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<Class | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const classesPerPage = 6;
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -418,6 +419,26 @@ export default function ClassesPage() {
             toast.error('Lỗi khôi phục lớp học');
         } finally {
             setResumeConfirm(null);
+        }
+    };
+
+    // Confirm delete class
+    const confirmDelete = async () => {
+        if (!deleteConfirm) return;
+        try {
+            const { deleteClass } = await import('@/shared/api/classes');
+            await deleteClass(Number(deleteConfirm.id));
+            setClasses((prev) => prev.filter((c) => c.id !== deleteConfirm.id));
+            if (selectedClass?.id === deleteConfirm.id) {
+                setView('list');
+                setSelectedClass(null);
+            }
+            toast.success('Xóa thành công!', `Lớp học "${deleteConfirm.name}" đã được xóa`);
+        } catch (err: any) {
+            const errorMessage = err?.response?.data?.message || 'Không thể xóa lớp học';
+            toast.error('Lỗi xóa lớp học', errorMessage);
+        } finally {
+            setDeleteConfirm(null);
         }
     };
 
@@ -1793,6 +1814,7 @@ export default function ClassesPage() {
                                                             <DropdownMenuItem
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
+                                                                    setDeleteConfirm(classItem);
                                                                 }}
                                                                 className="flex items-center gap-2 cursor-pointer text-red-600"
                                                             >
@@ -1924,6 +1946,18 @@ export default function ClassesPage() {
                 title="Xác nhận tạm dừng lớp học"
                 description={`Bạn có chắc chắn muốn tạm dừng lớp học "${pauseConfirm?.name}"? Lớp học sẽ không hoạt động cho đến khi được khôi phục.`}
                 confirmText="Tạm dừng"
+                cancelText="Hủy"
+                variant="danger"
+            />
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                open={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                onConfirm={confirmDelete}
+                title="Xác nhận xóa lớp học"
+                description={`Bạn có chắc chắn muốn xóa lớp học "${deleteConfirm?.name}"? Hành động này không thể hoàn tác.`}
+                confirmText="Xóa"
                 cancelText="Hủy"
                 variant="danger"
             />
