@@ -57,6 +57,49 @@ export default function ClassModulesPage() {
         hasFetchedRef.current = false;
     }, [classId]);
 
+    const refreshProgressData = async () => {
+        if (modules.length === 0) return;
+
+        console.log('🔄 Refreshing progress data for', modules.length, 'modules');
+        const progressMap: Record<number, { total: number; completed: number; percentage: number }> = {};
+        
+        try {
+            await Promise.all(
+                modules.map(async (m) => {
+                    try {
+                        const progressRes = await getModuleProgressAPI(m.moduleId);
+                        const newProgress = {
+                            total: progressRes.data.totalLessons || 0,
+                            completed: progressRes.data.completedLessons || 0,
+                            percentage: progressRes.data.progressPercentage || 0,
+                        };
+                        progressMap[m.moduleId] = newProgress;
+                        console.log(`✅ Module ${m.moduleId} (${m.name}):`, `${newProgress.completed}/${newProgress.total} hoàn thành`);
+                    } catch (err) {
+                        console.error(`❌ Failed to load progress for module ${m.moduleId}:`, err);
+                        progressMap[m.moduleId] = moduleProgressData[m.moduleId] || { total: 0, completed: 0, percentage: 0 };
+                    }
+                })
+            );
+            setModuleProgressData(progressMap);
+            console.log('✅ All progress data updated successfully');
+        } catch (error) {
+            console.error('❌ Error refreshing progress:', error);
+        }
+    };
+
+    // Refresh progress after modules are loaded
+    useEffect(() => {
+        if (modules.length > 0 && !loading) {
+            // Delay slightly to ensure modules state is stable
+            const timer = setTimeout(() => {
+                console.log('🔄 Refreshing progress data after page load...');
+                refreshProgressData();
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [modules.length, loading]);
+
     useEffect(() => {
         // Prevent multiple fetches
         if (hasFetchedRef.current) return;

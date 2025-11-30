@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, PlayCircle } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
 import { useProgressStore } from '../../hooks/useProgressStore';
-import { getLessonById } from '@/shared/api/lessons';
+import { getLessonById, updateLessonProgress } from '@/shared/api/lessons';
 import type { Lesson } from '@/shared/types/lesson';
 
 export default function LessonViewerPage() {
@@ -27,12 +27,27 @@ export default function LessonViewerPage() {
                 const response = await getLessonById(parseInt(lessonId));
                 setLesson(response.data);
 
-                // Get current status
+                // Get current status from local store
                 const status = progressStore.getLessonStatus(classId, moduleId, lessonId);
                 setCurrentStatus(status);
 
-                // If not started, mark as in-progress
+                // If not started, mark as in-progress and save to backend
                 if (status === 'not-started') {
+                    console.log('📚 Học viên bắt đầu xem bài học lần đầu, tạo progress...');
+                    try {
+                        // Call API to create progress record in backend
+                        await updateLessonProgress(parseInt(lessonId), {
+                            progressPercentage: 0, // Chưa hoàn thành
+                            lastWatchedPosition: 0,
+                            timeSpentSeconds: 0,
+                        });
+                        console.log('✅ Progress record created in backend');
+                    } catch (error: any) {
+                        console.error('⚠️ Failed to create initial progress:', error);
+                        // Continue anyway, will try again on complete
+                    }
+                    
+                    // Update local state
                     progressStore.setLessonStatus(classId, moduleId, lessonId, 'in-progress');
                     setCurrentStatus('in-progress');
                 }
@@ -47,24 +62,45 @@ export default function LessonViewerPage() {
         loadLesson();
     }, [classId, moduleId, lessonId]);
 
-    const handleComplete = () => {
+    const handleComplete = async () => {
         if (!classId || !moduleId || !lessonId) return;
 
         console.log('🎯 Completing lesson:', { classId, moduleId, lessonId });
+        console.log('📤 Calling API: POST /api/lessons/' + lessonId + '/progress with progressPercentage: 100');
 
-        // Update progress store
-        progressStore.setLessonStatus(classId, moduleId, lessonId, 'completed');
+        try {
+            // Call API to save progress to backend
+            const response = await updateLessonProgress(parseInt(lessonId), {
+                progressPercentage: 100,
+                lastWatchedPosition: 0,
+                timeSpentSeconds: 0,
+            });
+            console.log('✅ Progress saved to backend successfully!', response.data);
 
-        // Update local state immediately
-        setCurrentStatus('completed');
+            // Update progress store (local state)
+            progressStore.setLessonStatus(classId, moduleId, lessonId, 'completed');
 
-        console.log('✅ Lesson marked as completed');
-        toast.success('Đã hoàn thành bài học!');
+            // Update local state immediately
+            setCurrentStatus('completed');
 
-        // Delay navigation to show completed state
-        setTimeout(() => {
-            navigate(`/my-classes/${classId}/modules`);
-        }, 1500);
+            console.log('✅ Lesson marked as completed');
+            toast.success('Đã hoàn thành bài học!');
+
+            // Delay navigation to show completed state
+            setTimeout(() => {
+                console.log('🔙 Navigating back to modules page...');
+                navigate(`/my-classes/${classId}/modules`);
+            }, 1500);
+        } catch (error: any) {
+            console.error('❌ Failed to update lesson progress:', error);
+            console.error('❌ Error details:', {
+                status: error?.response?.status,
+                statusText: error?.response?.statusText,
+                data: error?.response?.data,
+                message: error?.message
+            });
+            toast.error('Không thể cập nhật tiến độ: ' + (error?.response?.data?.message || error?.message || 'Lỗi không xác định'));
+        }
     };
 
     // Function to convert Vimeo URL to embed URL

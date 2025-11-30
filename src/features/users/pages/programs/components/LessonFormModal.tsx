@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { X, Video, FileText, ClipboardList, PenTool } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Video, FileText, ClipboardList, PenTool, Download, Upload } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
 import type { Lesson, LessonType, ContentType } from '@/shared/types/lesson';
+import { importQuizQuestionsFromWord } from '@/shared/api/quiz';
 
 interface LessonFormModalProps {
   open: boolean;
@@ -29,7 +30,6 @@ const LESSON_TYPE_OPTIONS: Array<{ value: LessonType; label: string; icon: React
   { value: 'VIDEO', label: 'Video', icon: <Video size={16} /> },
   { value: 'DOCUMENT', label: 'Tài liệu', icon: <FileText size={16} /> },
   { value: 'QUIZ', label: 'Bài kiểm tra', icon: <ClipboardList size={16} /> },
-  { value: 'ASSIGNMENT', label: 'Bài tập', icon: <PenTool size={16} /> },
 ];
 
 const CONTENT_TYPE_OPTIONS: Array<{ value: ContentType; label: string }> = [
@@ -48,8 +48,10 @@ const LessonFormModal: React.FC<LessonFormModalProps> = ({
   moduleName,
   existingLessons,
 }) => {
-  const { error: showError } = useToast();
+  const { error: showError, success: showSuccess } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingQuiz, setUploadingQuiz] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<LessonFormData>({
     moduleId,
@@ -93,6 +95,129 @@ const LessonFormModal: React.FC<LessonFormModalProps> = ({
 
   if (!open) return null;
 
+  const handleUploadQuizFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Kiểm tra định dạng file
+    const validExtensions = ['.doc', '.docx', '.txt'];
+    const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    
+    if (!validExtensions.includes(fileExtension)) {
+      showError('File không hợp lệ', 'Vui lòng chọn file Word (.doc, .docx) hoặc Text (.txt)');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    // Kiểm tra xem bài học đã được tạo chưa (cần có lessonId/quizId)
+    if (!lesson?.lessonId) {
+      showError('Chưa thể tải lên', 'Vui lòng tạo bài học Quiz trước, sau đó mới có thể import câu hỏi từ file Word');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    try {
+      setUploadingQuiz(true);
+      await importQuizQuestionsFromWord(lesson.lessonId, file);
+      showSuccess('Thành công', `Đã import câu hỏi từ file ${file.name}`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (error: any) {
+      console.error('Error uploading quiz file:', error);
+      showError(
+        'Lỗi tải lên file', 
+        error?.response?.data?.message || 'Không thể import câu hỏi. Vui lòng kiểm tra lại định dạng file.'
+      );
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } finally {
+      setUploadingQuiz(false);
+    }
+  };
+
+  const handleDownloadQuizTemplate = () => {
+    // Tạo nội dung file mẫu theo format mà WordImportService.java yêu cầu
+    const templateContent = `Câu 1: Java là ngôn ngữ lập trình thuộc loại nào?
+A. Ngôn ngữ thông dịch
+B. Ngôn ngữ biên dịch và thông dịch
+C. Ngôn ngữ kịch bản
+D. Ngôn ngữ đánh dấu
+Đáp án: B
+
+Câu 2: JVM là viết tắt của cụm từ nào?
+A. Java Variable Machine
+B. Java Virtual Machine
+C. Java Version Manager
+D. Java Value Method
+Đáp án: B
+
+Câu 3: Từ khóa nào được sử dụng để khai báo một hằng số trong Java?
+A. const
+B. static
+C. final
+D. constant
+Đáp án: C
+
+Câu 4: Kiểu dữ liệu nào sau đây KHÔNG phải là kiểu dữ liệu nguyên thủy (primitive) trong Java?
+A. int
+B. boolean
+C. String
+D. char
+Đáp án: C
+
+Câu 5: Phương thức nào là điểm bắt đầu của một chương trình Java?
+A. start()
+B. main()
+C. run()
+D. execute()
+Đáp án: B
+
+Câu 6: Trong Java, để kế thừa một lớp ta sử dụng từ khóa nào?
+A. implements
+B. extends
+C. inherits
+D. derive
+Đáp án: B
+
+Câu 7: Interface trong Java có thể chứa những gì? (Chọn đáp án đúng nhất)
+A. Chỉ có phương thức trừu tượng
+B. Chỉ có hằng số
+C. Phương thức trừu tượng, phương thức mặc định, phương thức tĩnh và hằng số
+D. Cả phương thức và biến instance
+Đáp án: C
+
+Câu 8: Từ khóa nào được sử dụng để xử lý ngoại lệ trong Java?
+A. throw và throws
+B. try và finally
+C. catch và finally
+D. try, catch, finally
+Đáp án: D
+
+Câu 9: ArrayList trong Java thuộc package nào?
+A. java.io
+B. java.util
+C. java.lang
+D. java.awt
+Đáp án: B
+
+Câu 10: Trong Java, phương thức nào được gọi khi một đối tượng được tạo ra?
+A. main()
+B. start()
+C. Constructor (hàm khởi tạo)
+D. init()
+Đáp án: C
+`;
+
+    // Tạo Blob và download
+    const blob = new Blob([templateContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Quiz_Template_${moduleName.replace(/\s+/g, '_')}_${Date.now()}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -125,7 +250,17 @@ const LessonFormModal: React.FC<LessonFormModalProps> = ({
 
     try {
       setIsSubmitting(true);
-      await onSubmit(formData);
+      
+      // Chuẩn bị data để submit
+      const submitData = { ...formData };
+      
+      // Nếu không phải VIDEO hoặc DOCUMENT, xóa contentUrl và contentType
+      if (!['VIDEO', 'DOCUMENT'].includes(formData.lessonType)) {
+        delete submitData.contentUrl;
+        delete submitData.contentType;
+      }
+      
+      await onSubmit(submitData);
       onClose();
     } catch (error) {
       // Error đã được xử lý ở parent component
@@ -135,13 +270,13 @@ const LessonFormModal: React.FC<LessonFormModalProps> = ({
   };
 
   const showContentUrlField = ['VIDEO', 'DOCUMENT'].includes(formData.lessonType);
-  const showPassingScoreField = ['QUIZ', 'ASSIGNMENT'].includes(formData.lessonType);
+  const showPassingScoreField = ['QUIZ'].includes(formData.lessonType);
 
   return (
     <div className="fixed inset-0 z-50">
       <div className="fixed inset-0 bg-black/30" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl border">
+        <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-lg bg-white shadow-xl border">
           {/* Header */}
           <div className="px-6 py-4 border-b bg-gradient-to-r from-indigo-50 to-purple-50">
             <div className="flex items-center justify-between">
@@ -162,8 +297,8 @@ const LessonFormModal: React.FC<LessonFormModalProps> = ({
             </div>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Form - với scroll */}
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
             {/* Tiêu đề bài học */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -184,7 +319,7 @@ const LessonFormModal: React.FC<LessonFormModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Loại bài học <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {LESSON_TYPE_OPTIONS.map((option) => (
                   <button
                     key={option.value}
@@ -273,7 +408,7 @@ const LessonFormModal: React.FC<LessonFormModalProps> = ({
               </div>
             )}
 
-            {/* Passing Score (cho QUIZ và ASSIGNMENT) */}
+            {/* Passing Score (cho QUIZ) */}
             {showPassingScoreField && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -293,6 +428,84 @@ const LessonFormModal: React.FC<LessonFormModalProps> = ({
               </div>
             )}
 
+            {/* Download Quiz Template & Upload Quiz (chỉ cho QUIZ) */}
+            {formData.lessonType === 'QUIZ' && (
+              <div className="space-y-3">
+                {/* Download Template */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <ClipboardList className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-blue-900 mb-1">
+                        File mẫu bài kiểm tra Quiz
+                      </h4>
+                      <p className="text-xs text-blue-700 mb-3">
+                        Tải file mẫu với 10 câu hỏi trắc nghiệm, điền nội dung và tải lên hệ thống
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleDownloadQuizTemplate}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <Download size={16} />
+                        Tải file mẫu Quiz
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Upload Quiz File */}
+                {lesson?.lessonId && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Upload className="text-green-600 flex-shrink-0 mt-0.5" size={20} />
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-green-900 mb-1">
+                          Import câu hỏi từ file Word
+                        </h4>
+                        <p className="text-xs text-green-700 mb-3">
+                          Tải lên file Word/Text đã điền câu hỏi theo mẫu để import vào hệ thống
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".doc,.docx,.txt"
+                            onChange={handleUploadQuizFile}
+                            disabled={uploadingQuiz}
+                            className="hidden"
+                            id="quiz-file-upload"
+                          />
+                          <label
+                            htmlFor="quiz-file-upload"
+                            className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+                              uploadingQuiz
+                                ? 'bg-gray-400 text-white cursor-not-allowed'
+                                : 'bg-green-600 text-white hover:bg-green-700'
+                            }`}
+                          >
+                            <Upload size={16} />
+                            {uploadingQuiz ? 'Đang tải lên...' : 'Chọn file Word'}
+                          </label>
+                          <span className="text-xs text-gray-500">
+                            (.doc, .docx, .txt)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!lesson?.lessonId && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-xs text-yellow-800">
+                      💡 <strong>Lưu ý:</strong> Bạn cần tạo bài học Quiz trước, sau đó mới có thể import câu hỏi từ file Word
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Mô tả */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -308,8 +521,8 @@ const LessonFormModal: React.FC<LessonFormModalProps> = ({
             </div>
           </form>
 
-          {/* Footer */}
-          <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
+          {/* Footer - fixed tại bottom */}
+          <div className="flex-shrink-0 px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
