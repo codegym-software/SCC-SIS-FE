@@ -15,6 +15,9 @@ import {
     Award,
     CreditCard,
     UserCog,
+    TrendingUp,
+    Calendar,
+    Trophy,
 } from 'lucide-react';
 import { keycloak } from '../../keycloak';
 import { useUserProfile } from '../../stores/userProfile';
@@ -597,8 +600,35 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                                         <BookOpen className="mr-4 h-6 w-6" />
                                         Lớp học của tôi
                                     </NavLink>
+                                    <NavLink
+                                        to="/my-grades"
+                                        className={({ isActive }) =>
+                                            `flex items-center rounded-xl px-4 py-3 text-base font-semibold transition-all ${
+                                                isActive
+                                                    ? 'bg-purple-50 text-purple-700 shadow-sm'
+                                                    : 'text-gray-700 hover:bg-gray-50'
+                                            }`
+                                        }
+                                    >
+                                        <Trophy className="mr-4 h-6 w-6" />
+                                        Điểm của tôi
+                                    </NavLink>
+                                    <NavLink
+                                        to="/my-attendance"
+                                        className={({ isActive }) =>
+                                            `flex items-center rounded-xl px-4 py-3 text-base font-semibold transition-all ${
+                                                isActive
+                                                    ? 'bg-green-50 text-green-700 shadow-sm'
+                                                    : 'text-gray-700 hover:bg-gray-50'
+                                            }`
+                                        }
+                                    >
+                                        <Calendar className="mr-4 h-6 w-6" />
+                                        Điểm danh của tôi
+                                    </NavLink>
                                 </div>
                             </div>
+
                         </nav>
                     </aside>
 

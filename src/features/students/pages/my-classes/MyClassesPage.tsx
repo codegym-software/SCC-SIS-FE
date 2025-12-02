@@ -11,7 +11,6 @@ import {
     ArrowRight,
     ArrowUpDown,
     PlayCircle,
-    TrendingUp,
     Award,
     Flame,
     Target,
@@ -280,10 +279,6 @@ export default function MyClassesPage() {
         // Calculate stats
         const totalCourses = classes.length;
         const completedLessons = Object.values(progress).filter((entry) => entry.status === 'completed').length;
-        const inProgressLessons = Object.values(progress).filter((entry) => entry.status === 'in-progress').length;
-        const progressPercentage =
-            totalCourses > 0 ? Math.round((completedLessons / (completedLessons + inProgressLessons + 20)) * 100) : 0;
-        const streak = 3; // Mock data - could be calculated from progress timestamps
 
         // Mock recent activities
         const recentActivities = [
@@ -363,8 +358,8 @@ export default function MyClassesPage() {
                         </div>
                     </div>
 
-                    {/* ⭐ 2. Progress Overview (Minimal icon style) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* ⭐ 2. Progress Overview (Minimal icon style - 2 cards stretched) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Card 1: Tổng số khóa */}
                         <div className="group bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-blue-100 hover:-translate-y-0.5">
                             <div className="flex items-start justify-between mb-4">
@@ -392,38 +387,10 @@ export default function MyClassesPage() {
                             <h3 className="text-3xl font-bold text-gray-900 mb-1">{completedLessons}</h3>
                             <p className="text-sm text-gray-600">Bài học đã hoàn thành</p>
                         </div>
-
-                        {/* Card 3: Tiến độ tháng này */}
-                        <div className="group bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-purple-100 hover:-translate-y-0.5">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="w-10 h-10 rounded-md bg-purple-50 border border-purple-200 flex items-center justify-center">
-                                    <TrendingUp className="w-5 h-5 text-purple-600" />
-                                </div>
-                                <span className="text-xs font-medium text-purple-600 bg-purple-50/70 px-2 py-1 rounded-full border border-purple-200">
-                                    ↑ 15%
-                                </span>
-                            </div>
-                            <h3 className="text-3xl font-bold text-gray-900 mb-1">{progressPercentage}%</h3>
-                            <p className="text-sm text-gray-600">Tiến độ tháng này</p>
-                        </div>
-
-                        {/* Card 4: Streak */}
-                        <div className="group bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-orange-100 hover:-translate-y-0.5">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="w-10 h-10 rounded-md bg-orange-50 border border-orange-200 flex items-center justify-center">
-                                    <Flame className="w-5 h-5 text-orange-500" />
-                                </div>
-                                <span className="text-xs font-medium text-orange-600 bg-orange-50/70 px-2 py-1 rounded-full border border-orange-200">
-                                    🔥
-                                </span>
-                            </div>
-                            <h3 className="text-3xl font-bold text-gray-900 mb-1">{streak}</h3>
-                            <p className="text-sm text-gray-600">Ngày liên tục</p>
-                        </div>
                     </div>
 
-                    {/* ⭐ 3. Lớp học của tôi - Grid 3x2 */}
-                    <div className="space-y-4">
+                    {/* ⭐ 3. Lớp học của tôi - Grid 3x2 với nền highlight */}
+                    <div className="bg-blue-100/60 rounded-2xl p-6 space-y-4">
                         <div className="flex items-center justify-between">
                             <h2 className="text-2xl font-bold text-gray-900">Lớp học của tôi</h2>
                             <span className="text-sm text-gray-500">{filteredClasses.length} khóa học</span>
@@ -725,28 +692,16 @@ export default function MyClassesPage() {
                                                     className={`h-28 bg-gradient-to-br ${background.gradient} relative overflow-hidden`}
                                                 >
                                                     {background.pattern}
-
-                                                    <div className="absolute -bottom-6 left-5 w-14 h-14 rounded-xl bg-white/95 backdrop-blur-sm flex items-center justify-center shadow-lg border-2 border-white">
-                                                        <BookOpen className="w-7 h-7 text-gray-700" />
-                                                    </div>
                                                 </div>
 
                                                 {/* Body */}
-                                                <div className="p-5 pt-8">
+                                                <div className="p-5 pt-5">
                                                     <h3 className="text-base font-semibold text-gray-900 line-clamp-2 mb-1">
                                                         {cls.name}
                                                     </h3>
                                                     <p className="text-sm text-gray-500 mb-4">3 CHƯƠNG • 40 BÀI HỌC</p>
 
-                                                    <div className="flex items-center justify-between">
-                                                        {/* View All Link (per class) */}
-                                                        <button
-                                                            onClick={() => navigate(`/all-courses/${cls.classId}`)}
-                                                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                                                        >
-                                                            Xem tất cả (3)
-                                                        </button>
-
+                                                    <div className="flex items-center justify-end">
                                                         {/* Action Button */}
                                                         <button
                                                             onClick={() => handleEnterClassroom(cls)}
@@ -784,89 +739,44 @@ export default function MyClassesPage() {
                         </div>
                     </div>
 
-                    {/* Layout 2 cột cho Activity và Recommended */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* ⭐ 4. Hoạt động gần đây */}
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-2xl font-bold text-gray-900">Hoạt động gần đây</h2>
-                                <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                                    Xem tất cả →
-                                </button>
-                            </div>
-
-                            <div className="space-y-3">
-                                {recentActivities.map((activity, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 hover:scale-[1.02]"
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div
-                                                className={`w-10 h-10 rounded-lg bg-gradient-to-br ${
-                                                    activity.color === 'text-blue-600'
-                                                        ? 'from-blue-100 to-blue-200'
-                                                        : activity.color === 'text-green-600'
-                                                          ? 'from-green-100 to-green-200'
-                                                          : 'from-yellow-100 to-yellow-200'
-                                                } flex items-center justify-center flex-shrink-0`}
-                                            >
-                                                <activity.icon className={`w-5 h-5 ${activity.color}`} />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-gray-900 mb-1">
-                                                    {activity.title}
-                                                </p>
-                                                <p className="text-xs text-gray-500 flex items-center gap-1">
-                                                    <Clock className="w-3 h-3" />
-                                                    {activity.time}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                    {/* ⭐ 5. Gợi ý khóa học */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-gray-900">Gợi ý khóa học</h2>
+                            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                Xem thêm →
+                            </button>
                         </div>
 
-                        {/* ⭐ 5. Gợi ý khóa học */}
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-2xl font-bold text-gray-900">Gợi ý khóa học</h2>
-                                <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                                    Xem thêm →
-                                </button>
-                            </div>
-
-                            <div className="space-y-3">
-                                {recommendedCourses.map((course, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer group"
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 group-hover:scale-110 transition-transform">
-                                                {course.title.substring(0, 1)}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
-                                                    {course.title}
-                                                </h3>
-                                                <p className="text-xs text-gray-500 mb-2">{course.description}</p>
-                                                <div className="flex items-center gap-3 text-xs">
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
-                                                        <Target className="w-3 h-3" />
-                                                        {course.difficulty}
-                                                    </span>
-                                                    <span className="inline-flex items-center gap-1 text-gray-600">
-                                                        <Users className="w-3 h-3" />
-                                                        {course.students} học viên
-                                                    </span>
-                                                </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {recommendedCourses.map((course, idx) => (
+                                <div
+                                    key={idx}
+                                    className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer group"
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 group-hover:scale-110 transition-transform">
+                                            {course.title.substring(0, 1)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
+                                                {course.title}
+                                            </h3>
+                                            <p className="text-xs text-gray-500 mb-2">{course.description}</p>
+                                            <div className="flex items-center gap-3 text-xs">
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
+                                                    <Target className="w-3 h-3" />
+                                                    {course.difficulty}
+                                                </span>
+                                                <span className="inline-flex items-center gap-1 text-gray-600">
+                                                    <Users className="w-3 h-3" />
+                                                    {course.students} học viên
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
@@ -890,7 +800,7 @@ export default function MyClassesPage() {
                                 <a href="#" className="hover:text-blue-600 transition-colors">
                                     Hỗ trợ
                                 </a>
-                            </div>
+            </div>
                         </div>
                     </div>
                 </div>

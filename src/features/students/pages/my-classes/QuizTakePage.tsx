@@ -4,6 +4,7 @@ import { ArrowLeft, Clock, CheckCircle, AlertCircle, Trophy, XCircle, Award } fr
 import { useToast } from '@/shared/hooks/useToast';
 import { getLessonById } from '@/shared/api/lessons';
 import type { Lesson } from '@/shared/types/lesson';
+import { useProgressStore } from '../../hooks/useProgressStore';
 import { 
     getQuizByLesson, 
     startQuizAttempt, 
@@ -25,6 +26,7 @@ export default function QuizTakePage() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const toast = useToast();
+    const { setLessonStatus } = useProgressStore();
     
     const programId = searchParams.get('programId');
 
@@ -158,6 +160,11 @@ export default function QuizTakePage() {
             setSubmitResult(response.data);
             setViewState('result');
             
+            // Update lesson progress if quiz is passed
+            if (response.data.isPassed && classId && moduleId && lessonId) {
+                setLessonStatus(classId, moduleId, lessonId, 'completed');
+            }
+            
             // Reload history để cập nhật số lần làm
             if (quiz) {
                 try {
@@ -196,8 +203,8 @@ export default function QuizTakePage() {
     };
 
     const navigateToModuleList = () => {
-        const url = `/my-classes/${classId}/modules/${moduleId}${programId ? `?programId=${programId}` : ''}`;
-        navigate(url);
+        // Navigate back to My Classes dashboard
+        navigate('/my-classes');
     };
 
     const formatTime = (seconds: number) => {

@@ -11,7 +11,7 @@ export default function ModuleLessonsListPage() {
     const { classId, moduleId } = useParams();
     const navigate = useNavigate();
     const toast = useToast();
-    const { getLessonStatus } = useProgressStore();
+    const { getLessonStatus, getModuleProgress } = useProgressStore();
 
     const [loading, setLoading] = useState(false);
     const [module, setModule] = useState<ModuleResponse | null>(null);
@@ -117,11 +117,39 @@ export default function ModuleLessonsListPage() {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h1 className="text-2xl font-bold text-gray-900 mb-2">{module.name}</h1>
                     <p className="text-sm text-gray-600 mb-4">{module.description}</p>
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
                         <span>📘 {module.code}</span>
                         <span>⏱️ {module.credits} tín chỉ</span>
                         <span>📚 {lessons.length} bài học</span>
                     </div>
+                    
+                    {/* Progress bar */}
+                    {classId && moduleId && lessons.length > 0 && (() => {
+                        const lessonIds = lessons.map(l => l.lessonId.toString());
+                        const progress = getModuleProgress(classId, moduleId, lessonIds);
+                        
+                        return (
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="font-medium text-gray-700">
+                                        Tiến độ hoàn thành
+                                    </span>
+                                    <span className="font-bold text-blue-600">
+                                        {progress.completed}/{progress.total} bài học
+                                    </span>
+                                </div>
+                                <div className="relative w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                                    <div 
+                                        className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+                                        style={{ width: `${progress.percentage}%` }}
+                                    />
+                                </div>
+                                <div className="text-xs text-gray-500 text-right">
+                                    {progress.percentage}% hoàn thành
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
 
                 {/* Lessons list */}
