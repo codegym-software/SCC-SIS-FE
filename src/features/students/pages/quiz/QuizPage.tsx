@@ -246,7 +246,7 @@ export default function QuizPage() {
 
     const handleSubmit = () => {
         if (Object.keys(answers).length < questions.length) {
-            toast.warning('Vui lòng trả lời tất cả các câu hỏi trước khi nộp bài!');
+            toast.error('Vui lòng trả lời tất cả các câu hỏi trước khi nộp bài!');
             return;
         }
 

@@ -1,6 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { BookOpen, Bell, Settings, LogOut, Search, Menu, X, MailOpen } from 'lucide-react';
+import {
+    BookOpen,
+    Bell,
+    Settings,
+    LogOut,
+    Search,
+    Menu,
+    X,
+    MailOpen,
+    User,
+    History,
+    Lightbulb,
+    Award,
+    CreditCard,
+    UserCog,
+} from 'lucide-react';
 import { keycloak } from '../../keycloak';
 import { useUserProfile } from '../../stores/userProfile';
 import { getMyClasses, type ClassDto } from '@/shared/api/classes';
@@ -20,7 +35,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     const [loadingClasses, setLoadingClasses] = useState(false);
     const { me, loading } = useUserProfile();
     const navigate = useNavigate();
-    
+
     // Notification states
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -112,7 +127,15 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             : names[0][0].toUpperCase();
     };
 
-    const navigationItems = [{ name: 'Lớp học của tôi', path: '/my-classes', icon: BookOpen }];
+    const navigationItems = [
+        { name: 'Hồ sơ cá nhân', path: '/profile', icon: User },
+        { name: 'Lớp học của tôi', path: '/my-classes', icon: BookOpen },
+        { name: 'Lịch sử học tập', path: '/learning-history', icon: History },
+        { name: 'Gợi ý khóa học', path: '/recommended', icon: Lightbulb },
+        { name: 'Chứng chỉ', path: '/certificates', icon: Award },
+        { name: 'Thanh toán', path: '/payments', icon: CreditCard },
+        { name: 'Cài đặt tài khoản', path: '/account-settings', icon: UserCog },
+    ];
 
     if (loading) {
         return (
@@ -161,8 +184,8 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                         <div className="flex items-center space-x-3">
                             {/* Notifications */}
                             <div className="relative" ref={notifRef}>
-                                <button 
-                                    className="relative rounded-full p-2 hover:bg-gray-100" 
+                                <button
+                                    className="relative rounded-full p-2 hover:bg-gray-100"
                                     aria-label="Thông báo"
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -170,19 +193,27 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                                     }}
                                 >
                                     <Bell className="h-6 w-6 text-gray-600" />
-                                    {(notifications && notifications.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length > 0) || (myWarnings && myWarnings.length > 0) ? (
+                                    {(notifications &&
+                                        notifications.filter((n) => !hiddenNotificationIds.includes(n.id) && !n.isRead)
+                                            .length > 0) ||
+                                    (myWarnings && myWarnings.length > 0) ? (
                                         <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-blue-500"></span>
                                     ) : null}
-                                    {(notifications && notifications.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length > 0) || (myWarnings && myWarnings.length > 0) ? (
+                                    {(notifications &&
+                                        notifications.filter((n) => !hiddenNotificationIds.includes(n.id) && !n.isRead)
+                                            .length > 0) ||
+                                    (myWarnings && myWarnings.length > 0) ? (
                                         <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 grid place-items-center text-[10px] font-semibold bg-red-600 text-white rounded-full shadow">
-                                            {notifications.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length + (myWarnings?.length || 0)}
+                                            {notifications.filter(
+                                                (n) => !hiddenNotificationIds.includes(n.id) && !n.isRead,
+                                            ).length + (myWarnings?.length || 0)}
                                         </span>
                                     ) : null}
                                 </button>
 
                                 {/* Notification Dropdown */}
                                 {showNotifications && (
-                                    <div 
+                                    <div
                                         className="absolute right-0 mt-2 w-[420px] max-w-[90vw] bg-white border border-gray-200 rounded-2xl shadow-2xl z-[100] overflow-hidden"
                                         onClick={(e) => e.stopPropagation()}
                                     >
@@ -196,8 +227,8 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                                             <button
                                                 onClick={() => setActiveTab('warnings')}
                                                 className={`flex-1 px-4 py-3 font-medium text-sm transition-all ${
-                                                    activeTab === 'warnings' 
-                                                        ? 'text-red-600 border-b-2 border-red-500 bg-red-50' 
+                                                    activeTab === 'warnings'
+                                                        ? 'text-red-600 border-b-2 border-red-500 bg-red-50'
                                                         : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                                                 }`}
                                             >
@@ -206,30 +237,44 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                                             <button
                                                 onClick={() => setActiveTab('all')}
                                                 className={`flex-1 px-4 py-3 font-medium text-sm transition-all flex items-center justify-center gap-2 relative ${
-                                                    activeTab === 'all' 
-                                                        ? 'text-blue-600 border-b-2 border-blue-500 bg-blue-50' 
+                                                    activeTab === 'all'
+                                                        ? 'text-blue-600 border-b-2 border-blue-500 bg-blue-50'
                                                         : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                                                 }`}
                                             >
-                                                <span>Hoạt động ({notifications?.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length || 0})</span>
-                                                {activeTab === 'all' && notifications && notifications.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length > 0 && (
-                                                    <div title="Đánh dấu tất cả đã đọc">
-                                                        <MailOpen 
-                                                            size={16} 
-                                                            className="text-blue-500 hover:text-blue-700 cursor-pointer ml-1"
-                                                            onClick={async (e) => {
-                                                                e.stopPropagation();
-                                                                try {
-                                                                    await notificationsApi.markAllAsRead();
-                                                                    const updated = await notificationsApi.getMyNotifications();
-                                                                    setNotifications(updated);
-                                                                } catch (error) {
-                                                                    console.error('Failed to mark all as read:', error);
-                                                                }
-                                                            }}
-                                                        />
-                                                    </div>
-                                                )}
+                                                <span>
+                                                    Hoạt động (
+                                                    {notifications?.filter(
+                                                        (n) => !hiddenNotificationIds.includes(n.id) && !n.isRead,
+                                                    ).length || 0}
+                                                    )
+                                                </span>
+                                                {activeTab === 'all' &&
+                                                    notifications &&
+                                                    notifications.filter(
+                                                        (n) => !hiddenNotificationIds.includes(n.id) && !n.isRead,
+                                                    ).length > 0 && (
+                                                        <div title="Đánh dấu tất cả đã đọc">
+                                                            <MailOpen
+                                                                size={16}
+                                                                className="text-blue-500 hover:text-blue-700 cursor-pointer ml-1"
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
+                                                                    try {
+                                                                        await notificationsApi.markAllAsRead();
+                                                                        const updated =
+                                                                            await notificationsApi.getMyNotifications();
+                                                                        setNotifications(updated);
+                                                                    } catch (error) {
+                                                                        console.error(
+                                                                            'Failed to mark all as read:',
+                                                                            error,
+                                                                        );
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
                                             </button>
                                         </div>
 
@@ -278,94 +323,147 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                                                             <p className="text-sm mt-3">Không có thông báo nào</p>
                                                         </div>
                                                     )}
-                                                    {notifications?.filter(n => !hiddenNotificationIds.includes(n.id)).slice(0, 6).map((n) => (
-                                                        <div
-                                                            key={n.id}
-                                                            className={`relative w-full text-left px-5 py-4 border-b border-gray-100 hover:bg-white transition-all group ${
-                                                                !n.isRead ? 'bg-blue-50' : 'bg-white'
-                                                            }`}
-                                                        >
-                                                            <button
-                                                                onClick={async () => {
-                                                                    try {
-                                                                        if (!n.isRead) {
-                                                                            await notificationsApi.markAsRead(n.id);
-                                                                            const updated = await notificationsApi.getMyNotifications();
-                                                                            setNotifications(updated);
+                                                    {notifications
+                                                        ?.filter((n) => !hiddenNotificationIds.includes(n.id))
+                                                        .slice(0, 6)
+                                                        .map((n) => (
+                                                            <div
+                                                                key={n.id}
+                                                                className={`relative w-full text-left px-5 py-4 border-b border-gray-100 hover:bg-white transition-all group ${
+                                                                    !n.isRead ? 'bg-blue-50' : 'bg-white'
+                                                                }`}
+                                                            >
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        try {
+                                                                            if (!n.isRead) {
+                                                                                await notificationsApi.markAsRead(n.id);
+                                                                                const updated =
+                                                                                    await notificationsApi.getMyNotifications();
+                                                                                setNotifications(updated);
+                                                                            }
+                                                                        } catch (error) {
+                                                                            console.error(
+                                                                                'Failed to mark notification as read:',
+                                                                                error,
+                                                                            );
                                                                         }
-                                                                    } catch (error) {
-                                                                        console.error('Failed to mark notification as read:', error);
-                                                                    }
-                                                                }}
-                                                                className="w-full"
-                                                            >
-                                                                <div className="flex items-start gap-3">
-                                                                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                                                                        n.severity === 'high' ? 'bg-red-100' :
-                                                                        n.severity === 'medium' ? 'bg-amber-100' :
-                                                                        'bg-blue-100'
-                                                                    }`}>
-                                                                        <span className={`text-lg ${
-                                                                            n.severity === 'high' ? 'text-red-600' :
-                                                                            n.severity === 'medium' ? 'text-amber-600' :
-                                                                            'text-blue-600'
-                                                                        }`}>
-                                                                            {n.type === 'GRADE_UPDATED' ? '📊' :
-                                                                             n.type === 'ENROLLED_NEW_CLASS' ? '🎓' :
-                                                                             n.type === 'CLASS_UPDATED' ? '📅' :
-                                                                             n.type === 'ATTENDANCE_RECORDED' ? '✅' :
-                                                                             n.type === 'ATTENDANCE_UPDATED' ? '🔄' :
-                                                                             n.type === 'ATTENDANCE_WARNING' ? '⚠️' :
-                                                                             n.type === 'GRADE_WARNING' ? '❌' :
-                                                                             '📢'}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="flex-1 min-w-0 pr-6">
-                                                                        <div className="flex items-center justify-between gap-2 mb-1">
-                                                                            <span className={`text-sm font-semibold ${!n.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
-                                                                                {n.title}
+                                                                    }}
+                                                                    className="w-full"
+                                                                >
+                                                                    <div className="flex items-start gap-3">
+                                                                        <div
+                                                                            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                                                                n.severity === 'high'
+                                                                                    ? 'bg-red-100'
+                                                                                    : n.severity === 'medium'
+                                                                                      ? 'bg-amber-100'
+                                                                                      : 'bg-blue-100'
+                                                                            }`}
+                                                                        >
+                                                                            <span
+                                                                                className={`text-lg ${
+                                                                                    n.severity === 'high'
+                                                                                        ? 'text-red-600'
+                                                                                        : n.severity === 'medium'
+                                                                                          ? 'text-amber-600'
+                                                                                          : 'text-blue-600'
+                                                                                }`}
+                                                                            >
+                                                                                {n.type === 'GRADE_UPDATED'
+                                                                                    ? '📊'
+                                                                                    : n.type === 'ENROLLED_NEW_CLASS'
+                                                                                      ? '🎓'
+                                                                                      : n.type === 'CLASS_UPDATED'
+                                                                                        ? '📅'
+                                                                                        : n.type ===
+                                                                                            'ATTENDANCE_RECORDED'
+                                                                                          ? '✅'
+                                                                                          : n.type ===
+                                                                                              'ATTENDANCE_UPDATED'
+                                                                                            ? '🔄'
+                                                                                            : n.type ===
+                                                                                                'ATTENDANCE_WARNING'
+                                                                                              ? '⚠️'
+                                                                                              : n.type ===
+                                                                                                  'GRADE_WARNING'
+                                                                                                ? '❌'
+                                                                                                : '📢'}
                                                                             </span>
-                                                                            {!n.isRead && (
-                                                                                <span className="flex-shrink-0 h-2 w-2 bg-blue-600 rounded-full"></span>
-                                                                            )}
                                                                         </div>
-                                                                        <p className="text-xs text-gray-600 line-clamp-2 mb-2">
-                                                                            {n.message}
-                                                                        </p>
-                                                                        <span className="text-xs text-gray-400">
-                                                                            {(() => {
-                                                                                const date = new Date(n.createdAt);
-                                                                                const now = new Date();
-                                                                                const diffMs = now.getTime() - date.getTime();
-                                                                                const diffMins = Math.floor(diffMs / 60000);
-                                                                                const diffHours = Math.floor(diffMs / 3600000);
-                                                                                
-                                                                                if (diffMins < 1) return 'Vừa xong';
-                                                                                if (diffMins < 60) return `${diffMins} phút trước`;
-                                                                                if (diffHours < 24) return `${diffHours} giờ trước`;
-                                                                                return date.toLocaleDateString('vi-VN');
-                                                                            })()}
-                                                                        </span>
+                                                                        <div className="flex-1 min-w-0 pr-6">
+                                                                            <div className="flex items-center justify-between gap-2 mb-1">
+                                                                                <span
+                                                                                    className={`text-sm font-semibold ${!n.isRead ? 'text-gray-900' : 'text-gray-600'}`}
+                                                                                >
+                                                                                    {n.title}
+                                                                                </span>
+                                                                                {!n.isRead && (
+                                                                                    <span className="flex-shrink-0 h-2 w-2 bg-blue-600 rounded-full"></span>
+                                                                                )}
+                                                                            </div>
+                                                                            <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                                                                                {n.message}
+                                                                            </p>
+                                                                            <span className="text-xs text-gray-400">
+                                                                                {(() => {
+                                                                                    const date = new Date(n.createdAt);
+                                                                                    const now = new Date();
+                                                                                    const diffMs =
+                                                                                        now.getTime() - date.getTime();
+                                                                                    const diffMins = Math.floor(
+                                                                                        diffMs / 60000,
+                                                                                    );
+                                                                                    const diffHours = Math.floor(
+                                                                                        diffMs / 3600000,
+                                                                                    );
+
+                                                                                    if (diffMins < 1) return 'Vừa xong';
+                                                                                    if (diffMins < 60)
+                                                                                        return `${diffMins} phút trước`;
+                                                                                    if (diffHours < 24)
+                                                                                        return `${diffHours} giờ trước`;
+                                                                                    return date.toLocaleDateString(
+                                                                                        'vi-VN',
+                                                                                    );
+                                                                                })()}
+                                                                            </span>
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            </button>
-                                                            
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    const updated = [...hiddenNotificationIds, n.id];
-                                                                    setHiddenNotificationIds(updated);
-                                                                    localStorage.setItem('hiddenNotifications', JSON.stringify(updated));
-                                                                }}
-                                                                className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 rounded-full"
-                                                                title="Ẩn khỏi danh sách"
-                                                            >
-                                                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    ))}
+                                                                </button>
+
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const updated = [
+                                                                            ...hiddenNotificationIds,
+                                                                            n.id,
+                                                                        ];
+                                                                        setHiddenNotificationIds(updated);
+                                                                        localStorage.setItem(
+                                                                            'hiddenNotifications',
+                                                                            JSON.stringify(updated),
+                                                                        );
+                                                                    }}
+                                                                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 rounded-full"
+                                                                    title="Ẩn khỏi danh sách"
+                                                                >
+                                                                    <svg
+                                                                        className="w-4 h-4 text-gray-500"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        viewBox="0 0 24 24"
+                                                                    >
+                                                                        <path
+                                                                            strokeLinecap="round"
+                                                                            strokeLinejoin="round"
+                                                                            strokeWidth={2}
+                                                                            d="M6 18L18 6M6 6l12 12"
+                                                                        />
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        ))}
                                                 </div>
                                             )}
                                         </div>

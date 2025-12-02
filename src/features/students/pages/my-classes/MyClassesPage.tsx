@@ -11,6 +11,14 @@ import {
     ArrowRight,
     ArrowUpDown,
     PlayCircle,
+    TrendingUp,
+    Award,
+    Flame,
+    Target,
+    Clock,
+    Star,
+    Lightbulb,
+    GraduationCap,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUserProfile } from '@/stores/userProfile';
@@ -260,110 +268,631 @@ export default function MyClassesPage() {
 
     // Render Class List
     if (view === 'list') {
+        // Helper function to get user initials
+        const getUserInitials = () => {
+            if (!me?.fullName) return '?';
+            const names = me.fullName.split(' ');
+            return names.length >= 2
+                ? `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
+                : names[0][0].toUpperCase();
+        };
+
+        // Calculate stats
+        const totalCourses = classes.length;
+        const completedLessons = Object.values(progress).filter((entry) => entry.status === 'completed').length;
+        const inProgressLessons = Object.values(progress).filter((entry) => entry.status === 'in-progress').length;
+        const progressPercentage =
+            totalCourses > 0 ? Math.round((completedLessons / (completedLessons + inProgressLessons + 20)) * 100) : 0;
+        const streak = 3; // Mock data - could be calculated from progress timestamps
+
+        // Mock recent activities
+        const recentActivities = [
+            {
+                type: 'continue',
+                title: 'Tiếp tục bài "State trong React"',
+                time: '2 giờ trước',
+                icon: PlayCircle,
+                color: 'text-blue-600',
+            },
+            {
+                type: 'complete',
+                title: 'Hoàn thành chương "JavaScript cơ bản"',
+                time: '1 ngày trước',
+                icon: CheckCircle,
+                color: 'text-green-600',
+            },
+            {
+                type: 'enroll',
+                title: 'Đăng ký khóa "Fullstack JS"',
+                time: '3 ngày trước',
+                icon: Star,
+                color: 'text-yellow-600',
+            },
+        ];
+
+        // Mock recommended courses
+        const recommendedCourses = [
+            {
+                title: 'React Nâng cao',
+                description: 'Hooks, Context, Performance',
+                difficulty: 'Intermediate',
+                students: '2.5k',
+            },
+            { title: 'NodeJS cơ bản', description: 'Backend với Express', difficulty: 'Beginner', students: '3.2k' },
+            { title: 'Git & CI/CD', description: 'Version control hiện đại', difficulty: 'Beginner', students: '1.8k' },
+        ];
+
         return (
-            <div className="space-y-6 max-w-[1200px] mx-auto">
-                {/* Hero Banner with Wave Background */}
-                <div className="relative rounded-2xl overflow-hidden shadow-xl h-48">
-                    {/* Wave Background Image */}
-                    <div
-                        className="absolute inset-0"
-                        style={{
-                            backgroundImage: `linear-gradient(135deg, #60a5fa 0%, #93c5fd 25%, #bfdbfe 50%, #dbeafe 75%, #eff6ff 100%)`,
-                        }}
-                    >
-                        {/* Wave Pattern Overlay */}
-                        <svg
-                            className="absolute inset-0 w-full h-full opacity-30"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 1440 320"
-                            preserveAspectRatio="none"
-                        >
-                            <path
-                                fill="rgba(255,255,255,0.1)"
-                                d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
-                            ></path>
-                            <path
-                                fill="rgba(255,255,255,0.05)"
-                                d="M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
-                            ></path>
-                        </svg>
-                    </div>
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/20">
+                <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-8 animate-fade-in">
+                    {/* ⭐ 1. Banner chào mừng */}
+                    <div className="relative rounded-2xl overflow-hidden shadow-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-8">
+                        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-40"></div>
 
-                    {/* Content */}
-                    <div className="relative h-full flex items-center px-8">
-                        <div className="flex items-center justify-between w-full">
-                            <div>
-                                <h1 className="text-4xl font-bold text-blue-900 mb-2 tracking-tight drop-shadow-sm">
-                                    Lớp học của tôi
-                                </h1>
-                                <p className="text-blue-700 text-lg drop-shadow-sm">
-                                    Quản lý và theo dõi tiến độ học tập của bạn
-                                </p>
-                            </div>
-                            <div className="hidden md:block">
-                                <BookOpen className="w-20 h-20 text-blue-300/60 drop-shadow-md" strokeWidth={1.5} />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Continue Learning Card - Hidden */}
-
-                {/* Section Title - removed per request */}
-
-                {/* Class List View */}
-                <div className="space-y-3">
-                    {filteredClasses.length === 0 ? (
-                        <div className="text-center py-12 text-gray-500">
-                            <p>Không tìm thấy lớp học nào.</p>
-                        </div>
-                    ) : (
-                        filteredClasses.map((cls) => {
-                            const classStatus = getClassStatus(cls);
-                            return (
-                                <div
-                                    key={cls.classId}
-                                    className="bg-white border border-blue-100 rounded-xl overflow-hidden hover:shadow-lg transition-all hover:scale-[1.01]"
-                                >
-                                    {/* Class Header */}
-                                    <div className="flex items-center gap-4 p-5 bg-gradient-to-r from-blue-50/50 to-cyan-50/30 border-b border-blue-100">
-                                        {/* Icon */}
-                                        <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-md">
-                                            <BookOpen className="w-7 h-7 text-white" />
-                                        </div>
-
-                                        {/* Info */}
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="text-base font-semibold text-gray-900 truncate">
-                                                {cls.name}
-                                            </h3>
-                                            <p className="text-sm text-gray-500">3 CHƯƠNG • 40 BÀI HỌC</p>
-                                        </div>
-
-                                        {/* View All Link (per class) */}
-                                        <button
-                                            onClick={() => navigate(`/all-courses/${cls.classId}`)}
-                                            className="flex-shrink-0 text-sm text-blue-600 hover:text-blue-700 font-medium mr-2"
-                                        >
-                                            Xem tất cả (3)
-                                        </button>
-
-                                        {/* Action Button */}
-                                        <button
-                                            onClick={() => handleEnterClassroom(cls)}
-                                            className={`flex-shrink-0 px-5 py-2 rounded-lg text-sm font-medium transition border ${
-                                                classStatus === 'Đang học'
-                                                    ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
-                                                    : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                                            }`}
-                                        >
-                                            {classStatus === 'Đang học' ? 'Tiếp tục' : 'Bắt đầu'}
-                                        </button>
+                        <div className="relative flex items-center justify-between">
+                            <div className="flex items-center gap-6">
+                                {/* Avatar */}
+                                <div className="relative group">
+                                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-white to-blue-50 flex items-center justify-center text-2xl font-bold text-indigo-600 shadow-lg ring-4 ring-white/50 group-hover:scale-105 transition-transform">
+                                        {getUserInitials()}
+                                    </div>
+                                    <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
+                                        <Flame className="w-3.5 h-3.5 text-white" />
                                     </div>
                                 </div>
-                            );
-                        })
-                    )}
+
+                                {/* Info */}
+                                <div>
+                                    <h1 className="text-3xl font-bold text-white mb-1 drop-shadow-lg">
+                                        Chào {me?.fullName || 'bạn'}!
+                                    </h1>
+                                    <div className="flex items-center gap-3">
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium text-white border border-white/30">
+                                            <GraduationCap className="w-4 h-4" />
+                                            Intermediate
+                                        </span>
+                                        <span className="text-blue-100 text-sm">Chúc bạn học tập hiệu quả! 🚀</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Decorative Icon */}
+                            <div className="hidden lg:block opacity-20">
+                                <BookOpen className="w-32 h-32 text-white" strokeWidth={1} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ⭐ 2. Progress Overview (Minimal icon style) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Card 1: Tổng số khóa */}
+                        <div className="group bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-blue-100 hover:-translate-y-0.5">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-10 h-10 rounded-md bg-blue-50 border border-blue-200 flex items-center justify-center">
+                                    <BookOpen className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <span className="text-xs font-medium text-blue-600 bg-blue-50/70 px-2 py-1 rounded-full border border-blue-200">
+                                    Active
+                                </span>
+                            </div>
+                            <h3 className="text-3xl font-bold text-gray-900 mb-1">{totalCourses}</h3>
+                            <p className="text-sm text-gray-600">Tổng số khóa học</p>
+                        </div>
+
+                        {/* Card 2: Bài học hoàn thành */}
+                        <div className="group bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-green-100 hover:-translate-y-0.5">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-10 h-10 rounded-md bg-green-50 border border-green-200 flex items-center justify-center">
+                                    <CheckCircle className="w-5 h-5 text-green-600" />
+                                </div>
+                                <span className="text-xs font-medium text-green-600 bg-green-50/70 px-2 py-1 rounded-full border border-green-200">
+                                    +12
+                                </span>
+                            </div>
+                            <h3 className="text-3xl font-bold text-gray-900 mb-1">{completedLessons}</h3>
+                            <p className="text-sm text-gray-600">Bài học đã hoàn thành</p>
+                        </div>
+
+                        {/* Card 3: Tiến độ tháng này */}
+                        <div className="group bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-purple-100 hover:-translate-y-0.5">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-10 h-10 rounded-md bg-purple-50 border border-purple-200 flex items-center justify-center">
+                                    <TrendingUp className="w-5 h-5 text-purple-600" />
+                                </div>
+                                <span className="text-xs font-medium text-purple-600 bg-purple-50/70 px-2 py-1 rounded-full border border-purple-200">
+                                    ↑ 15%
+                                </span>
+                            </div>
+                            <h3 className="text-3xl font-bold text-gray-900 mb-1">{progressPercentage}%</h3>
+                            <p className="text-sm text-gray-600">Tiến độ tháng này</p>
+                        </div>
+
+                        {/* Card 4: Streak */}
+                        <div className="group bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-orange-100 hover:-translate-y-0.5">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-10 h-10 rounded-md bg-orange-50 border border-orange-200 flex items-center justify-center">
+                                    <Flame className="w-5 h-5 text-orange-500" />
+                                </div>
+                                <span className="text-xs font-medium text-orange-600 bg-orange-50/70 px-2 py-1 rounded-full border border-orange-200">
+                                    🔥
+                                </span>
+                            </div>
+                            <h3 className="text-3xl font-bold text-gray-900 mb-1">{streak}</h3>
+                            <p className="text-sm text-gray-600">Ngày liên tục</p>
+                        </div>
+                    </div>
+
+                    {/* ⭐ 3. Lớp học của tôi - Grid 3x2 */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-gray-900">Lớp học của tôi</h2>
+                            <span className="text-sm text-gray-500">{filteredClasses.length} khóa học</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredClasses.length === 0 ? (
+                                <div className="col-span-full text-center py-16 text-gray-500">
+                                    <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                                    <p>Không tìm thấy lớp học nào.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {filteredClasses.map((cls, index) => {
+                                        const classStatus = getClassStatus(cls);
+
+                                        // Mảng các background pattern đẹp theo ảnh mẫu
+                                        const backgrounds = [
+                                            // 1. Circuit board - mạch điện xanh ngọc
+                                            {
+                                                gradient: 'from-teal-500 to-cyan-600',
+                                                pattern: (
+                                                    <svg
+                                                        className="absolute inset-0 w-full h-full opacity-30"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                    >
+                                                        <defs>
+                                                            <pattern
+                                                                id={`circuit-${cls.classId}`}
+                                                                x="0"
+                                                                y="0"
+                                                                width="60"
+                                                                height="60"
+                                                                patternUnits="userSpaceOnUse"
+                                                            >
+                                                                <path
+                                                                    d="M10,10 L50,10 M10,20 L30,20 M40,20 L50,20 M10,30 L20,30 M30,30 L50,30 M10,40 L50,40 M10,50 L30,50 M40,50 L50,50"
+                                                                    stroke="currentColor"
+                                                                    strokeWidth="2"
+                                                                    fill="none"
+                                                                />
+                                                                <circle cx="30" cy="20" r="3" fill="currentColor" />
+                                                                <circle cx="20" cy="30" r="3" fill="currentColor" />
+                                                                <rect
+                                                                    x="38"
+                                                                    y="18"
+                                                                    width="4"
+                                                                    height="4"
+                                                                    fill="currentColor"
+                                                                />
+                                                                <rect
+                                                                    x="28"
+                                                                    y="28"
+                                                                    width="4"
+                                                                    height="4"
+                                                                    fill="currentColor"
+                                                                />
+                                                            </pattern>
+                                                        </defs>
+                                                        <rect
+                                                            width="100%"
+                                                            height="100%"
+                                                            fill="url(#circuit-${cls.classId})"
+                                                            className="text-white"
+                                                        />
+                                                    </svg>
+                                                ),
+                                            },
+                                            // 2. Geometric triangles - hình học màu pastel
+                                            {
+                                                gradient: 'from-pink-300 via-purple-300 to-blue-300',
+                                                pattern: (
+                                                    <svg
+                                                        className="absolute inset-0 w-full h-full opacity-40"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                    >
+                                                        <defs>
+                                                            <pattern
+                                                                id={`geometric-${cls.classId}`}
+                                                                x="0"
+                                                                y="0"
+                                                                width="80"
+                                                                height="80"
+                                                                patternUnits="userSpaceOnUse"
+                                                            >
+                                                                <polygon
+                                                                    points="0,0 40,0 20,35"
+                                                                    fill="rgba(255,255,255,0.3)"
+                                                                />
+                                                                <polygon
+                                                                    points="40,0 80,0 60,35"
+                                                                    fill="rgba(255,255,255,0.2)"
+                                                                />
+                                                                <polygon
+                                                                    points="20,35 60,35 40,70"
+                                                                    fill="rgba(255,255,255,0.25)"
+                                                                />
+                                                                <polygon
+                                                                    points="0,40 40,40 20,75"
+                                                                    fill="rgba(255,255,255,0.2)"
+                                                                />
+                                                                <polygon
+                                                                    points="40,40 80,40 60,75"
+                                                                    fill="rgba(255,255,255,0.3)"
+                                                                />
+                                                            </pattern>
+                                                        </defs>
+                                                        <rect
+                                                            width="100%"
+                                                            height="100%"
+                                                            fill="url(#geometric-${cls.classId})"
+                                                        />
+                                                    </svg>
+                                                ),
+                                            },
+                                            // 3. Galaxy stars - thiên hà tím
+                                            {
+                                                gradient: 'from-indigo-900 via-purple-800 to-pink-700',
+                                                pattern: (
+                                                    <svg
+                                                        className="absolute inset-0 w-full h-full opacity-60"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                    >
+                                                        <defs>
+                                                            <radialGradient id={`galaxy-${cls.classId}`}>
+                                                                <stop offset="0%" stopColor="rgba(255,255,255,0.8)" />
+                                                                <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                                                            </radialGradient>
+                                                        </defs>
+                                                        <circle cx="20%" cy="30%" r="2" fill="white" opacity="0.8" />
+                                                        <circle cx="80%" cy="20%" r="1.5" fill="white" opacity="0.6" />
+                                                        <circle
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            r="3"
+                                                            fill={`url(#galaxy-${cls.classId})`}
+                                                        />
+                                                        <circle cx="70%" cy="60%" r="1" fill="white" opacity="0.7" />
+                                                        <circle cx="30%" cy="70%" r="1.5" fill="white" opacity="0.5" />
+                                                        <circle cx="85%" cy="80%" r="1" fill="white" opacity="0.6" />
+                                                        <circle cx="15%" cy="85%" r="2" fill="white" opacity="0.4" />
+                                                        <ellipse
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            rx="40%"
+                                                            ry="15%"
+                                                            fill="rgba(255,255,255,0.1)"
+                                                            transform="rotate(-30 50 50)"
+                                                        />
+                                                    </svg>
+                                                ),
+                                            },
+                                            // 4. Maze pattern - mê cung vàng xanh
+                                            {
+                                                gradient: 'from-teal-700 to-teal-900',
+                                                pattern: (
+                                                    <svg
+                                                        className="absolute inset-0 w-full h-full opacity-40"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                    >
+                                                        <defs>
+                                                            <pattern
+                                                                id={`maze-${cls.classId}`}
+                                                                x="0"
+                                                                y="0"
+                                                                width="40"
+                                                                height="40"
+                                                                patternUnits="userSpaceOnUse"
+                                                            >
+                                                                <path
+                                                                    d="M0,0 L0,40 M10,0 L10,30 M20,10 L20,40 M30,0 L30,30 M40,0 L40,40 M0,10 L30,10 M10,20 L40,20 M0,30 L20,30"
+                                                                    stroke="rgba(251,191,36,0.8)"
+                                                                    strokeWidth="2.5"
+                                                                    fill="none"
+                                                                />
+                                                            </pattern>
+                                                        </defs>
+                                                        <rect
+                                                            width="100%"
+                                                            height="100%"
+                                                            fill="url(#maze-${cls.classId})"
+                                                        />
+                                                    </svg>
+                                                ),
+                                            },
+                                            // 5. Waves - sóng xanh lá
+                                            {
+                                                gradient: 'from-emerald-400 to-teal-500',
+                                                pattern: (
+                                                    <svg
+                                                        className="absolute inset-0 w-full h-full opacity-25"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                    >
+                                                        <defs>
+                                                            <pattern
+                                                                id={`waves-${cls.classId}`}
+                                                                x="0"
+                                                                y="0"
+                                                                width="100"
+                                                                height="100"
+                                                                patternUnits="userSpaceOnUse"
+                                                            >
+                                                                <path
+                                                                    d="M0,50 Q25,30 50,50 T100,50"
+                                                                    stroke="white"
+                                                                    strokeWidth="3"
+                                                                    fill="none"
+                                                                />
+                                                                <path
+                                                                    d="M0,70 Q25,50 50,70 T100,70"
+                                                                    stroke="white"
+                                                                    strokeWidth="3"
+                                                                    fill="none"
+                                                                />
+                                                                <path
+                                                                    d="M0,30 Q25,10 50,30 T100,30"
+                                                                    stroke="white"
+                                                                    strokeWidth="2"
+                                                                    fill="none"
+                                                                    opacity="0.5"
+                                                                />
+                                                            </pattern>
+                                                        </defs>
+                                                        <rect
+                                                            width="100%"
+                                                            height="100%"
+                                                            fill="url(#waves-${cls.classId})"
+                                                        />
+                                                    </svg>
+                                                ),
+                                            },
+                                            // 6. Dots grid - chấm tròn gradient
+                                            {
+                                                gradient: 'from-violet-500 via-purple-500 to-fuchsia-500',
+                                                pattern: (
+                                                    <svg
+                                                        className="absolute inset-0 w-full h-full opacity-30"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                    >
+                                                        <defs>
+                                                            <pattern
+                                                                id={`dots-${cls.classId}`}
+                                                                x="0"
+                                                                y="0"
+                                                                width="30"
+                                                                height="30"
+                                                                patternUnits="userSpaceOnUse"
+                                                            >
+                                                                <circle cx="15" cy="15" r="3" fill="white" />
+                                                                <circle
+                                                                    cx="0"
+                                                                    cy="0"
+                                                                    r="2"
+                                                                    fill="white"
+                                                                    opacity="0.5"
+                                                                />
+                                                                <circle
+                                                                    cx="30"
+                                                                    cy="0"
+                                                                    r="2"
+                                                                    fill="white"
+                                                                    opacity="0.5"
+                                                                />
+                                                                <circle
+                                                                    cx="0"
+                                                                    cy="30"
+                                                                    r="2"
+                                                                    fill="white"
+                                                                    opacity="0.5"
+                                                                />
+                                                                <circle
+                                                                    cx="30"
+                                                                    cy="30"
+                                                                    r="2"
+                                                                    fill="white"
+                                                                    opacity="0.5"
+                                                                />
+                                                            </pattern>
+                                                        </defs>
+                                                        <rect
+                                                            width="100%"
+                                                            height="100%"
+                                                            fill="url(#dots-${cls.classId})"
+                                                        />
+                                                    </svg>
+                                                ),
+                                            },
+                                        ];
+
+                                        const background = backgrounds[index % backgrounds.length];
+
+                                        return (
+                                            <div
+                                                key={cls.classId}
+                                                className="group bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300"
+                                            >
+                                                {/* Thumbnail/Header với pattern đẹp */}
+                                                <div
+                                                    className={`h-28 bg-gradient-to-br ${background.gradient} relative overflow-hidden`}
+                                                >
+                                                    {background.pattern}
+
+                                                    <div className="absolute -bottom-6 left-5 w-14 h-14 rounded-xl bg-white/95 backdrop-blur-sm flex items-center justify-center shadow-lg border-2 border-white">
+                                                        <BookOpen className="w-7 h-7 text-gray-700" />
+                                                    </div>
+                                                </div>
+
+                                                {/* Body */}
+                                                <div className="p-5 pt-8">
+                                                    <h3 className="text-base font-semibold text-gray-900 line-clamp-2 mb-1">
+                                                        {cls.name}
+                                                    </h3>
+                                                    <p className="text-sm text-gray-500 mb-4">3 CHƯƠNG • 40 BÀI HỌC</p>
+
+                                                    <div className="flex items-center justify-between">
+                                                        {/* View All Link (per class) */}
+                                                        <button
+                                                            onClick={() => navigate(`/all-courses/${cls.classId}`)}
+                                                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                                        >
+                                                            Xem tất cả (3)
+                                                        </button>
+
+                                                        {/* Action Button */}
+                                                        <button
+                                                            onClick={() => handleEnterClassroom(cls)}
+                                                            className={`px-5 py-2 rounded-lg text-sm font-medium transition border ${
+                                                                classStatus === 'Đang học'
+                                                                    ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
+                                                                    : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                                                            }`}
+                                                        >
+                                                            {classStatus === 'Đang học' ? 'Tiếp tục' : 'Bắt đầu'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Placeholder card nếu số lượng < 6 */}
+                                    {filteredClasses.length < 6 && (
+                                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-300 cursor-pointer group">
+                                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                                <Lightbulb className="w-8 h-8 text-blue-600" />
+                                            </div>
+                                            <h3 className="font-semibold text-gray-700 mb-2">Khám phá thêm</h3>
+                                            <p className="text-sm text-gray-500 mb-4">
+                                                Xem các khóa học được đề xuất cho bạn
+                                            </p>
+                                            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                                Xem gợi ý →
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Layout 2 cột cho Activity và Recommended */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* ⭐ 4. Hoạt động gần đây */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-2xl font-bold text-gray-900">Hoạt động gần đây</h2>
+                                <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                    Xem tất cả →
+                                </button>
+                            </div>
+
+                            <div className="space-y-3">
+                                {recentActivities.map((activity, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 hover:scale-[1.02]"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <div
+                                                className={`w-10 h-10 rounded-lg bg-gradient-to-br ${
+                                                    activity.color === 'text-blue-600'
+                                                        ? 'from-blue-100 to-blue-200'
+                                                        : activity.color === 'text-green-600'
+                                                          ? 'from-green-100 to-green-200'
+                                                          : 'from-yellow-100 to-yellow-200'
+                                                } flex items-center justify-center flex-shrink-0`}
+                                            >
+                                                <activity.icon className={`w-5 h-5 ${activity.color}`} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-gray-900 mb-1">
+                                                    {activity.title}
+                                                </p>
+                                                <p className="text-xs text-gray-500 flex items-center gap-1">
+                                                    <Clock className="w-3 h-3" />
+                                                    {activity.time}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* ⭐ 5. Gợi ý khóa học */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-2xl font-bold text-gray-900">Gợi ý khóa học</h2>
+                                <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                    Xem thêm →
+                                </button>
+                            </div>
+
+                            <div className="space-y-3">
+                                {recommendedCourses.map((course, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer group"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 group-hover:scale-110 transition-transform">
+                                                {course.title.substring(0, 1)}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
+                                                    {course.title}
+                                                </h3>
+                                                <p className="text-xs text-gray-500 mb-2">{course.description}</p>
+                                                <div className="flex items-center gap-3 text-xs">
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
+                                                        <Target className="w-3 h-3" />
+                                                        {course.difficulty}
+                                                    </span>
+                                                    <span className="inline-flex items-center gap-1 text-gray-600">
+                                                        <Users className="w-3 h-3" />
+                                                        {course.students} học viên
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ⭐ 7. Footer */}
+                    <div className="mt-12 pt-8 border-t border-gray-200">
+                        <div className="text-center">
+                            <p className="text-sm text-gray-500">
+                                © 2024 <span className="font-semibold text-gray-700">Education Management</span>
+                                {' • '}
+                                <span className="text-blue-600">Powered by Huy Dev Team</span>
+                            </p>
+                            <div className="mt-3 flex items-center justify-center gap-4 text-xs text-gray-400">
+                                <a href="#" className="hover:text-blue-600 transition-colors">
+                                    Về chúng tôi
+                                </a>
+                                <span>•</span>
+                                <a href="#" className="hover:text-blue-600 transition-colors">
+                                    Điều khoản
+                                </a>
+                                <span>•</span>
+                                <a href="#" className="hover:text-blue-600 transition-colors">
+                                    Hỗ trợ
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         );
