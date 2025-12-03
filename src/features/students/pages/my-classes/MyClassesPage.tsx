@@ -371,7 +371,7 @@ export default function MyClassesPage() {
                                 </span>
                             </div>
                             <h3 className="text-3xl font-bold text-gray-900 mb-1">{totalCourses}</h3>
-                            <p className="text-sm text-gray-600">Tổng số khóa học</p>
+                            <p className="text-sm text-gray-600">Tổng số lớp học</p>
                         </div>
 
                         {/* Card 2: Bài học hoàn thành */}
@@ -393,7 +393,7 @@ export default function MyClassesPage() {
                     <div className="bg-blue-100/60 rounded-2xl p-6 space-y-4">
                         <div className="flex items-center justify-between">
                             <h2 className="text-2xl font-bold text-gray-900">Lớp học của tôi</h2>
-                            <span className="text-sm text-gray-500">{filteredClasses.length} khóa học</span>
+                            <span className="text-sm text-gray-500">{filteredClasses.length} lớp học</span>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -727,7 +727,7 @@ export default function MyClassesPage() {
                                             </div>
                                             <h3 className="font-semibold text-gray-700 mb-2">Khám phá thêm</h3>
                                             <p className="text-sm text-gray-500 mb-4">
-                                                Xem các khóa học được đề xuất cho bạn
+                                                Xem các lớp học được đề xuất cho bạn
                                             </p>
                                             <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
                                                 Xem gợi ý →
@@ -739,10 +739,10 @@ export default function MyClassesPage() {
                         </div>
                     </div>
 
-                    {/* ⭐ 5. Gợi ý khóa học */}
+                    {/* ⭐ 5. Gợi ý lớp học */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-bold text-gray-900">Gợi ý khóa học</h2>
+                            <h2 className="text-2xl font-bold text-gray-900">Gợi ý lớp học</h2>
                             <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
                                 Xem thêm →
                             </button>
@@ -800,7 +800,7 @@ export default function MyClassesPage() {
                                 <a href="#" className="hover:text-blue-600 transition-colors">
                                     Hỗ trợ
                                 </a>
-            </div>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -18,6 +18,7 @@ import {
     TrendingUp,
     Calendar,
     Trophy,
+    Library,
 } from 'lucide-react';
 import { keycloak } from '../../keycloak';
 import { useUserProfile } from '../../stores/userProfile';
@@ -134,7 +135,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
         { name: 'Hồ sơ cá nhân', path: '/profile', icon: User },
         { name: 'Lớp học của tôi', path: '/my-classes', icon: BookOpen },
         { name: 'Lịch sử học tập', path: '/learning-history', icon: History },
-        { name: 'Gợi ý khóa học', path: '/recommended', icon: Lightbulb },
+        { name: 'Gợi ý lớp học', path: '/recommended', icon: Lightbulb },
         { name: 'Chứng chỉ', path: '/certificates', icon: Award },
         { name: 'Thanh toán', path: '/payments', icon: CreditCard },
         { name: 'Cài đặt tài khoản', path: '/account-settings', icon: UserCog },
@@ -616,7 +617,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                                     <NavLink
                                         to="/my-attendance"
                                         className={({ isActive }) =>
-                                            `flex items-center rounded-xl px-4 py-3 text-base font-semibold transition-all ${
+                                            `flex items-center rounded-xl px-4 py-3 text-base font-medium transition ${
                                                 isActive
                                                     ? 'bg-green-50 text-green-700 shadow-sm'
                                                     : 'text-gray-700 hover:bg-gray-50'
@@ -626,9 +627,22 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                                         <Calendar className="mr-4 h-6 w-6" />
                                         Điểm danh của tôi
                                     </NavLink>
+
+                                    <NavLink
+                                        to="/library"
+                                        className={({ isActive }) =>
+                                            `flex items-center rounded-xl px-4 py-3 text-base font-medium transition ${
+                                                isActive
+                                                    ? 'bg-purple-50 text-purple-700 shadow-sm'
+                                                    : 'text-gray-700 hover:bg-gray-50'
+                                            }`
+                                        }
+                                    >
+                                        <Library className="mr-4 h-6 w-6" />
+                                        Thư viện
+                                    </NavLink>
                                 </div>
                             </div>
-
                         </nav>
                     </aside>
 

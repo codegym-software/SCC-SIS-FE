@@ -1,6 +1,19 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Calendar, Users, CheckCircle } from 'lucide-react';
+import {
+    ArrowLeft,
+    BookOpen,
+    Calendar,
+    Users,
+    CheckCircle,
+    PlayCircle,
+    FileText,
+    Video,
+    ClipboardList,
+    PenTool,
+    ChevronDown,
+    ChevronUp,
+} from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
 import { getMyClasses, type ClassDto } from '@/shared/api/classes';
 import { getModulesByProgram, type ModuleResponse } from '@/shared/api/modules';
@@ -47,7 +60,10 @@ export default function ClassModulesPage() {
     const [cls, setCls] = useState<ClassDto | null>(null);
     const [modules, setModules] = useState<ModuleWithStatus[]>([]);
     const [moduleLessons, setModuleLessons] = useState<Record<number, Lesson[]>>({});
-    const [moduleProgressData, setModuleProgressData] = useState<Record<number, { total: number; completed: number; percentage: number }>>({});
+    const [moduleProgressData, setModuleProgressData] = useState<
+        Record<number, { total: number; completed: number; percentage: number }>
+    >({});
+    const [expandedSemesters, setExpandedSemesters] = useState<Record<string, boolean>>({});
 
     // Ref to track if we already fetched to prevent re-fetch on re-render
     const hasFetchedRef = useRef(false);
@@ -62,7 +78,7 @@ export default function ClassModulesPage() {
 
         console.log('🔄 Refreshing progress data for', modules.length, 'modules');
         const progressMap: Record<number, { total: number; completed: number; percentage: number }> = {};
-        
+
         try {
             await Promise.all(
                 modules.map(async (m) => {
@@ -74,12 +90,19 @@ export default function ClassModulesPage() {
                             percentage: progressRes.data.progressPercentage || 0,
                         };
                         progressMap[m.moduleId] = newProgress;
-                        console.log(`✅ Module ${m.moduleId} (${m.name}):`, `${newProgress.completed}/${newProgress.total} hoàn thành`);
+                        console.log(
+                            `✅ Module ${m.moduleId} (${m.name}):`,
+                            `${newProgress.completed}/${newProgress.total} hoàn thành`,
+                        );
                     } catch (err) {
                         console.error(`❌ Failed to load progress for module ${m.moduleId}:`, err);
-                        progressMap[m.moduleId] = moduleProgressData[m.moduleId] || { total: 0, completed: 0, percentage: 0 };
+                        progressMap[m.moduleId] = moduleProgressData[m.moduleId] || {
+                            total: 0,
+                            completed: 0,
+                            percentage: 0,
+                        };
                     }
-                })
+                }),
             );
             setModuleProgressData(progressMap);
             console.log('✅ All progress data updated successfully');
@@ -133,13 +156,13 @@ export default function ClassModulesPage() {
                     // Fetch real lessons and progress for each module
                     const lessonsMap: Record<number, Lesson[]> = {};
                     const progressMap: Record<number, { total: number; completed: number; percentage: number }> = {};
-                    
+
                     await Promise.all(
                         modulesData.map(async (m) => {
                             try {
                                 const lessonsRes = await getLessonsByModule(m.moduleId);
                                 lessonsMap[m.moduleId] = lessonsRes.data;
-                                
+
                                 // Fetch progress from API
                                 try {
                                     const progressRes = await getModuleProgressAPI(m.moduleId);
@@ -157,7 +180,7 @@ export default function ClassModulesPage() {
                                 lessonsMap[m.moduleId] = [];
                                 progressMap[m.moduleId] = { total: 0, completed: 0, percentage: 0 };
                             }
-                        })
+                        }),
                     );
                     setModuleLessons(lessonsMap);
                     setModuleProgressData(progressMap);
@@ -191,8 +214,59 @@ export default function ClassModulesPage() {
         }
     };
 
-    const handleLessonClick = (moduleId: number, lessonId: string) => {
-        navigate(`/my-classes/${classId}/modules/${moduleId}/lessons/${lessonId}`);
+    const handleLessonClick = (moduleId: number, lessonId: string, lessonType: string) => {
+        // Prevent event bubbling to module card
+        if (lessonType === 'QUIZ') {
+            navigate(`/my-classes/${classId}/modules/${moduleId}/lessons/${lessonId}/quiz`);
+        } else {
+            navigate(`/my-classes/${classId}/modules/${moduleId}/lessons/${lessonId}`);
+        }
+    };
+
+    const getLessonTypeIcon = (type: string) => {
+        switch (type) {
+            case 'VIDEO':
+                return <Video size={14} className="text-[#0277BD]" />;
+            case 'DOCUMENT':
+                return <FileText size={14} className="text-[#2E7D32]" />;
+            case 'QUIZ':
+                return <ClipboardList size={14} className="text-[#6A1B9A]" />;
+            case 'ASSIGNMENT':
+                return <PenTool size={14} className="text-[#E65100]" />;
+            default:
+                return <FileText size={14} className="text-gray-600" />;
+        }
+    };
+
+    // Group modules by semester
+    const groupedModules = useMemo(() => {
+        const groups: Record<string, ModuleWithStatus[]> = {};
+        modules.forEach((module) => {
+            const semester = module.semester || 'Chưa phân kỳ';
+            if (!groups[semester]) {
+                groups[semester] = [];
+            }
+            groups[semester].push(module);
+        });
+        return groups;
+    }, [modules]);
+
+    // Initialize all semesters as expanded on first load
+    useEffect(() => {
+        if (Object.keys(groupedModules).length > 0 && Object.keys(expandedSemesters).length === 0) {
+            const initialExpanded: Record<string, boolean> = {};
+            Object.keys(groupedModules).forEach((semester) => {
+                initialExpanded[semester] = true;
+            });
+            setExpandedSemesters(initialExpanded);
+        }
+    }, [groupedModules, expandedSemesters]);
+
+    const toggleSemester = (semester: string) => {
+        setExpandedSemesters((prev) => ({
+            ...prev,
+            [semester]: !prev[semester],
+        }));
     };
 
     // Use progress data from API
@@ -279,59 +353,135 @@ export default function ClassModulesPage() {
 
             {/* Modules list */}
             <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-900">Nội dung khóa học</h2>
-                <div className="space-y-3">
-                    {modules.map((module, idx) => {
-                        const lessons = moduleLessons[module.moduleId] || [];
-                        const progress = moduleProgressMap[module.moduleId] || {
-                            total: 0,
-                            completed: 0,
-                            percentage: 0,
-                        };
+                <h2 className="text-2xl font-bold text-gray-900">Nội dung lớp học</h2>
+                <div className="space-y-4">
+                    {Object.entries(groupedModules).map(([semester, semesterModules]) => {
+                        const isExpanded = expandedSemesters[semester];
 
                         return (
                             <div
-                                key={module.moduleId}
-                                className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
-                                onClick={() =>
-                                    navigate(
-                                        `/my-classes/${classId}/modules/${module.moduleId}?programId=${cls?.programId}`,
-                                    )
-                                }
+                                key={semester}
+                                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
                             >
-                                <div className="px-6 py-4">
-                                    <div className="flex items-start gap-4">
-                                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold shadow-md">
-                                            {idx + 1}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-3 mb-1">
-                                                <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition">
-                                                    {module.name}
-                                                </h3>
-                                                {progress.percentage === 100 && (
-                                                    <CheckCircle size={18} className="text-green-600 flex-shrink-0" />
-                                                )}
-                                            </div>
-                                            <p className="text-xs text-gray-500 mb-2">
-                                                {module.code} • {module.credits} tín chỉ
-                                            </p>
-                                            <div className="flex items-center gap-4 text-xs text-gray-600">
-                                                <span>{lessons.length} bài học</span>
-                                                <span className="font-medium text-blue-600">
-                                                    {progress.completed}/{progress.total} hoàn thành
-                                                </span>
-                                            </div>
-                                            {/* Progress bar */}
-                                            <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                                                <div
-                                                    className="bg-gradient-to-r from-blue-500 to-cyan-400 h-full transition-all duration-500"
-                                                    style={{ width: `${progress.percentage}%` }}
-                                                />
-                                            </div>
-                                        </div>
+                                {/* Semester Header - Clickable */}
+                                <button
+                                    onClick={() => toggleSemester(semester)}
+                                    className="w-full bg-gradient-to-br from-[#003366] to-[#00556B] px-6 py-4 flex items-center justify-between hover:from-[#002244] hover:to-[#004455] transition-all duration-200"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-xl font-bold text-white">
+                                            {semester === 'Chưa phân kỳ' ? semester : `Kỳ ${semester}`}
+                                        </h2>
+                                        <span className="text-sm font-normal text-white/90 bg-white/20 px-3 py-1 rounded-full">
+                                            {semesterModules.length} module
+                                        </span>
                                     </div>
-                                </div>
+                                    <div className="text-white">
+                                        {isExpanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+                                    </div>
+                                </button>
+
+                                {/* Modules List - Collapsible */}
+                                {isExpanded && (
+                                    <div className="divide-y divide-gray-200">
+                                        {semesterModules.map((module) => {
+                                            const progressData = moduleProgressData[module.moduleId];
+                                            const totalLessons = progressData?.total || 0;
+                                            const completedLessons = progressData?.completed || 0;
+                                            const progressPercentage = progressData?.percentage || 0;
+                                            const lessons = moduleLessons[module.moduleId] || [];
+
+                                            return (
+                                                <div
+                                                    key={module.moduleId}
+                                                    className="p-6 bg-gradient-to-r from-gray-50 to-white hover:from-[#E8F4F8] hover:to-white transition-all duration-200"
+                                                >
+                                                    <div className="flex items-start justify-between mb-4">
+                                                        <div className="flex-1">
+                                                            {/* Module Title - Made Prominent */}
+                                                            <div className="flex items-center gap-3 mb-3">
+                                                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#00796B] to-[#004D40] flex items-center justify-center shadow-lg">
+                                                                    <BookOpen size={24} className="text-white" />
+                                                                </div>
+                                                                <div>
+                                                                    <h3 className="text-xl font-bold text-gray-900 mb-1">
+                                                                        {module.name}
+                                                                    </h3>
+                                                                    <p className="text-xs text-gray-500">
+                                                                        {module.code} • {module.credits} tín chỉ
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <p className="text-sm text-gray-600 ml-15">
+                                                                {module.description || 'Không có mô tả'}
+                                                            </p>
+                                                        </div>
+                                                        <div className="ml-6 text-right flex-shrink-0">
+                                                            <div className="text-3xl font-bold text-[#00796B]">
+                                                                {progressPercentage}%
+                                                            </div>
+                                                            <div className="text-xs text-gray-500 mt-1">
+                                                                {completedLessons}/{totalLessons} bài
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mb-4 ml-15">
+                                                        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden shadow-inner">
+                                                            <div
+                                                                className="h-full bg-gradient-to-r from-[#00796B] to-[#004D40] transition-all duration-500 rounded-full shadow-sm"
+                                                                style={{ width: `${progressPercentage}%` }}
+                                                            ></div>
+                                                        </div>
+                                                    </div>
+
+                                                    {lessons.length > 0 ? (
+                                                        <div className="space-y-1 mt-4 ml-15">
+                                                            {lessons
+                                                                .sort(
+                                                                    (a, b) =>
+                                                                        (a.lessonOrder || 0) - (b.lessonOrder || 0),
+                                                                )
+                                                                .map((lesson) => (
+                                                                    <div
+                                                                        key={lesson.lessonId}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleLessonClick(
+                                                                                module.moduleId,
+                                                                                String(lesson.lessonId),
+                                                                                lesson.lessonType,
+                                                                            );
+                                                                        }}
+                                                                        className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#E8F4F8] hover:text-[#00796B] hover:underline cursor-pointer transition-all duration-200 group border border-transparent hover:border-[#B2DFDB]"
+                                                                    >
+                                                                        <div className="flex-shrink-0">
+                                                                            {getLessonTypeIcon(lesson.lessonType)}
+                                                                        </div>
+                                                                        <div className="flex-shrink-0 w-8 text-sm font-medium text-gray-500 group-hover:text-[#00796B]">
+                                                                            {lesson.lessonOrder}
+                                                                        </div>
+                                                                        <div className="flex-1 text-sm font-medium text-gray-700 group-hover:text-[#00796B]">
+                                                                            {lesson.lessonTitle}
+                                                                        </div>
+                                                                        {lesson.lessonType === 'QUIZ' && (
+                                                                            <span className="flex-shrink-0 text-xs px-2 py-1 bg-[#F3E5F5] text-[#6A1B9A] rounded-full font-medium">
+                                                                                Quiz
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center py-8 text-gray-500 text-sm ml-15">
+                                                            Không có bài học nào
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         );
                     })}

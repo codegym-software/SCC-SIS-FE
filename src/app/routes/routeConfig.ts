@@ -33,6 +33,7 @@ const LessonViewerPage = lazy(() => import('../../features/students/pages/my-cla
 const QuizTakePage = lazy(() => import('../../features/students/pages/my-classes/QuizTakePage'));
 const MyGradesPage = lazy(() => import('../../features/students/pages/my-grades/MyGradesPage'));
 const MyAttendancePage = lazy(() => import('../../features/students/pages/my-attendance/MyAttendancePage'));
+const LibraryPage = lazy(() => import('../../features/students/pages/library/LibraryPage'));
 const AttendancePage = lazy(() => import('../../features/users/pages/attendance/AttendancePage'));
 const TakeAttendancePage = lazy(() => import('../../features/users/pages/attendance/TakeAttendancePage'));
 const ExamManagementPage = lazy(() => import('../../features/users/pages/exams/ExamManagementPage'));
@@ -61,6 +62,7 @@ export const appRoutes: AppRoute[] = [
     { path: '/my-classes', component: MyClassesPage, allowedRoles: ['STUDENT'] },
     { path: '/my-grades', component: MyGradesPage, allowedRoles: ['STUDENT'] },
     { path: '/my-attendance', component: MyAttendancePage, allowedRoles: ['STUDENT'] },
+    { path: '/library', component: LibraryPage, allowedRoles: ['STUDENT'] },
     { path: '/all-courses', component: AllCoursesPage, allowedRoles: ['STUDENT'], noLayout: true },
     { path: '/all-courses/:courseId', component: AllCoursesPage, allowedRoles: ['STUDENT'], noLayout: true },
     { path: '/quiz/:quizId', component: QuizPage, allowedRoles: ['STUDENT'], noLayout: true },

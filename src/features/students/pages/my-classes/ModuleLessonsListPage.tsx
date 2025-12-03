@@ -23,18 +23,20 @@ export default function ModuleLessonsListPage() {
 
             try {
                 setLoading(true);
-                
+
                 // Load module info
                 const urlParams = new URLSearchParams(window.location.search);
                 const programId = urlParams.get('programId');
 
                 if (programId) {
                     const moduleResponse = await getModulesByProgram({ programId: parseInt(programId) });
-                    const foundModule = moduleResponse.data.find((m: ModuleResponse) => m.moduleId.toString() === moduleId);
+                    const foundModule = moduleResponse.data.find(
+                        (m: ModuleResponse) => m.moduleId.toString() === moduleId,
+                    );
 
                     if (foundModule) {
                         setModule(foundModule);
-                        
+
                         // Load lessons from backend
                         try {
                             const lessonsResponse = await getLessonsByModule(parseInt(moduleId));
@@ -67,17 +69,22 @@ export default function ModuleLessonsListPage() {
             navigate(`/my-classes/${classId}/modules/${moduleId}/lessons/${lesson.lessonId}`);
         }
     };
-    
+
     const getLessonTypeIcon = (type: string) => {
         switch (type) {
-            case 'VIDEO': return <Video size={16} className="text-blue-600" />;
-            case 'DOCUMENT': return <FileText size={16} className="text-green-600" />;
-            case 'QUIZ': return <ClipboardList size={16} className="text-purple-600" />;
-            case 'ASSIGNMENT': return <PenTool size={16} className="text-orange-600" />;
-            default: return <FileText size={16} className="text-gray-600" />;
+            case 'VIDEO':
+                return <Video size={16} className="text-blue-600" />;
+            case 'DOCUMENT':
+                return <FileText size={16} className="text-green-600" />;
+            case 'QUIZ':
+                return <ClipboardList size={16} className="text-purple-600" />;
+            case 'ASSIGNMENT':
+                return <PenTool size={16} className="text-orange-600" />;
+            default:
+                return <FileText size={16} className="text-gray-600" />;
         }
     };
-    
+
     const formatDuration = (minutes?: number): string => {
         if (!minutes) return '';
         if (minutes < 60) return `${minutes}m`;
@@ -122,34 +129,35 @@ export default function ModuleLessonsListPage() {
                         <span>⏱️ {module.credits} tín chỉ</span>
                         <span>📚 {lessons.length} bài học</span>
                     </div>
-                    
+
                     {/* Progress bar */}
-                    {classId && moduleId && lessons.length > 0 && (() => {
-                        const lessonIds = lessons.map(l => l.lessonId.toString());
-                        const progress = getModuleProgress(classId, moduleId, lessonIds);
-                        
-                        return (
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="font-medium text-gray-700">
-                                        Tiến độ hoàn thành
-                                    </span>
-                                    <span className="font-bold text-blue-600">
-                                        {progress.completed}/{progress.total} bài học
-                                    </span>
+                    {classId &&
+                        moduleId &&
+                        lessons.length > 0 &&
+                        (() => {
+                            const lessonIds = lessons.map((l) => l.lessonId.toString());
+                            const progress = getModuleProgress(classId, moduleId, lessonIds);
+
+                            return (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="font-medium text-gray-700">Tiến độ hoàn thành</span>
+                                        <span className="font-bold text-blue-600">
+                                            {progress.completed}/{progress.total} bài học
+                                        </span>
+                                    </div>
+                                    <div className="relative w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                                        <div
+                                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+                                            style={{ width: `${progress.percentage}%` }}
+                                        />
+                                    </div>
+                                    <div className="text-xs text-gray-500 text-right">
+                                        {progress.percentage}% hoàn thành
+                                    </div>
                                 </div>
-                                <div className="relative w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                                    <div 
-                                        className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
-                                        style={{ width: `${progress.percentage}%` }}
-                                    />
-                                </div>
-                                <div className="text-xs text-gray-500 text-right">
-                                    {progress.percentage}% hoàn thành
-                                </div>
-                            </div>
-                        );
-                    })()}
+                            );
+                        })()}
                 </div>
 
                 {/* Lessons list */}
@@ -210,9 +218,7 @@ export default function ModuleLessonsListPage() {
                                                 {lesson.durationMinutes && (
                                                     <span>⏱️ {formatDuration(lesson.durationMinutes)}</span>
                                                 )}
-                                                {lesson.contentType && (
-                                                    <span>📺 {lesson.contentType}</span>
-                                                )}
+                                                {lesson.contentType && <span>📺 {lesson.contentType}</span>}
                                             </div>
                                             {lesson.description && (
                                                 <p className="text-xs text-gray-500 mt-1 line-clamp-1">
@@ -228,7 +234,9 @@ export default function ModuleLessonsListPage() {
                                             </div>
                                         )}
                                         {isInProgress && (
-                                            <div className="flex-shrink-0 text-xs font-medium text-blue-600">Đang học</div>
+                                            <div className="flex-shrink-0 text-xs font-medium text-blue-600">
+                                                Đang học
+                                            </div>
                                         )}
                                     </div>
                                 </div>
