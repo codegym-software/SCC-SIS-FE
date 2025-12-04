@@ -54,6 +54,16 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedClass, student.id]);
 
+    // Auto-select month/year from first attendance record when data is loaded
+    useEffect(() => {
+        if (attendanceData?.records && attendanceData.records.length > 0) {
+            const firstRecord = attendanceData.records[0]; // Already sorted newest first
+            const date = new Date(firstRecord.attendanceDate);
+            setSelectedYear(date.getFullYear());
+            setSelectedMonth(date.getMonth() + 1);
+        }
+    }, [attendanceData]);
+
     // Filter records by selected month/year
     const filteredRecords = useMemo(() => {
         if (!attendanceData?.records) return [];
