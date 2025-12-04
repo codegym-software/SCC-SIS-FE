@@ -63,3 +63,6 @@ export const updateLessonProgress = (
 
 // API cho Student: Xem module progress
 export const getModuleProgress = (moduleId: number) => api.get(`/api/lessons/module/${moduleId}/progress`);
+
+// API cho Student: Get completed lesson IDs for a module
+export const getCompletedLessonIds = (moduleId: number) => api.get<number[]>(`/api/lessons/module/${moduleId}/completed`);

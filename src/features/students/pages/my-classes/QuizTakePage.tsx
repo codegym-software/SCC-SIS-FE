@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Clock, CheckCircle, AlertCircle, Trophy, XCircle, Award } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
-import { getLessonById } from '@/shared/api/lessons';
+import { getLessonById, updateLessonProgress } from '@/shared/api/lessons';
 import type { Lesson } from '@/shared/types/lesson';
 import { useProgressStore } from '../../hooks/useProgressStore';
 import {
@@ -163,8 +163,20 @@ export default function QuizTakePage() {
             setSubmitResult(response.data);
             setViewState('result');
 
-            // Update lesson progress if quiz is passed
-            if (response.data.isPassed && classId && moduleId && lessonId) {
+            // Update lesson progress - save to backend when quiz is submitted
+            if (classId && moduleId && lessonId) {
+                try {
+                    await updateLessonProgress(parseInt(lessonId), {
+                        progressPercentage: 100,
+                        lastWatchedPosition: 0,
+                        timeSpentSeconds: 0,
+                    });
+                    console.log('✅ Quiz completed, lesson progress saved to backend');
+                } catch (err) {
+                    console.error('⚠️ Failed to save lesson progress:', err);
+                }
+                
+                // Update local state
                 setLessonStatus(classId, moduleId, lessonId, 'completed');
             }
 
