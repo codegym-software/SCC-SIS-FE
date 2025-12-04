@@ -161,7 +161,7 @@ const mockQuizData: Record<string, QuizQuestion[]> = {
             question: 'Nguồn tài liệu nào đáng tin cậy nhất để học về AI?',
             options: [
                 'Mạng xã hội',
-                'Các khóa học trực tuyến từ các tổ chức uy tín',
+                'Các lớp học trực tuyến từ các tổ chức uy tín',
                 'Tin đồn trên internet',
                 'Video giải trí',
             ],
@@ -191,11 +191,11 @@ const mockQuizData: Record<string, QuizQuestion[]> = {
         },
         {
             id: 4,
-            question: 'Nền tảng nào cung cấp khóa học miễn phí về AI?',
+            question: 'Nền tảng nào cung cấp lớp học miễn phí về AI?',
             options: [
                 'Chỉ có các trường đại học',
                 'Coursera, edX, Khan Academy',
-                'Không có khóa học miễn phí',
+                'Không có lớp học miễn phí',
                 'Chỉ có sách giấy',
             ],
             correctAnswer: 1,
@@ -246,7 +246,7 @@ export default function QuizPage() {
 
     const handleSubmit = () => {
         if (Object.keys(answers).length < questions.length) {
-            toast.warning('Vui lòng trả lời tất cả các câu hỏi trước khi nộp bài!');
+            toast.error('Vui lòng trả lời tất cả các câu hỏi trước khi nộp bài!');
             return;
         }
 
@@ -376,7 +376,7 @@ export default function QuizPage() {
                                         onClick={() => navigate(-1)}
                                         className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                                     >
-                                        Quay lại khóa học
+                                        Quay lại lớp học
                                     </button>
                                 </div>
                             </div>

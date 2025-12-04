@@ -195,8 +195,8 @@ export default function ProgressPage() {
             {/* Monthly Completion */}
             <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
                 <div className="mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">Khóa học hoàn thành theo tháng</h2>
-                    <p className="mt-1 text-sm text-gray-600">Số lượng khóa học bạn đã hoàn thành mỗi tháng</p>
+                    <h2 className="text-xl font-bold text-gray-900">Lớp học hoàn thành theo tháng</h2>
+                    <p className="mt-1 text-sm text-gray-600">Số lượng lớp học bạn đã hoàn thành mỗi tháng</p>
                 </div>
 
                 <div className="space-y-4">
@@ -204,7 +204,7 @@ export default function ProgressPage() {
                         <div key={stat.month}>
                             <div className="mb-2 flex items-center justify-between text-sm">
                                 <span className="font-medium text-gray-700">{stat.month}</span>
-                                <span className="font-semibold text-gray-900">{stat.completed} khóa học</span>
+                                <span className="font-semibold text-gray-900">{stat.completed} lớp học</span>
                             </div>
                             <div className="h-3 overflow-hidden rounded-full bg-gray-200">
                                 <div

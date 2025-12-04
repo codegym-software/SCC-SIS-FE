@@ -71,7 +71,7 @@ export default function StudentDashboard() {
                 <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-medium text-gray-600">Khóa học</p>
+                            <p className="text-sm font-medium text-gray-600">Lớp học</p>
                             <p className="mt-2 text-3xl font-bold text-gray-900">{completedCourses}</p>
                             <p className="mt-1 text-xs text-gray-500">đã hoàn thành</p>
                         </div>
@@ -99,11 +99,11 @@ export default function StudentDashboard() {
             <div>
                 <div className="mb-6 flex items-center justify-between">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Các khóa học của tôi</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">Các lớp học của tôi</h2>
                         <p className="mt-1 text-sm text-gray-600">Tiếp tục học tập từ nơi bạn đã dừng lại</p>
                     </div>
                     <button className="rounded-md border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100">
-                        Quản lý khóa học
+                        Quản lý lớp học
                     </button>
                 </div>
 

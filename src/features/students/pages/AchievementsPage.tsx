@@ -27,8 +27,8 @@ export default function AchievementsPage() {
         },
         {
             id: 3,
-            title: 'Hoàn thành khóa học',
-            description: 'Hoàn thành 3 khóa học',
+            title: 'Hoàn thành lớp học',
+            description: 'Hoàn thành 3 lớp học',
             icon: '🎯',
             color: 'from-green-400 to-emerald-500',
             points: 150,
