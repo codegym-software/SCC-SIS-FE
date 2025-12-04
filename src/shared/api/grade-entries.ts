@@ -271,3 +271,9 @@ export const getStudentGradesByStudentId = async (studentId: number): Promise<Gr
     return response.data;
 };
 
+/**
+ * GET /api/grade-entries/my-grades
+ * Lấy tất cả điểm thi của học viên hiện tại (dựa vào token)
+ */
+
+

@@ -181,6 +181,20 @@ export default function LessonViewerPage() {
         return url;
     };
 
+    // Function to convert Google Drive URL to embed URL
+    const getGoogleDriveEmbedUrl = (url: string): string => {
+        // Convert /view to /preview for embedding
+        // From: https://drive.google.com/file/d/FILE_ID/view
+        // To: https://drive.google.com/file/d/FILE_ID/preview?embedded=true
+        let embedUrl = url.replace('/view', '/preview');
+        
+        // Add parameters to hide UI elements and show only content
+        const separator = embedUrl.includes('?') ? '&' : '?';
+        embedUrl += `${separator}embedded=true&rm=minimal`;
+        
+        return embedUrl;
+    };
+
     // Track video progress
     const handleVideoMessage = (event: MessageEvent) => {
         try {
@@ -418,16 +432,46 @@ export default function LessonViewerPage() {
 
                     {/* Document viewer for other content types */}
                     {lesson.contentUrl && lesson.lessonType === 'DOCUMENT' && (
-                        <div className="bg-white rounded-xl p-8 shadow-sm mb-8 border border-gray-100">
-                            <h2 className="text-xl font-bold text-gray-900 mb-4">Tài liệu học tập</h2>
-                            <a
-                                href={lesson.contentUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[#0277BD] hover:text-[#01579B] hover:underline font-medium"
-                            >
-                                Xem tài liệu →
-                            </a>
+                        <div className="space-y-4 mb-8">
+                            {lesson.contentType === 'GOOGLE_DRIVE' ? (
+                                // Google Drive iframe embed - clean view without Drive UI
+                                <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
+                                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                                        <h2 className="text-xl font-bold text-gray-900">Tài liệu học tập</h2>
+                                        <a
+                                            href={lesson.contentUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm text-[#0277BD] hover:text-[#01579B] hover:underline font-medium inline-flex items-center gap-2"
+                                        >
+                                            <FileText size={16} />
+                                            Mở trong Drive
+                                        </a>
+                                    </div>
+                                    <div className="bg-gray-100">
+                                        <iframe
+                                            src={getGoogleDriveEmbedUrl(lesson.contentUrl)}
+                                            title={lesson.lessonTitle}
+                                            className="w-full"
+                                            style={{ minHeight: '700px', height: '75vh', border: 'none' }}
+                                            allow="autoplay"
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                // Other document types - show link only
+                                <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+                                    <h2 className="text-xl font-bold text-gray-900 mb-4">Tài liệu học tập</h2>
+                                    <a
+                                        href={lesson.contentUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[#0277BD] hover:text-[#01579B] hover:underline font-medium"
+                                    >
+                                        Xem tài liệu →
+                                    </a>
+                                </div>
+                            )}
                         </div>
                     )}
 

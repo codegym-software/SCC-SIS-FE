@@ -18,7 +18,6 @@ import {
     TrendingUp,
     Calendar,
     Trophy,
-    Library,
 } from 'lucide-react';
 import { keycloak } from '../../keycloak';
 import { useUserProfile } from '../../stores/userProfile';
@@ -626,20 +625,6 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                                     >
                                         <Calendar className="mr-4 h-6 w-6" />
                                         Điểm danh của tôi
-                                    </NavLink>
-
-                                    <NavLink
-                                        to="/library"
-                                        className={({ isActive }) =>
-                                            `flex items-center rounded-xl px-4 py-3 text-base font-medium transition ${
-                                                isActive
-                                                    ? 'bg-purple-50 text-purple-700 shadow-sm'
-                                                    : 'text-gray-700 hover:bg-gray-50'
-                                            }`
-                                        }
-                                    >
-                                        <Library className="mr-4 h-6 w-6" />
-                                        Thư viện
                                     </NavLink>
                                 </div>
                             </div>

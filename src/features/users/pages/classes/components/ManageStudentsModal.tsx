@@ -93,6 +93,14 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
         }
     }, [students.length, selectedMonth, selectedYear]);
 
+    // Auto-select current month/year when component first loads
+    // (Keep current date logic for this component as it's for warnings/monitoring)
+    useEffect(() => {
+        const now = new Date();
+        setSelectedMonth(now.getMonth() + 1);
+        setSelectedYear(now.getFullYear());
+    }, []);
+
     const loadStudents = async () => {
         try {
             setIsLoading(true);

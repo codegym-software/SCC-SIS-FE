@@ -60,6 +60,16 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
         fetchSessions();
     }, [fetchSessions]);
 
+    // Auto-select month/year from first session when sessions are loaded
+    useEffect(() => {
+        if (sessions.length > 0) {
+            const firstSession = sessions[0]; // Already sorted newest first
+            const [year, month] = firstSession.attendanceDate.split('-');
+            setSelectedYear(parseInt(year));
+            setSelectedMonth(parseInt(month));
+        }
+    }, [sessions]);
+
     // Auto-refresh when tab becomes visible (e.g., after creating attendance)
     useEffect(() => {
         const handleVisibilityChange = () => {
