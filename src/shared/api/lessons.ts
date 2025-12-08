@@ -48,6 +48,9 @@ export const deleteLesson = (lessonId: number) => api.delete(`/api/lessons/${les
 // API cho Student: Xem lessons
 export const getLessonsByModule = (moduleId: number) => api.get(`/api/lessons/module/${moduleId}`);
 
+// API cho Student: Xem lessons của class trong 2 kỳ liên tiếp (hiện tại + tiếp theo)
+export const getLessonsByClass = (classId: number) => api.get(`/api/lessons/class/${classId}`);
+
 // API cho Student: Xem chi tiết 1 lesson
 export const getLessonById = (lessonId: number) => api.get(`/api/lessons/${lessonId}`);
 

@@ -10,11 +10,24 @@ import {
     PenTool,
     ChevronLeft,
     ChevronRight,
+    ChevronDown,
+    ChevronUp,
 } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
 import { useProgressStore } from '../../hooks/useProgressStore';
-import { getLessonById, updateLessonProgress, getLessonsByModule } from '@/shared/api/lessons';
+import { getLessonById, updateLessonProgress, getLessonsByClass, getLessonsByModule } from '@/shared/api/lessons';
+import { getModulesByProgram } from '@/shared/api/modules';
 import type { Lesson } from '@/shared/types/lesson';
+import type { ModuleResponse } from '@/shared/types/module';
+
+interface LessonsByModule {
+    module: ModuleResponse;
+    lessons: Lesson[];
+}
+
+interface ModulesBySemester {
+    [key: string]: LessonsByModule[];
+}
 
 export default function LessonViewerPage() {
     const { classId, moduleId, lessonId } = useParams();
@@ -24,6 +37,8 @@ export default function LessonViewerPage() {
 
     const [lesson, setLesson] = useState<Lesson | null>(null);
     const [allLessons, setAllLessons] = useState<Lesson[]>([]);
+    const [modulesBySemester, setModulesBySemester] = useState<ModulesBySemester>({});
+    const [expandedSemesters, setExpandedSemesters] = useState<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
     const [currentStatus, setCurrentStatus] = useState<'not-started' | 'in-progress' | 'completed'>('not-started');
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -37,10 +52,28 @@ export default function LessonViewerPage() {
             try {
                 setLoading(true);
 
-                // Load all lessons in module for sidebar
-                const lessonsResponse = await getLessonsByModule(parseInt(moduleId));
-                const lessons = lessonsResponse.data.sort((a, b) => (a.lessonOrder || 0) - (b.lessonOrder || 0));
-                setAllLessons(lessons);
+                // Load all lessons in class grouped by module/semester
+                try {
+                    const classLessonsResponse = await getLessonsByClass(parseInt(classId));
+                    const allClassLessons: Lesson[] = classLessonsResponse.data;
+                    setAllLessons(allClassLessons);
+
+                    // Group lessons: class lessons API được trả về theo cấu trúc: [Lesson]
+                    // Với frontend cần tự group theo Module + Semester
+                    // NOTA BENE: Backend chưa có API trả về modules với lessons theo semester
+                    // Tạm thời vẫn load lessons by module như cũ, sẽ refactor sau khi backend có API
+                    const lessonsInCurrentModule = allClassLessons.filter(l => l.moduleId === parseInt(moduleId));
+                    const sortedLessons = lessonsInCurrentModule.sort((a, b) => (a.lessonOrder || 0) - (b.lessonOrder || 0));
+                    
+                    // Initialize expanded state for current module's semester as true
+                    setExpandedSemesters({ '1': true }); // Default expand semester 1
+                } catch (error) {
+                    // Fallback: nếu API getLessonsByClass không có, dùng getLessonsByModule
+                    const lessonsResponse = await getLessonsByModule(parseInt(moduleId));
+                    const lessons = lessonsResponse.data.sort((a, b) => (a.lessonOrder || 0) - (b.lessonOrder || 0));
+                    setAllLessons(lessons);
+                    setExpandedSemesters({ '1': true });
+                }
 
                 // Load lesson from backend
                 const response = await getLessonById(parseInt(lessonId));
@@ -245,79 +278,128 @@ export default function LessonViewerPage() {
                                 <PlayCircle size={20} />
                                 Danh sách bài học
                             </h2>
-                            <p className="text-sm text-white/90 mt-1">{allLessons.length} bài học trong module này</p>
+                            <p className="text-sm text-white/90 mt-1">{allLessons.length} bài học</p>
                         </div>
 
-                        {/* Lessons list - scrollable */}
+                        {/* Lessons by semester - Accordion */}
                         <div className="flex-1 overflow-y-auto">
-                            <div className="p-3 space-y-1">
-                                {allLessons.map((item) => {
-                                    const isActive = String(item.lessonId) === lessonId;
-                                    const status = getLessonStatus(String(item.lessonId));
+                            {Object.entries(
+                                allLessons.reduce(
+                                    (acc, lesson) => {
+                                        const semesterKey = '1'; // TODO: nhóm theo semester thực từ moduleInfo
+                                        if (!acc[semesterKey]) {
+                                            acc[semesterKey] = [];
+                                        }
+                                        acc[semesterKey].push(lesson);
+                                        return acc;
+                                    },
+                                    {} as Record<string, Lesson[]>,
+                                ),
+                            )
+                                .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                                .map(([semester, lessonsInSemester]) => {
+                                    const isExpanded = expandedSemesters[semester] !== false; // Default expanded
+                                    const sortedLessons = lessonsInSemester.sort((a, b) => (a.lessonOrder || 0) - (b.lessonOrder || 0));
 
                                     return (
-                                        <button
-                                            key={item.lessonId}
-                                            onClick={() => handleLessonClick(String(item.lessonId), item.lessonType)}
-                                            className={`w-full text-left px-3 py-3 rounded-lg transition-all duration-200 group ${
-                                                isActive
-                                                    ? 'bg-[#E8F4F8] border-2 border-[#00796B] shadow-sm'
-                                                    : 'hover:bg-gray-50 border-2 border-transparent hover:border-gray-200'
-                                            }`}
-                                        >
-                                            <div className="flex items-start gap-3">
-                                                <div className="flex-shrink-0 mt-0.5">
-                                                    {getLessonTypeIcon(item.lessonType)}
+                                        <div key={semester} className="border-b border-gray-200">
+                                            {/* Semester header - accordion button */}
+                                            <button
+                                                onClick={() =>
+                                                    setExpandedSemesters((prev) => ({
+                                                        ...prev,
+                                                        [semester]: !prev[semester],
+                                                    }))
+                                                }
+                                                className="w-full px-4 py-3 bg-gradient-to-r from-blue-50 to-teal-50 hover:from-blue-100 hover:to-teal-100 transition-colors flex items-center justify-between"
+                                            >
+                                                <span className="font-semibold text-gray-800 text-sm">
+                                                    {semester === 'Chưa phân kỳ' ? semester : `Kỳ ${semester}`}
+                                                </span>
+                                                <span className="text-xs font-medium text-gray-600 bg-white px-2 py-1 rounded mr-2">
+                                                    {sortedLessons.length} bài
+                                                </span>
+                                                {isExpanded ? (
+                                                    <ChevronUp size={18} className="text-gray-600" />
+                                                ) : (
+                                                    <ChevronDown size={18} className="text-gray-600" />
+                                                )}
+                                            </button>
+
+                                            {/* Lessons list - collapsible */}
+                                            {isExpanded && (
+                                                <div className="p-2 space-y-1">
+                                                    {sortedLessons.map((item) => {
+                                                        const isActive = String(item.lessonId) === lessonId;
+                                                        const status = getLessonStatus(String(item.lessonId));
+
+                                                        return (
+                                                            <button
+                                                                key={item.lessonId}
+                                                                onClick={() => handleLessonClick(String(item.lessonId), item.lessonType)}
+                                                                className={`w-full text-left px-3 py-3 rounded-lg transition-all duration-200 group ${
+                                                                    isActive
+                                                                        ? 'bg-[#E8F4F8] border-2 border-[#00796B] shadow-sm'
+                                                                        : 'hover:bg-gray-50 border-2 border-transparent hover:border-gray-200'
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-start gap-3">
+                                                                    <div className="flex-shrink-0 mt-0.5">
+                                                                        {getLessonTypeIcon(item.lessonType)}
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                            <span
+                                                                                className={`text-xs font-bold ${
+                                                                                    isActive
+                                                                                        ? 'text-[#00796B]'
+                                                                                        : 'text-gray-500 group-hover:text-gray-700'
+                                                                                }`}
+                                                                            >
+                                                                                Bài {item.lessonOrder}
+                                                                            </span>
+                                                                            {status === 'completed' && (
+                                                                                <CheckCircle
+                                                                                    size={14}
+                                                                                    className="text-[#2E7D32] flex-shrink-0"
+                                                                                />
+                                                                            )}
+                                                                            {status === 'in-progress' && !isActive && (
+                                                                                <div
+                                                                                    className="w-2 h-2 bg-[#F57C00] rounded-full flex-shrink-0"
+                                                                                    title="Đang học"
+                                                                                />
+                                                                            )}
+                                                                            {item.lessonType === 'QUIZ' && (
+                                                                                <span className="text-xs px-1.5 py-0.5 bg-[#F3E5F5] text-[#6A1B9A] rounded font-medium">
+                                                                                    Quiz
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <p
+                                                                            className={`text-sm font-medium line-clamp-2 ${
+                                                                                isActive
+                                                                                    ? 'text-gray-900'
+                                                                                    : 'text-gray-700 group-hover:text-gray-900'
+                                                                            }`}
+                                                                        >
+                                                                            {item.lessonTitle}
+                                                                        </p>
+                                                                        {item.durationMinutes && (
+                                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                                ⏱️ {item.durationMinutes} phút
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })}
                                                 </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span
-                                                            className={`text-xs font-bold ${
-                                                                isActive
-                                                                    ? 'text-[#00796B]'
-                                                                    : 'text-gray-500 group-hover:text-gray-700'
-                                                            }`}
-                                                        >
-                                                            Bài {item.lessonOrder}
-                                                        </span>
-                                                        {status === 'completed' && (
-                                                            <CheckCircle
-                                                                size={14}
-                                                                className="text-[#2E7D32] flex-shrink-0"
-                                                            />
-                                                        )}
-                                                        {status === 'in-progress' && !isActive && (
-                                                            <div
-                                                                className="w-2 h-2 bg-[#F57C00] rounded-full flex-shrink-0"
-                                                                title="Đang học"
-                                                            />
-                                                        )}
-                                                        {item.lessonType === 'QUIZ' && (
-                                                            <span className="text-xs px-1.5 py-0.5 bg-[#F3E5F5] text-[#6A1B9A] rounded font-medium">
-                                                                Quiz
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <p
-                                                        className={`text-sm font-medium line-clamp-2 ${
-                                                            isActive
-                                                                ? 'text-gray-900'
-                                                                : 'text-gray-700 group-hover:text-gray-900'
-                                                        }`}
-                                                    >
-                                                        {item.lessonTitle}
-                                                    </p>
-                                                    {item.durationMinutes && (
-                                                        <p className="text-xs text-gray-500 mt-1">
-                                                            ⏱️ {item.durationMinutes} phút
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </button>
+                                            )}
+                                        </div>
                                     );
                                 })}
-                            </div>
                         </div>
                     </>
                 )}
