@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { X, Upload, FileDown, Edit2, Save, Download } from 'lucide-react';
 import { importGradesFromExcel, downloadGradeTemplate } from '@/shared/api/grade-entries';
 import { useToast } from '@/shared/hooks/useToast';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 type Props = {
     open: boolean;
@@ -69,21 +69,44 @@ export default function ImportExamGradesModal({
 
         try {
             const arrayBuffer = await selectedFile.arrayBuffer();
-            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(arrayBuffer);
+
+            const worksheet = workbook.worksheets[0];
+            if (!worksheet) {
+                error('File rỗng', 'File Excel không có sheet nào');
+                return;
+            }
 
             // Convert to JSON
-            const jsonData: ExcelRow[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+            const jsonData: ExcelRow[] = [];
+            const cols: string[] = [];
+
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber === 1) {
+                    // First row is header
+                    row.eachCell((cell) => {
+                        cols.push(String(cell.value || ''));
+                    });
+                } else {
+                    // Data rows
+                    const rowData: ExcelRow = {};
+                    row.eachCell((cell, colNumber) => {
+                        const header = cols[colNumber - 1];
+                        if (header) {
+                            rowData[header] = cell.value as string | number;
+                        }
+                    });
+                    jsonData.push(rowData);
+                }
+            });
 
             if (jsonData.length === 0) {
                 error('File rỗng', 'File Excel không có dữ liệu');
                 return;
             }
 
-            // Get headers
-            const firstRow = jsonData[0];
-            const cols = Object.keys(firstRow);
+            // Set headers and data
             setHeaders(cols);
             setExcelData(jsonData);
             setEditedData(jsonData.map((row) => ({ ...row }))); // Deep copy
@@ -130,23 +153,37 @@ export default function ImportExamGradesModal({
         setEditedData(newData);
     };
 
-    const handleExportEditedExcel = () => {
+    const handleExportEditedExcel = async () => {
         try {
             // Create workbook
-            const workbook = XLSX.utils.book_new();
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Sheet1');
 
-            // Convert edited data to worksheet
-            const worksheet = XLSX.utils.json_to_sheet(editedData);
+            // Add header row
+            if (headers.length > 0) {
+                worksheet.addRow(headers);
+            }
 
-            // Add worksheet to workbook
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+            // Add data rows
+            editedData.forEach((row) => {
+                const rowValues = headers.map((header) => row[header] || '');
+                worksheet.addRow(rowValues);
+            });
 
             // Generate file name
             const fileName = file?.name.replace(/\.(xlsx|xls)$/i, '') || 'edited_grades';
             const exportFileName = `${fileName}_edited.xlsx`;
 
             // Write file
-            XLSX.writeFile(workbook, exportFileName);
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = exportFileName;
+            link.click();
+            URL.revokeObjectURL(link.href);
 
             success('Đã xuất file', `File đã được lưu với tên: ${exportFileName}`);
         } catch (err) {
@@ -155,15 +192,25 @@ export default function ImportExamGradesModal({
         }
     };
 
-    const handleSaveAndContinue = () => {
+    const handleSaveAndContinue = async () => {
         try {
             // Create workbook from edited data
-            const workbook = XLSX.utils.book_new();
-            const worksheet = XLSX.utils.json_to_sheet(editedData);
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Sheet1');
+
+            // Add header row
+            if (headers.length > 0) {
+                worksheet.addRow(headers);
+            }
+
+            // Add data rows
+            editedData.forEach((row) => {
+                const rowValues = headers.map((header) => row[header] || '');
+                worksheet.addRow(rowValues);
+            });
 
             // Convert workbook to blob
-            const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+            const excelBuffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([excelBuffer], {
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             });
@@ -199,10 +246,21 @@ export default function ImportExamGradesModal({
         let fileToImport = file;
         if (showEditor && editedData.length > 0) {
             try {
-                const workbook = XLSX.utils.book_new();
-                const worksheet = XLSX.utils.json_to_sheet(editedData);
-                XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-                const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+                const workbook = new ExcelJS.Workbook();
+                const worksheet = workbook.addWorksheet('Sheet1');
+
+                // Add header row
+                if (headers.length > 0) {
+                    worksheet.addRow(headers);
+                }
+
+                // Add data rows
+                editedData.forEach((row) => {
+                    const rowValues = headers.map((header) => row[header] || '');
+                    worksheet.addRow(rowValues);
+                });
+
+                const excelBuffer = await workbook.xlsx.writeBuffer();
                 const blob = new Blob([excelBuffer], {
                     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 });

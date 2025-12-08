@@ -2,9 +2,7 @@ import { useState, useRef } from 'react';
 import { X, Upload, FileDown, Edit2, Save, Download } from 'lucide-react';
 import { importStudentsFromExcel, downloadStudentTemplate } from '@/shared/api/students';
 import { useToast } from '@/shared/hooks/useToast';
-// import * as XLSX from 'xlsx'; // TODO: Replace with secure Excel parser
-// Temporary: XLSX package removed due to vulnerability. Keep a null stub and guard usages.
-const XLSX: any = null;
+import ExcelJS from 'exceljs';
 
 type Props = { open: boolean; onClose: () => void; onSuccess: () => void };
 
@@ -41,29 +39,45 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
         info('Đang đọc file...', selectedFile.name);
 
         try {
-            if (!XLSX) {
-                info(
-                    'Xem trước Excel tạm thời bị tắt',
-                    'Gói XLSX đã được gỡ để vá bảo mật. Vẫn có thể import trực tiếp file.',
-                );
+            const arrayBuffer = await selectedFile.arrayBuffer();
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(arrayBuffer);
+
+            const worksheet = workbook.worksheets[0];
+            if (!worksheet) {
+                error('File rỗng', 'File Excel không có sheet nào');
                 return;
             }
-            const arrayBuffer = await selectedFile.arrayBuffer();
-            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
 
             // Convert to JSON
-            const jsonData: ExcelRow[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+            const jsonData: ExcelRow[] = [];
+            const cols: string[] = [];
+
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber === 1) {
+                    // First row is header
+                    row.eachCell((cell) => {
+                        cols.push(String(cell.value || ''));
+                    });
+                } else {
+                    // Data rows
+                    const rowData: ExcelRow = {};
+                    row.eachCell((cell, colNumber) => {
+                        const header = cols[colNumber - 1];
+                        if (header) {
+                            rowData[header] = cell.value as string | number;
+                        }
+                    });
+                    jsonData.push(rowData);
+                }
+            });
 
             if (jsonData.length === 0) {
                 error('File rỗng', 'File Excel không có dữ liệu');
                 return;
             }
 
-            // Get headers
-            const firstRow = jsonData[0];
-            const cols = Object.keys(firstRow);
+            // Set headers and data
             setHeaders(cols);
             setExcelData(jsonData);
             setEditedData(jsonData.map((row) => ({ ...row }))); // Deep copy
@@ -85,27 +99,37 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
         setEditedData(newData);
     };
 
-    const handleExportEditedExcel = () => {
+    const handleExportEditedExcel = async () => {
         try {
-            if (!XLSX) {
-                info('Xuất Excel tạm thời bị tắt', 'Gói XLSX đã được gỡ để vá bảo mật.');
-                return;
-            }
             // Create workbook
-            const workbook = XLSX.utils.book_new();
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Sheet1');
 
-            // Convert edited data to worksheet
-            const worksheet = XLSX.utils.json_to_sheet(editedData);
+            // Add header row
+            if (headers.length > 0) {
+                worksheet.addRow(headers);
+            }
 
-            // Add worksheet to workbook
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+            // Add data rows
+            editedData.forEach((row) => {
+                const rowValues = headers.map((header) => row[header] || '');
+                worksheet.addRow(rowValues);
+            });
 
             // Generate file name
             const fileName = file?.name.replace(/\.(xlsx|xls)$/i, '') || 'edited_students';
             const exportFileName = `${fileName}_edited.xlsx`;
 
             // Write file
-            XLSX.writeFile(workbook, exportFileName);
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = exportFileName;
+            link.click();
+            URL.revokeObjectURL(link.href);
 
             success('Đã xuất file', `File đã được lưu với tên: ${exportFileName}`);
         } catch (err) {
@@ -114,19 +138,25 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
         }
     };
 
-    const handleSaveAndContinue = () => {
+    const handleSaveAndContinue = async () => {
         try {
-            if (!XLSX) {
-                info('Lưu Excel tạm thời bị tắt', 'Gói XLSX đã được gỡ để vá bảo mật.');
-                return;
-            }
             // Create workbook from edited data
-            const workbook = XLSX.utils.book_new();
-            const worksheet = XLSX.utils.json_to_sheet(editedData);
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Sheet1');
+
+            // Add header row
+            if (headers.length > 0) {
+                worksheet.addRow(headers);
+            }
+
+            // Add data rows
+            editedData.forEach((row) => {
+                const rowValues = headers.map((header) => row[header] || '');
+                worksheet.addRow(rowValues);
+            });
 
             // Convert workbook to blob
-            const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+            const excelBuffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([excelBuffer], {
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             });
@@ -157,20 +187,27 @@ export default function ImportStudentsModal({ open, onClose, onSuccess }: Props)
         let fileToImport = file;
         if (showEditor && editedData.length > 0) {
             try {
-                if (!XLSX) {
-                    // Fall back to original file when XLSX disabled
-                } else {
-                    const workbook = XLSX.utils.book_new();
-                    const worksheet = XLSX.utils.json_to_sheet(editedData);
-                    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-                    const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
-                    const blob = new Blob([excelBuffer], {
-                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    });
-                    fileToImport = new File([blob], file.name, {
-                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    });
+                const workbook = new ExcelJS.Workbook();
+                const worksheet = workbook.addWorksheet('Sheet1');
+
+                // Add header row
+                if (headers.length > 0) {
+                    worksheet.addRow(headers);
                 }
+
+                // Add data rows
+                editedData.forEach((row) => {
+                    const rowValues = headers.map((header) => row[header] || '');
+                    worksheet.addRow(rowValues);
+                });
+
+                const excelBuffer = await workbook.xlsx.writeBuffer();
+                const blob = new Blob([excelBuffer], {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                });
+                fileToImport = new File([blob], file.name, {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                });
             } catch (err) {
                 console.error('Error creating file from edited data:', err);
                 error('Lỗi', 'Không thể tạo file từ dữ liệu đã chỉnh sửa. Đang sử dụng file gốc.');
