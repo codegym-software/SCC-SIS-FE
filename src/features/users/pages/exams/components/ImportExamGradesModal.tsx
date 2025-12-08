@@ -128,7 +128,9 @@ export default function ImportExamGradesModal({
 
         // Tự động tính điểm tổng và pass/fail nếu có lý thuyết và thực hành
         const theoryHeader = headers.find((h) => h.toLowerCase().includes('theory') || h.toLowerCase().includes('lt'));
-        const practiceHeader = headers.find((h) => h.toLowerCase().includes('practice') || h.toLowerCase().includes('th'));
+        const practiceHeader = headers.find(
+            (h) => h.toLowerCase().includes('practice') || h.toLowerCase().includes('th'),
+        );
 
         if (theoryHeader && practiceHeader) {
             const theory = newData[rowIndex][theoryHeader];
@@ -137,9 +139,14 @@ export default function ImportExamGradesModal({
             const passStatus = getPassStatus(finalScore);
 
             // Cập nhật final score và pass status nếu có cột
-            const finalHeader = headers.find((h) => h.toLowerCase().includes('final') || h.toLowerCase().includes('tổng'));
+            const finalHeader = headers.find(
+                (h) => h.toLowerCase().includes('final') || h.toLowerCase().includes('tổng'),
+            );
             const passHeader = headers.find(
-                (h) => h.toLowerCase().includes('pass') || h.toLowerCase().includes('status') || h.toLowerCase().includes('kết quả'),
+                (h) =>
+                    h.toLowerCase().includes('pass') ||
+                    h.toLowerCase().includes('status') ||
+                    h.toLowerCase().includes('kết quả'),
             );
 
             if (finalHeader && finalScore !== null) {
@@ -370,9 +377,7 @@ export default function ImportExamGradesModal({
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         placeholder="YYYY-MM-DD"
                                     />
-                                    <p className="text-xs text-gray-500">
-                                        Định dạng: YYYY-MM-DD (ví dụ: 2025-01-15)
-                                    </p>
+                                    <p className="text-xs text-gray-500">Định dạng: YYYY-MM-DD (ví dụ: 2025-01-15)</p>
                                 </div>
 
                                 {/* Actions */}
@@ -491,8 +496,8 @@ export default function ImportExamGradesModal({
                                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                                         <p className="text-sm text-yellow-800">
                                             💡 <strong>Lưu ý:</strong> Khi bạn nhập điểm lý thuyết và thực hành, hệ
-                                            thống sẽ tự động tính điểm tổng và kết quả (PASS/FAIL). Điểm tổng = Lý thuyết
-                                            × 30% + Thực hành × 70%. Đạt nếu điểm tổng ≥ 50.
+                                            thống sẽ tự động tính điểm tổng và kết quả (PASS/FAIL). Điểm tổng = Lý
+                                            thuyết × 30% + Thực hành × 70%. Đạt nếu điểm tổng ≥ 50.
                                         </p>
                                     </div>
 
@@ -517,14 +522,20 @@ export default function ImportExamGradesModal({
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-gray-200">
                                                     {editedData.map((row, rowIndex) => {
-                                                        const theoryHeader = headers.find((h) =>
-                                                            h.toLowerCase().includes('theory') || h.toLowerCase().includes('lt'),
+                                                        const theoryHeader = headers.find(
+                                                            (h) =>
+                                                                h.toLowerCase().includes('theory') ||
+                                                                h.toLowerCase().includes('lt'),
                                                         );
-                                                        const practiceHeader = headers.find((h) =>
-                                                            h.toLowerCase().includes('practice') || h.toLowerCase().includes('th'),
+                                                        const practiceHeader = headers.find(
+                                                            (h) =>
+                                                                h.toLowerCase().includes('practice') ||
+                                                                h.toLowerCase().includes('th'),
                                                         );
-                                                        const finalHeader = headers.find((h) =>
-                                                            h.toLowerCase().includes('final') || h.toLowerCase().includes('tổng'),
+                                                        const finalHeader = headers.find(
+                                                            (h) =>
+                                                                h.toLowerCase().includes('final') ||
+                                                                h.toLowerCase().includes('tổng'),
                                                         );
                                                         const passHeader = headers.find(
                                                             (h) =>
@@ -545,28 +556,31 @@ export default function ImportExamGradesModal({
                                                                 </td>
                                                                 {headers.map((header, colIndex) => {
                                                                     // Check if column is read-only (Final Score, Pass Status, or Student ID)
-                                                                    const isStudentIdColumn = 
-                                                                        header.toLowerCase().includes('student') && 
-                                                                        (header.toLowerCase().includes('id') || header.toLowerCase().includes('code'));
+                                                                    const isStudentIdColumn =
+                                                                        header.toLowerCase().includes('student') &&
+                                                                        (header.toLowerCase().includes('id') ||
+                                                                            header.toLowerCase().includes('code'));
                                                                     const isReadOnly =
-                                                                        header === finalHeader || 
-                                                                        header === passHeader || 
+                                                                        header === finalHeader ||
+                                                                        header === passHeader ||
                                                                         isStudentIdColumn;
-                                                                    
+
                                                                     return (
                                                                         <td
                                                                             key={colIndex}
                                                                             className="px-3 py-1 border-r border-gray-200 last:border-r-0"
                                                                         >
                                                                             {isReadOnly ? (
-                                                                                <span className={`text-xs font-medium ${isStudentIdColumn ? 'text-gray-700' : 'text-blue-600'}`}>
+                                                                                <span
+                                                                                    className={`text-xs font-medium ${isStudentIdColumn ? 'text-gray-700' : 'text-blue-600'}`}
+                                                                                >
                                                                                     {header === finalHeader
                                                                                         ? finalScore !== null
                                                                                             ? finalScore.toFixed(2)
                                                                                             : '--'
                                                                                         : header === passHeader
-                                                                                        ? passStatus || '--'
-                                                                                        : row[header] || '--'}
+                                                                                          ? passStatus || '--'
+                                                                                          : row[header] || '--'}
                                                                                 </span>
                                                                             ) : (
                                                                                 <input
@@ -646,4 +660,3 @@ export default function ImportExamGradesModal({
         </div>
     );
 }
-

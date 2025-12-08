@@ -17,14 +17,7 @@ type ExcelRow = {
     [key: string]: string | number;
 };
 
-export default function ImportGradesModal({
-    open,
-    onClose,
-    onSuccess,
-    classId,
-    moduleId,
-    entryDate,
-}: Props) {
+export default function ImportGradesModal({ open, onClose, onSuccess, classId, moduleId, entryDate }: Props) {
     const { success, error, info } = useToast();
     const [file, setFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
@@ -204,7 +197,7 @@ export default function ImportGradesModal({
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
-            
+
             // Đóng cả popup chính
             onClose();
         } catch (e: any) {
@@ -378,8 +371,8 @@ export default function ImportGradesModal({
                                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                                         <p className="text-sm text-yellow-800">
                                             💡 <strong>Lưu ý:</strong> Khi bạn nhập điểm lý thuyết và thực hành, hệ
-                                            thống sẽ tự động tính điểm tổng và kết quả (PASS/FAIL). Điểm tổng = Lý thuyết
-                                            × 30% + Thực hành × 70%. Đạt nếu điểm tổng ≥ 50.
+                                            thống sẽ tự động tính điểm tổng và kết quả (PASS/FAIL). Điểm tổng = Lý
+                                            thuyết × 30% + Thực hành × 70%. Đạt nếu điểm tổng ≥ 50.
                                         </p>
                                     </div>
 
@@ -525,4 +518,3 @@ export default function ImportGradesModal({
         </div>
     );
 }
-
