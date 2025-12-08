@@ -167,7 +167,7 @@ export default function QuizTakePage() {
             if (response.data.isPassed && classId && moduleId && lessonId) {
                 // Update local state
                 setLessonStatus(classId, moduleId, lessonId, 'completed');
-                
+
                 // Save to backend
                 try {
                     await updateLessonProgress(parseInt(lessonId), {

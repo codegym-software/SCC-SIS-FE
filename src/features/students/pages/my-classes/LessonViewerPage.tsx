@@ -60,12 +60,12 @@ export default function LessonViewerPage() {
                     setAllLessons(allClassLessons);
 
                     // Get current lesson's semester for default expansion
-                    const currentLesson = allClassLessons.find(l => l.lessonId === parseInt(lessonId));
+                    const currentLesson = allClassLessons.find((l) => l.lessonId === parseInt(lessonId));
                     const currentSemester = currentLesson?.moduleSemester?.toString() || '1';
-                    
+
                     // Initialize expanded state - expand current semester by default
                     const initialExpandedState: Record<string, boolean> = {};
-                    allClassLessons.forEach(lesson => {
+                    allClassLessons.forEach((lesson) => {
                         const semesterKey = lesson.moduleSemester?.toString() || '1';
                         if (semesterKey === currentSemester) {
                             initialExpandedState[semesterKey] = true;
@@ -304,7 +304,9 @@ export default function LessonViewerPage() {
                                 .sort(([a], [b]) => parseInt(a) - parseInt(b))
                                 .map(([semester, lessonsInSemester]) => {
                                     const isExpanded = expandedSemesters[semester] !== false; // Default expanded
-                                    const sortedLessons = lessonsInSemester.sort((a, b) => (a.lessonOrder || 0) - (b.lessonOrder || 0));
+                                    const sortedLessons = lessonsInSemester.sort(
+                                        (a, b) => (a.lessonOrder || 0) - (b.lessonOrder || 0),
+                                    );
 
                                     return (
                                         <div key={semester} className="border-b border-gray-200">
@@ -341,7 +343,12 @@ export default function LessonViewerPage() {
                                                         return (
                                                             <button
                                                                 key={item.lessonId}
-                                                                onClick={() => handleLessonClick(String(item.lessonId), item.lessonType)}
+                                                                onClick={() =>
+                                                                    handleLessonClick(
+                                                                        String(item.lessonId),
+                                                                        item.lessonType,
+                                                                    )
+                                                                }
                                                                 className={`w-full text-left px-3 py-3 rounded-lg transition-all duration-200 group ${
                                                                     isActive
                                                                         ? 'bg-[#E8F4F8] border-2 border-[#00796B] shadow-sm'

@@ -216,7 +216,12 @@ const mockQuizData: Record<string, QuizQuestion[]> = {
 
 export default function QuizPage() {
     const navigate = useNavigate();
-    const { quizId, classId, moduleId, lessonId } = useParams<{ quizId: string; classId?: string; moduleId?: string; lessonId?: string }>();
+    const { quizId, classId, moduleId, lessonId } = useParams<{
+        quizId: string;
+        classId?: string;
+        moduleId?: string;
+        lessonId?: string;
+    }>();
     const toast = useToast();
 
     const questions = quizId ? mockQuizData[quizId] || [] : [];
