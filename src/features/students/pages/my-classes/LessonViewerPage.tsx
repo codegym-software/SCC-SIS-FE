@@ -56,17 +56,22 @@ export default function LessonViewerPage() {
                 try {
                     const classLessonsResponse = await getLessonsByClass(parseInt(classId));
                     const allClassLessons: Lesson[] = classLessonsResponse.data;
+                    console.log('📚 All class lessons loaded:', allClassLessons);
                     setAllLessons(allClassLessons);
 
-                    // Group lessons: class lessons API được trả về theo cấu trúc: [Lesson]
-                    // Với frontend cần tự group theo Module + Semester
-                    // NOTA BENE: Backend chưa có API trả về modules với lessons theo semester
-                    // Tạm thời vẫn load lessons by module như cũ, sẽ refactor sau khi backend có API
-                    const lessonsInCurrentModule = allClassLessons.filter(l => l.moduleId === parseInt(moduleId));
-                    const sortedLessons = lessonsInCurrentModule.sort((a, b) => (a.lessonOrder || 0) - (b.lessonOrder || 0));
+                    // Get current lesson's semester for default expansion
+                    const currentLesson = allClassLessons.find(l => l.lessonId === parseInt(lessonId));
+                    const currentSemester = currentLesson?.moduleSemester?.toString() || '1';
                     
-                    // Initialize expanded state for current module's semester as true
-                    setExpandedSemesters({ '1': true }); // Default expand semester 1
+                    // Initialize expanded state - expand current semester by default
+                    const initialExpandedState: Record<string, boolean> = {};
+                    allClassLessons.forEach(lesson => {
+                        const semesterKey = lesson.moduleSemester?.toString() || '1';
+                        if (semesterKey === currentSemester) {
+                            initialExpandedState[semesterKey] = true;
+                        }
+                    });
+                    setExpandedSemesters(initialExpandedState);
                 } catch (error) {
                     // Fallback: nếu API getLessonsByClass không có, dùng getLessonsByModule
                     const lessonsResponse = await getLessonsByModule(parseInt(moduleId));
@@ -286,7 +291,7 @@ export default function LessonViewerPage() {
                             {Object.entries(
                                 allLessons.reduce(
                                     (acc, lesson) => {
-                                        const semesterKey = '1'; // TODO: nhóm theo semester thực từ moduleInfo
+                                        const semesterKey = lesson.moduleSemester?.toString() || '1';
                                         if (!acc[semesterKey]) {
                                             acc[semesterKey] = [];
                                         }

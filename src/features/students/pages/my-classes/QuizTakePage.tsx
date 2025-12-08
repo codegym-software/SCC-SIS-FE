@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Clock, CheckCircle, AlertCircle, Trophy, XCircle, Award } from 'lucide-react';
 import { useToast } from '@/shared/hooks/useToast';
-import { getLessonById } from '@/shared/api/lessons';
+import { getLessonById, updateLessonProgress } from '@/shared/api/lessons';
 import type { Lesson } from '@/shared/types/lesson';
 import { useProgressStore } from '../../hooks/useProgressStore';
 import {
@@ -165,7 +165,21 @@ export default function QuizTakePage() {
 
             // Update lesson progress if quiz is passed
             if (response.data.isPassed && classId && moduleId && lessonId) {
+                // Update local state
                 setLessonStatus(classId, moduleId, lessonId, 'completed');
+                
+                // Save to backend
+                try {
+                    await updateLessonProgress(parseInt(lessonId), {
+                        progressPercentage: 100,
+                        lastWatchedPosition: 0,
+                        timeSpentSeconds: 0,
+                    });
+                    console.log('✅ Quiz completed - Lesson progress saved to backend');
+                } catch (error) {
+                    console.error('⚠️ Failed to save lesson progress:', error);
+                    // Continue anyway, local state is already updated
+                }
             }
 
             // Reload history để cập nhật số lần làm
@@ -206,8 +220,12 @@ export default function QuizTakePage() {
     };
 
     const navigateToModuleList = () => {
-        // Navigate back to My Classes dashboard
-        navigate('/my-classes');
+        // Navigate back to lesson viewer page
+        if (classId && moduleId && lessonId) {
+            navigate(`/my-classes/${classId}/modules/${moduleId}/lessons/${lessonId}`);
+        } else {
+            navigate('/my-classes');
+        }
     };
 
     const formatTime = (seconds: number) => {

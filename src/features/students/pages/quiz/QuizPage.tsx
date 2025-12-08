@@ -216,13 +216,22 @@ const mockQuizData: Record<string, QuizQuestion[]> = {
 
 export default function QuizPage() {
     const navigate = useNavigate();
-    const { quizId } = useParams<{ quizId: string }>();
+    const { quizId, classId, moduleId, lessonId } = useParams<{ quizId: string; classId?: string; moduleId?: string; lessonId?: string }>();
     const toast = useToast();
 
     const questions = quizId ? mockQuizData[quizId] || [] : [];
     const [answers, setAnswers] = useState<Record<number, number>>({});
     const [submitted, setSubmitted] = useState(false);
     const [score, setScore] = useState(0);
+
+    // Go back to lesson viewer instead of using browser history
+    const goBackToLesson = () => {
+        if (classId && moduleId && lessonId) {
+            navigate(`/my-classes/${classId}/modules/${moduleId}/lessons/${lessonId}`);
+        } else {
+            navigate(-1);
+        }
+    };
 
     // Scroll to top when component mounts
     useEffect(() => {
@@ -269,13 +278,15 @@ export default function QuizPage() {
         setScore(0);
     };
 
+    // Duplicate goBackToLesson removed
+
     if (!quizId || questions.length === 0) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
                     <p className="text-gray-600 mb-4">Không tìm thấy bài kiểm tra</p>
                     <button
-                        onClick={() => navigate(-1)}
+                        onClick={goBackToLesson}
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     >
                         Quay lại
@@ -307,7 +318,7 @@ export default function QuizPage() {
             <header className="bg-white border-b sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <button
-                        onClick={() => navigate(-1)}
+                        onClick={goBackToLesson}
                         className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
                     >
                         <ArrowLeft className="w-5 h-5" />
@@ -373,7 +384,7 @@ export default function QuizPage() {
                                         Làm lại
                                     </button>
                                     <button
-                                        onClick={() => navigate(-1)}
+                                        onClick={goBackToLesson}
                                         className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                                     >
                                         Quay lại lớp học

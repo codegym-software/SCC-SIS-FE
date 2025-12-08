@@ -13,6 +13,7 @@ export interface Lesson {
   description?: string;
   isMandatory: boolean;
   passingScore?: number;
+  moduleSemester?: number; // Semester of the module this lesson belongs to
   createdAt: string;
   updatedAt: string;
 }
