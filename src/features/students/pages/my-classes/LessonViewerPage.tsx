@@ -14,7 +14,9 @@ import {
 import { useToast } from '@/shared/hooks/useToast';
 import { useProgressStore } from '../../hooks/useProgressStore';
 import { getLessonById, updateLessonProgress, getLessonsByModule } from '@/shared/api/lessons';
+import { lessonProgressApi } from '@/shared/api/lesson-progress';
 import type { Lesson } from '@/shared/types/lesson';
+import { VimeoPlayer } from '@/features/students/components/VimeoPlayer';
 
 export default function LessonViewerPage() {
     const { classId, moduleId, lessonId } = useParams();
@@ -29,6 +31,8 @@ export default function LessonViewerPage() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [videoProgress, setVideoProgress] = useState(0);
     const [lastWatchedPosition, setLastWatchedPosition] = useState(0);
+    const [videoCompleted, setVideoCompleted] = useState(false);
+    const [progressMap, setProgressMap] = useState<Record<number, { progressPercentage: number; status: string }>>({});
 
     useEffect(() => {
         const loadLesson = async () => {
@@ -41,10 +45,39 @@ export default function LessonViewerPage() {
                 const lessonsResponse = await getLessonsByModule(parseInt(moduleId));
                 const lessons = lessonsResponse.data.sort((a, b) => (a.lessonOrder || 0) - (b.lessonOrder || 0));
                 setAllLessons(lessons);
+                
+                // Load progress for all lessons
+                if (lessons.length > 0) {
+                    try {
+                        const lessonIds = lessons.map((l: Lesson) => l.lessonId);
+                        const progressData = await lessonProgressApi.getProgressBulk(lessonIds);
+                        setProgressMap(progressData);
+                    } catch (error) {
+                        console.log('No progress data found');
+                    }
+                }
 
                 // Load lesson from backend
                 const response = await getLessonById(parseInt(lessonId));
                 setLesson(response.data);
+                
+                // Load video progress if it's a video lesson
+                if (response.data.lessonType === 'VIDEO') {
+                    try {
+                        const progress = await lessonProgressApi.getProgress(parseInt(lessonId));
+                        if (progress) {
+                            setLastWatchedPosition(progress.lastWatchedPosition || 0);
+                            setVideoProgress(progress.progressPercentage || 0);
+                            if (progress.status === 'COMPLETED') {
+                                setVideoCompleted(true);
+                                setCurrentStatus('completed');
+                                progressStore.setLessonStatus(classId, moduleId, lessonId, 'completed');
+                            }
+                        }
+                    } catch (error) {
+                        console.log('No previous progress found');
+                    }
+                }
 
                 // Get current status from local store
                 const status = progressStore.getLessonStatus(classId, moduleId, lessonId);
@@ -268,6 +301,10 @@ export default function LessonViewerPage() {
                                 {allLessons.map((item) => {
                                     const isActive = String(item.lessonId) === lessonId;
                                     const status = getLessonStatus(String(item.lessonId));
+                                    const progress = progressMap[item.lessonId];
+                                    const isCompleted = progress?.status === 'COMPLETED';
+                                    const isInProgress = progress && progress.progressPercentage > 0 && progress.status !== 'COMPLETED';
+                                    const progressPercentage = isActive ? videoProgress : (progress?.progressPercentage || 0);
 
                                     return (
                                         <button
@@ -280,8 +317,45 @@ export default function LessonViewerPage() {
                                             }`}
                                         >
                                             <div className="flex items-start gap-3">
+                                                {/* Progress indicator or icon */}
                                                 <div className="flex-shrink-0 mt-0.5">
-                                                    {getLessonTypeIcon(item.lessonType)}
+                                                    {item.lessonType === 'VIDEO' && isCompleted ? (
+                                                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                                                            <CheckCircle size={18} className="text-green-600" />
+                                                        </div>
+                                                    ) : item.lessonType === 'VIDEO' && (isInProgress || isActive) ? (
+                                                        <div className="relative w-8 h-8">
+                                                            <svg width="32" height="32" className="transform -rotate-90">
+                                                                <circle
+                                                                    cx="16"
+                                                                    cy="16"
+                                                                    r="14"
+                                                                    fill="none"
+                                                                    stroke="#e5e7eb"
+                                                                    strokeWidth="2.5"
+                                                                />
+                                                                <circle
+                                                                    cx="16"
+                                                                    cy="16"
+                                                                    r="14"
+                                                                    fill="none"
+                                                                    stroke={isActive ? "#00796B" : "#3b82f6"}
+                                                                    strokeWidth="2.5"
+                                                                    strokeDasharray={2 * Math.PI * 14}
+                                                                    strokeDashoffset={2 * Math.PI * 14 * (1 - progressPercentage / 100)}
+                                                                    strokeLinecap="round"
+                                                                    style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+                                                                />
+                                                            </svg>
+                                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                                <span className={`text-[9px] font-bold ${isActive ? 'text-[#00796B]' : 'text-blue-600'}`}>
+                                                                    {Math.round(progressPercentage)}%
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        getLessonTypeIcon(item.lessonType)
+                                                    )}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 mb-1">
@@ -294,18 +368,6 @@ export default function LessonViewerPage() {
                                                         >
                                                             Bài {item.lessonOrder}
                                                         </span>
-                                                        {status === 'completed' && (
-                                                            <CheckCircle
-                                                                size={14}
-                                                                className="text-[#2E7D32] flex-shrink-0"
-                                                            />
-                                                        )}
-                                                        {status === 'in-progress' && !isActive && (
-                                                            <div
-                                                                className="w-2 h-2 bg-[#F57C00] rounded-full flex-shrink-0"
-                                                                title="Đang học"
-                                                            />
-                                                        )}
                                                         {item.lessonType === 'QUIZ' && (
                                                             <span className="text-xs px-1.5 py-0.5 bg-[#F3E5F5] text-[#6A1B9A] rounded font-medium">
                                                                 Quiz
@@ -361,21 +423,6 @@ export default function LessonViewerPage() {
                         >
                             <ArrowLeft size={18} /> Quay lại
                         </button>
-                        <div className="flex items-center gap-4">
-                            {currentStatus === 'completed' ? (
-                                <div className="flex items-center gap-2 text-sm text-[#2E7D32] font-medium">
-                                    <CheckCircle size={18} /> Đã hoàn thành
-                                </div>
-                            ) : (
-                                <button
-                                    onClick={handleComplete}
-                                    className="px-6 py-2 bg-[#2E7D32] hover:bg-[#1B5E20] text-white rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-md"
-                                >
-                                    <CheckCircle size={16} />
-                                    Hoàn thành bài học
-                                </button>
-                            )}
-                        </div>
                     </div>
                 </div>
 
@@ -392,24 +439,59 @@ export default function LessonViewerPage() {
                         </div>
                     </div>
 
-                    {/* Video player - Vimeo */}
-                    {lesson.contentUrl && lesson.lessonType === 'VIDEO' && (
+                    {/* Video player - Vimeo with SDK */}
+                    {lesson.contentUrl && lesson.lessonType === 'VIDEO' && lesson.contentType === 'VIMEO' && (
+                        <div className="space-y-4 mx-auto" style={{ maxWidth: '1000px' }}>
+                            <VimeoPlayer
+                                videoUrl={lesson.contentUrl}
+                                lessonId={lesson.lessonId}
+                                lastPosition={lastWatchedPosition}
+                                onProgressUpdate={(progress, completed) => {
+                                    // Kiểm tra xem video đã hoàn thành chưa (từ state hoặc từ progressMap)
+                                    const wasCompleted = videoCompleted || progressMap[lesson.lessonId]?.status === 'COMPLETED';
+                                    
+                                    // Chỉ cập nhật UI nếu video chưa hoàn thành
+                                    if (!wasCompleted) {
+                                        setVideoProgress(progress);
+                                        // Update progressMap for realtime sidebar display
+                                        setProgressMap(prev => ({
+                                            ...prev,
+                                            [lesson.lessonId]: {
+                                                progressPercentage: progress,
+                                                status: completed ? 'COMPLETED' : 'IN_PROGRESS'
+                                            }
+                                        }));
+                                    }
+                                    
+                                    // Chỉ trigger completed event lần đầu tiên
+                                    if (completed && !videoCompleted) {
+                                        setVideoCompleted(true);
+                                        setCurrentStatus('completed');
+                                        progressStore.setLessonStatus(classId!, moduleId!, lessonId!, 'completed');
+                                        toast.success('Chúc mừng! Bạn đã hoàn thành video này');
+                                    }
+                                }}
+                            />
+                        </div>
+                    )}
+                    
+                    {/* Fallback for non-Vimeo or old iframe */}
+                    {lesson.contentUrl && lesson.lessonType === 'VIDEO' && lesson.contentType !== 'VIMEO' && (
                         <div className="space-y-4">
                             <div
                                 className="bg-black rounded-xl overflow-hidden shadow-2xl"
                                 style={{ aspectRatio: '16/9' }}
                             >
                                 <iframe
-                                    src={getVimeoEmbedUrl(lesson.contentUrl)}
+                                    src={lesson.contentUrl}
                                     title={lesson.lessonTitle}
                                     className="w-full h-full"
                                     allow="autoplay; fullscreen; picture-in-picture"
                                     allowFullScreen
-                                    id="vimeo-player"
                                 />
                             </div>
-
-                            {/* Video Progress Bar */}
+                            
+                            {/* Video Progress Bar for non-Vimeo */}
                             {videoProgress > 0 && videoProgress < 100 && (
                                 <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
                                     <div className="flex items-center justify-between mb-2">
@@ -485,18 +567,7 @@ export default function LessonViewerPage() {
                         </div>
                     )}
 
-                    {/* Complete button at bottom */}
-                    {currentStatus !== 'completed' && (
-                        <div className="mt-8 flex justify-center">
-                            <button
-                                onClick={handleComplete}
-                                className="px-8 py-4 bg-[#2E7D32] hover:bg-[#1B5E20] text-white rounded-xl text-lg font-medium transition flex items-center gap-3 shadow-lg hover:shadow-xl"
-                            >
-                                <CheckCircle size={24} />
-                                Hoàn thành bài học và tiếp tục
-                            </button>
-                        </div>
-                    )}
+
                 </div>
             </div>
         </div>
