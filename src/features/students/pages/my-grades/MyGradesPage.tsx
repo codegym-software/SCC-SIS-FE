@@ -81,20 +81,26 @@ export default function MyGradesPage() {
 
     // Generate years dynamically from actual grade data
     const years = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        
         if (!grades || grades.length === 0) {
             // Fallback to current year if no data
-            const currentYear = new Date().getFullYear();
             return [{ value: currentYear, label: `${currentYear}` }];
         }
         
-        // Extract unique years from grade dates
+        // Extract unique years from entry dates (consistent with filter logic)
         const yearSet = new Set<number>();
         grades.forEach(grade => {
-            if (grade.gradeDate) {
-                const year = new Date(grade.gradeDate).getFullYear();
+            if (grade.entryDate) {
+                const year = new Date(grade.entryDate).getFullYear();
                 yearSet.add(year);
             }
         });
+        
+        // If no valid dates found, add current year
+        if (yearSet.size === 0) {
+            yearSet.add(currentYear);
+        }
         
         // Convert to sorted array (newest first)
         const sortedYears = Array.from(yearSet).sort((a, b) => b - a);

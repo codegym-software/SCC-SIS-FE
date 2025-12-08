@@ -324,7 +324,17 @@ D. init()
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => setFormData({ ...formData, lessonType: option.value })}
+                    onClick={() => {
+                      const newContentType = 
+                        option.value === 'VIDEO' ? 'VIMEO' :
+                        option.value === 'DOCUMENT' ? 'GOOGLE_DRIVE' :
+                        formData.contentType;
+                      setFormData({ 
+                        ...formData, 
+                        lessonType: option.value,
+                        contentType: newContentType
+                      });
+                    }}
                     className={`flex flex-col items-center gap-2 p-3 border-2 rounded-lg transition-all ${
                       formData.lessonType === option.value
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
@@ -377,20 +387,30 @@ D. init()
                   Loại nội dung
                 </label>
                 <div className="grid grid-cols-4 gap-2 mb-3">
-                  {CONTENT_TYPE_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, contentType: option.value })}
-                      className={`px-3 py-2 text-sm border-2 rounded-lg transition-all ${
-                        formData.contentType === option.value
-                          ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+                  {CONTENT_TYPE_OPTIONS
+                    .filter((option) => {
+                      if (formData.lessonType === 'VIDEO') {
+                        return option.value === 'VIMEO';
+                      }
+                      if (formData.lessonType === 'DOCUMENT') {
+                        return option.value === 'GOOGLE_DRIVE';
+                      }
+                      return true;
+                    })
+                    .map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, contentType: option.value })}
+                        className={`px-3 py-2 text-sm border-2 rounded-lg transition-all ${
+                          formData.contentType === option.value
+                            ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
                 </div>
                 <input
                   type="url"
