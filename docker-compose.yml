@@ -1,0 +1,17 @@
+services:
+  frontend:
+    image: huy210205/scc-sis-fe:huy2.5
+    container_name: scc-sis-fe
+    ports:
+      - "5173:80"
+    environment:
+      TZ: "Asia/Ho_Chi_Minh"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - scc-sis-network
+    restart: unless-stopped
+
+networks:
+  scc-sis-network:
+    external: true
