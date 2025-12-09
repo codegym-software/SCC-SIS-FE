@@ -39,6 +39,9 @@ export function VimeoPlayer({ videoUrl, lessonId, lastPosition = 0, onProgressUp
         const videoId = getVimeoVideoId(videoUrl);
         if (!videoId || !containerRef.current) return;
 
+        let isMounted = true;
+        let progressInterval: NodeJS.Timeout | null = null;
+
         // Initialize Vimeo Player - để Vimeo tự động tính height theo video gốc
         const player = new Player(containerRef.current, {
             id: parseInt(videoId),
@@ -49,81 +52,117 @@ export function VimeoPlayer({ videoUrl, lessonId, lastPosition = 0, onProgressUp
 
         playerRef.current = player;
 
-        // Resume from last position if available
-        if (lastPosition > 0) {
-            player.setCurrentTime(lastPosition).catch(console.error);
-        }
+        // Wait for player to be ready before doing anything
+        player.ready().then(() => {
+            if (!isMounted) return;
 
-        // Get video duration
-        let videoDuration = 0;
-        player.getDuration().then((duration) => {
-            videoDuration = Math.floor(duration);
-        });
+            // Resume from last position if available
+            if (lastPosition > 0) {
+                player.setCurrentTime(lastPosition).catch((err) => {
+                    if (isMounted) console.error('Error setting position:', err);
+                });
+            }
 
-        // Track progress every 5 seconds
-        const progressInterval = setInterval(async () => {
-            try {
-                const currentTime = await player.getCurrentTime();
-                const duration = videoDuration || (await player.getDuration());
+            // Get video duration
+            let videoDuration = 0;
+            player.getDuration().then((duration) => {
+                if (isMounted) {
+                    videoDuration = Math.floor(duration);
+                }
+            }).catch(console.error);
+
+            // Track progress every 5 seconds
+            progressInterval = setInterval(async () => {
+                if (!isMounted) return;
                 
-                if (duration > 0) {
-                    const progress = Math.min(100, Math.floor((currentTime / duration) * 100));
-                    setProgressPercentage(progress);
+                try {
+                    const currentTime = await player.getCurrentTime();
+                    const duration = videoDuration || (await player.getDuration());
                     
-                    const now = Date.now();
-                    const timeSpent = Math.floor((now - lastUpdateRef.current) / 1000);
-                    lastUpdateRef.current = now;
-                    
-                    // Update backend
-                    await lessonProgressApi.updateVideoProgress({
-                        lessonId,
-                        currentPosition: Math.floor(currentTime),
-                        duration: Math.floor(duration),
-                        timeSpent,
-                    });
-                    
-                    lastPositionRef.current = Math.floor(currentTime);
-                    
-                    // Check if completed (>= 90% or near end)
-                    const completed = progress >= 90 || currentTime >= duration - 5;
-                    if (completed && !isCompleted) {
-                        setIsCompleted(true);
-                        onProgressUpdate?.(100, true);
-                    } else if (!completed) {
-                        onProgressUpdate?.(progress, false);
+                    if (duration > 0 && isMounted) {
+                        const progress = Math.min(100, Math.floor((currentTime / duration) * 100));
+                        setProgressPercentage(progress);
+                        
+                        const now = Date.now();
+                        const timeSpent = Math.floor((now - lastUpdateRef.current) / 1000);
+                        lastUpdateRef.current = now;
+                        
+                        // Update backend
+                        await lessonProgressApi.updateVideoProgress({
+                            lessonId,
+                            currentPosition: Math.floor(currentTime),
+                            duration: Math.floor(duration),
+                            timeSpent,
+                        });
+                        
+                        lastPositionRef.current = Math.floor(currentTime);
+                        
+                        // Check if completed (>= 90% or near end)
+                        const completed = progress >= 90 || currentTime >= duration - 5;
+                        if (completed && !isCompleted && isMounted) {
+                            setIsCompleted(true);
+                            onProgressUpdate?.(100, true);
+                        } else if (!completed && isMounted) {
+                            onProgressUpdate?.(progress, false);
+                        }
+                    }
+                } catch (error) {
+                    // Ignore errors if component unmounted
+                    if (isMounted) {
+                        console.error('Error tracking progress:', error);
                     }
                 }
-            } catch (error) {
-                console.error('Error tracking progress:', error);
-            }
-        }, 5000);
+            }, 5000);
 
-        // Track when video ends
-        player.on('ended', async () => {
-            try {
-                const duration = videoDuration || (await player.getDuration());
-                await lessonProgressApi.updateVideoProgress({
-                    lessonId,
-                    currentPosition: Math.floor(duration),
-                    duration: Math.floor(duration),
-                    timeSpent: 0,
-                });
-                setIsCompleted(true);
-                setIsPlaying(false);
-                onProgressUpdate?.(100, true);
-            } catch (error) {
-                console.error('Error marking as completed:', error);
+            // Track when video ends
+            player.on('ended', async () => {
+                if (!isMounted) return;
+                
+                try {
+                    const duration = videoDuration || (await player.getDuration());
+                    await lessonProgressApi.updateVideoProgress({
+                        lessonId,
+                        currentPosition: Math.floor(duration),
+                        duration: Math.floor(duration),
+                        timeSpent: 0,
+                    });
+                    if (isMounted) {
+                        setIsCompleted(true);
+                        setIsPlaying(false);
+                        onProgressUpdate?.(100, true);
+                    }
+                } catch (error) {
+                    if (isMounted) {
+                        console.error('Error marking as completed:', error);
+                    }
+                }
+            });
+
+            // Track play/pause state
+            player.on('play', () => {
+                if (isMounted) setIsPlaying(true);
+            });
+            player.on('pause', () => {
+                if (isMounted) setIsPlaying(false);
+            });
+        }).catch((error) => {
+            if (isMounted) {
+                console.error('Error initializing Vimeo player:', error);
             }
         });
-
-        // Track play/pause state
-        player.on('play', () => setIsPlaying(true));
-        player.on('pause', () => setIsPlaying(false));
 
         // Cleanup
         return () => {
-            clearInterval(progressInterval);
-            player.destroy();
+            isMounted = false;
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
+            if (playerRef.current) {
+                playerRef.current.destroy().catch(() => {
+                    // Ignore errors during cleanup
+                });
+                playerRef.current = null;
+            }
         };
     }, [videoUrl, lessonId]);
 

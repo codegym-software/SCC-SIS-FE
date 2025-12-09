@@ -338,7 +338,7 @@ export default function LessonViewerPage() {
 
                         {/* Lessons list - scrollable */}
                         <div className="flex-1 overflow-y-auto">
-                            <div className="p-2 space-y-2">
+                            <div className="space-y-0">
                                 {/* Group lessons by module */}
                                 {Object.entries(
                                     allLessons.reduce<Record<string, typeof allLessons>>((acc, lesson) => {
@@ -369,7 +369,7 @@ export default function LessonViewerPage() {
                                         const isActiveModule = moduleLessons.some(l => String(l.lessonId) === lessonId);
 
                                         return (
-                                            <div key={moduleKey} className="mb-2">
+                                            <div key={moduleKey} className="border-b border-gray-200 last:border-b-0">
                                                 {/* Module header */}
                                                 <button
                                                     onClick={() => 
@@ -378,12 +378,17 @@ export default function LessonViewerPage() {
                                                             [moduleId || 0]: !prev[moduleId || 0] 
                                                         }))
                                                     }
-                                                    className={`w-full px-3 py-2.5 rounded-lg transition-all shadow-sm flex items-center gap-2.5 group border-2 ${
+                                                    className={`w-full px-3 py-2.5 transition-all flex items-center justify-between gap-2.5 group border-l-4 ${
                                                         isActiveModule
-                                                            ? 'bg-white border-[#00796B] hover:bg-gray-50'
-                                                            : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                            ? 'bg-[#E8F4F8] border-l-[#00796B] hover:bg-[#D0EBF3]'
+                                                            : 'bg-white border-l-transparent hover:border-l-gray-300 hover:bg-gray-50'
                                                     }`}
                                                 >
+                                                    <div className={`font-semibold text-base flex-1 text-left ${
+                                                        isActiveModule ? 'text-[#00796B]' : 'text-gray-900'
+                                                    }`}>
+                                                        {moduleName}
+                                                    </div>
                                                     <div className="flex-shrink-0">
                                                         {isExpanded ? (
                                                             <ChevronDown size={18} className={isActiveModule ? 'text-[#00796B]' : 'text-gray-600'} />
@@ -391,16 +396,11 @@ export default function LessonViewerPage() {
                                                             <ChevronUp size={18} className={isActiveModule ? 'text-[#00796B]' : 'text-gray-600'} />
                                                         )}
                                                     </div>
-                                                    <div className={`font-semibold text-base ${
-                                                        isActiveModule ? 'text-[#00796B]' : 'text-gray-900'
-                                                    }`}>
-                                                        {moduleName}
-                                                    </div>
                                                 </button>
 
                                                 {/* Lessons in module */}
                                                 {isExpanded && (
-                                                    <div className="mt-2 ml-4 space-y-1">
+                                                    <div className="space-y-0">
                                                         {moduleLessons
                                                             .sort((a, b) => a.lessonOrder - b.lessonOrder)
                                                             .map((item) => {
@@ -415,10 +415,10 @@ export default function LessonViewerPage() {
                                         <button
                                             key={item.lessonId}
                                             onClick={() => handleLessonClick(String(item.lessonId), item.lessonType)}
-                                            className={`w-full text-left px-2.5 py-2 rounded-md transition-all duration-200 group border ${
+                                            className={`w-full text-left px-2.5 py-2 transition-all duration-200 group border-l-4 ${
                                                 isActive
-                                                    ? 'bg-[#E8F4F8] border-[#00796B] shadow-sm'
-                                                    : 'hover:bg-gray-50 border-transparent hover:border-gray-200'
+                                                    ? 'bg-[#E8F4F8] border-l-[#00796B]'
+                                                    : 'hover:bg-gray-50 border-l-transparent hover:border-l-gray-300'
                                             }`}
                                         >
                                             <div className="flex items-start gap-1.5">

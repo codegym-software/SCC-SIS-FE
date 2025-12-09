@@ -411,14 +411,14 @@ export default function ClassModulesPage() {
                         return (
                             <div
                                 key={semester}
-                                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+                                className="bg-white rounded-md shadow-sm border border-gray-200 overflow-hidden"
                             >
                                 {/* Semester Header - Clickable */}
                                 <button
                                     onClick={() => toggleSemester(semester)}
                                     className="w-full bg-gradient-to-br from-[#003366] to-[#00556B] px-6 py-4 flex items-center justify-between hover:from-[#002244] hover:to-[#004455] transition-all duration-200"
                                 >
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 flex-1">
                                         <h2 className="text-xl font-bold text-white">
                                             {semester === 'Chưa phân kỳ' ? semester : `Kỳ ${semester}`}
                                         </h2>
@@ -426,7 +426,7 @@ export default function ClassModulesPage() {
                                             {semesterModules.length} module
                                         </span>
                                     </div>
-                                    <div className="text-white">
+                                    <div className="text-white ml-auto flex-shrink-0">
                                         {isExpanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
                                     </div>
                                 </button>
