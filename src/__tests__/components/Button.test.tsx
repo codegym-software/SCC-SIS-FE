@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 // Simple Button component for testing
@@ -9,14 +9,14 @@ function Button({ children, onClick }: { children: React.ReactNode; onClick?: ()
 
 describe('Button Component', () => {
   it('should render button with text', () => {
-    render(<Button>Click me</Button>);
-    const button = screen.getByRole('button', { name: /click me/i });
+    const { getByRole } = render(<Button>Click me</Button>);
+    const button = getByRole('button', { name: /click me/i });
     expect(button).toBeInTheDocument();
   });
 
   it('should render button with children', () => {
-    render(<Button>Test Button</Button>);
-    expect(screen.getByText('Test Button')).toBeInTheDocument();
+    const { getByText } = render(<Button>Test Button</Button>);
+    expect(getByText('Test Button')).toBeInTheDocument();
   });
 
   it('should have button element', () => {
