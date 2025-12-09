@@ -13,6 +13,8 @@ export interface Lesson {
   description?: string;
   isMandatory: boolean;
   passingScore?: number;
+  moduleSemester?: number;
+  moduleName?: string;
   createdAt: string;
   updatedAt: string;
 }

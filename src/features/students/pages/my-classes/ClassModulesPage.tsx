@@ -17,7 +17,8 @@ import {
 import { useToast } from '@/shared/hooks/useToast';
 import { getMyClasses, type ClassDto } from '@/shared/api/classes';
 import { getModulesByProgram, type ModuleResponse } from '@/shared/api/modules';
-import { getLessonsByModule, getModuleProgress as getModuleProgressAPI, type Lesson } from '@/shared/api/lessons';
+import { getLessonsByModule, type Lesson } from '@/shared/api/lessons';
+import { lessonProgressApi, type LessonProgressResponse } from '@/shared/api/lesson-progress';
 import { useUserProfile } from '@/stores/userProfile';
 import { useProgressStore } from '../../hooks/useProgressStore';
 
@@ -63,6 +64,7 @@ export default function ClassModulesPage() {
     const [moduleProgressData, setModuleProgressData] = useState<
         Record<number, { total: number; completed: number; percentage: number }>
     >({});
+    const [lessonProgressMap, setLessonProgressMap] = useState<Record<number, LessonProgressResponse>>({});
     const [expandedSemesters, setExpandedSemesters] = useState<Record<string, boolean>>({});
 
     // Ref to track if we already fetched to prevent re-fetch on re-render
@@ -83,17 +85,31 @@ export default function ClassModulesPage() {
             await Promise.all(
                 modules.map(async (m) => {
                     try {
-                        const progressRes = await getModuleProgressAPI(m.moduleId);
-                        const newProgress = {
-                            total: progressRes.data.totalLessons || 0,
-                            completed: progressRes.data.completedLessons || 0,
-                            percentage: progressRes.data.progressPercentage || 0,
-                        };
-                        progressMap[m.moduleId] = newProgress;
-                        console.log(
-                            `✅ Module ${m.moduleId} (${m.name}):`,
-                            `${newProgress.completed}/${newProgress.total} hoàn thành`,
-                        );
+                        const lessons = moduleLessons[m.moduleId] || [];
+                        if (lessons.length > 0) {
+                            const lessonIds = lessons.map((l: Lesson) => l.lessonId);
+                            const progressData = await lessonProgressApi.getProgressBulk(lessonIds);
+                            
+                            // Calculate completed lessons
+                            const completed = Object.values(progressData).filter(
+                                (p: LessonProgressResponse) => p.status === 'COMPLETED'
+                            ).length;
+                            
+                            const percentage = Math.round((completed / lessons.length) * 100);
+                            
+                            const newProgress = {
+                                total: lessons.length,
+                                completed: completed,
+                                percentage: percentage,
+                            };
+                            progressMap[m.moduleId] = newProgress;
+                            console.log(
+                                `✅ Module ${m.moduleId} (${m.name}):`,
+                                `${newProgress.completed}/${newProgress.total} hoàn thành (${percentage}%)`,
+                            );
+                        } else {
+                            progressMap[m.moduleId] = { total: 0, completed: 0, percentage: 0 };
+                        }
                     } catch (err) {
                         console.error(`❌ Failed to load progress for module ${m.moduleId}:`, err);
                         progressMap[m.moduleId] = moduleProgressData[m.moduleId] || {
@@ -161,18 +177,38 @@ export default function ClassModulesPage() {
                         modulesData.map(async (m) => {
                             try {
                                 const lessonsRes = await getLessonsByModule(m.moduleId);
-                                lessonsMap[m.moduleId] = lessonsRes.data;
+                                const lessons = lessonsRes.data || [];
+                                lessonsMap[m.moduleId] = lessons;
 
-                                // Fetch progress from API
-                                try {
-                                    const progressRes = await getModuleProgressAPI(m.moduleId);
-                                    progressMap[m.moduleId] = {
-                                        total: progressRes.data.totalLessons || 0,
-                                        completed: progressRes.data.completedLessons || 0,
-                                        percentage: progressRes.data.progressPercentage || 0,
-                                    };
-                                } catch (err) {
-                                    console.error(`Failed to load progress for module ${m.moduleId}:`, err);
+                                // Fetch progress from lesson-progress API
+                                if (lessons.length > 0) {
+                                    try {
+                                        const lessonIds = lessons.map((l: Lesson) => l.lessonId);
+                                        const progressData = await lessonProgressApi.getProgressBulk(lessonIds);
+                                        
+                                        // Calculate completed lessons
+                                        const completed = Object.values(progressData).filter(
+                                            (p: LessonProgressResponse) => p.status === 'COMPLETED'
+                                        ).length;
+                                        
+                                        const percentage = lessons.length > 0 
+                                            ? Math.round((completed / lessons.length) * 100) 
+                                            : 0;
+                                        
+                                        progressMap[m.moduleId] = {
+                                            total: lessons.length,
+                                            completed: completed,
+                                            percentage: percentage,
+                                        };
+                                    } catch (err) {
+                                        console.error(`Failed to load progress for module ${m.moduleId}:`, err);
+                                        progressMap[m.moduleId] = { 
+                                            total: lessons.length, 
+                                            completed: 0, 
+                                            percentage: 0 
+                                        };
+                                    }
+                                } else {
                                     progressMap[m.moduleId] = { total: 0, completed: 0, percentage: 0 };
                                 }
                             } catch (err) {
@@ -184,6 +220,20 @@ export default function ClassModulesPage() {
                     );
                     setModuleLessons(lessonsMap);
                     setModuleProgressData(progressMap);
+
+                    // Load lesson progress for all lessons
+                    const allLessonIds: number[] = [];
+                    Object.values(lessonsMap).forEach((lessons) => {
+                        lessons.forEach((lesson) => allLessonIds.push(lesson.lessonId));
+                    });
+                    if (allLessonIds.length > 0) {
+                        try {
+                            const lessonProgress = await lessonProgressApi.getProgressBulk(allLessonIds);
+                            setLessonProgressMap(lessonProgress);
+                        } catch (err) {
+                            console.log('No lesson progress data found');
+                        }
+                    }
                 }
 
                 // Mark as fetched
@@ -416,22 +466,40 @@ export default function ClassModulesPage() {
                                                                 {module.description || 'Không có mô tả'}
                                                             </p>
                                                         </div>
-                                                        <div className="ml-6 text-right flex-shrink-0">
-                                                            <div className="text-3xl font-bold text-[#00796B]">
-                                                                {progressPercentage}%
+                                                        <div className="ml-6 flex-shrink-0">
+                                                            {/* Circular Progress */}
+                                                            <div className="relative w-20 h-20">
+                                                                <svg width="80" height="80" className="transform -rotate-90">
+                                                                    <circle
+                                                                        cx="40"
+                                                                        cy="40"
+                                                                        r="36"
+                                                                        fill="none"
+                                                                        stroke="#e5e7eb"
+                                                                        strokeWidth="6"
+                                                                    />
+                                                                    <circle
+                                                                        cx="40"
+                                                                        cy="40"
+                                                                        r="36"
+                                                                        fill="none"
+                                                                        stroke={progressPercentage >= 100 ? "#22c55e" : "#00796B"}
+                                                                        strokeWidth="6"
+                                                                        strokeDasharray={2 * Math.PI * 36}
+                                                                        strokeDashoffset={2 * Math.PI * 36 * (1 - progressPercentage / 100)}
+                                                                        strokeLinecap="round"
+                                                                        style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+                                                                    />
+                                                                </svg>
+                                                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                                    <span className="text-xl font-bold text-gray-900">
+                                                                        {Math.round(progressPercentage)}%
+                                                                    </span>
+                                                                    <span className="text-xs text-gray-500 mt-0.5">
+                                                                        {completedLessons}/{totalLessons}
+                                                                    </span>
+                                                                </div>
                                                             </div>
-                                                            <div className="text-xs text-gray-500 mt-1">
-                                                                {completedLessons}/{totalLessons} bài
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="mb-4 ml-15">
-                                                        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden shadow-inner">
-                                                            <div
-                                                                className="h-full bg-gradient-to-r from-[#00796B] to-[#004D40] transition-all duration-500 rounded-full shadow-sm"
-                                                                style={{ width: `${progressPercentage}%` }}
-                                                            ></div>
                                                         </div>
                                                     </div>
 
@@ -442,35 +510,43 @@ export default function ClassModulesPage() {
                                                                     (a, b) =>
                                                                         (a.lessonOrder || 0) - (b.lessonOrder || 0),
                                                                 )
-                                                                .map((lesson) => (
-                                                                    <div
-                                                                        key={lesson.lessonId}
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleLessonClick(
-                                                                                module.moduleId,
-                                                                                String(lesson.lessonId),
-                                                                                lesson.lessonType,
-                                                                            );
-                                                                        }}
-                                                                        className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#E8F4F8] hover:text-[#00796B] hover:underline cursor-pointer transition-all duration-200 group border border-transparent hover:border-[#B2DFDB]"
-                                                                    >
-                                                                        <div className="flex-shrink-0">
-                                                                            {getLessonTypeIcon(lesson.lessonType)}
+                                                                .map((lesson) => {
+                                                                    const lessonProgress = lessonProgressMap[lesson.lessonId];
+                                                                    const isCompleted = lessonProgress?.status === 'COMPLETED';
+                                                                    
+                                                                    return (
+                                                                        <div
+                                                                            key={lesson.lessonId}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleLessonClick(
+                                                                                    module.moduleId,
+                                                                                    String(lesson.lessonId),
+                                                                                    lesson.lessonType,
+                                                                                );
+                                                                            }}
+                                                                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#E8F4F8] hover:text-[#00796B] hover:underline cursor-pointer transition-all duration-200 group border border-transparent hover:border-[#B2DFDB]"
+                                                                        >
+                                                                            <div className="flex-shrink-0">
+                                                                                {getLessonTypeIcon(lesson.lessonType)}
+                                                                            </div>
+                                                                            <div className="flex-shrink-0 w-8 text-sm font-medium text-gray-500 group-hover:text-[#00796B]">
+                                                                                {lesson.lessonOrder}
+                                                                            </div>
+                                                                            <div className="flex-1 text-sm font-medium text-gray-700 group-hover:text-[#00796B]">
+                                                                                {lesson.lessonTitle}
+                                                                            </div>
+                                                                            {isCompleted && (
+                                                                                <CheckCircle size={20} className="flex-shrink-0 text-green-600" />
+                                                                            )}
+                                                                            {lesson.lessonType === 'QUIZ' && (
+                                                                                <span className="flex-shrink-0 text-xs px-2 py-1 bg-[#F3E5F5] text-[#6A1B9A] rounded-full font-medium">
+                                                                                    Quiz
+                                                                                </span>
+                                                                            )}
                                                                         </div>
-                                                                        <div className="flex-shrink-0 w-8 text-sm font-medium text-gray-500 group-hover:text-[#00796B]">
-                                                                            {lesson.lessonOrder}
-                                                                        </div>
-                                                                        <div className="flex-1 text-sm font-medium text-gray-700 group-hover:text-[#00796B]">
-                                                                            {lesson.lessonTitle}
-                                                                        </div>
-                                                                        {lesson.lessonType === 'QUIZ' && (
-                                                                            <span className="flex-shrink-0 text-xs px-2 py-1 bg-[#F3E5F5] text-[#6A1B9A] rounded-full font-medium">
-                                                                                Quiz
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
+                                                                    );
+                                                                })}
                                                         </div>
                                                     ) : (
                                                         <div className="text-center py-8 text-gray-500 text-sm ml-15">

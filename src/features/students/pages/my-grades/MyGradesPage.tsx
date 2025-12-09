@@ -1,3 +1,4 @@
+
 import { Trophy, Loader2, BarChart3 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { type GradeRecordResponse } from '@/shared/api/grade-entries';

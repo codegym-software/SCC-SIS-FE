@@ -12,6 +12,8 @@ export interface Lesson {
     description?: string;
     isMandatory: boolean;
     passingScore?: number;
+    moduleSemester?: number;
+    moduleName?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -47,6 +49,9 @@ export const deleteLesson = (lessonId: number) => api.delete(`/api/lessons/${les
 
 // API cho Student: Xem lessons
 export const getLessonsByModule = (moduleId: number) => api.get(`/api/lessons/module/${moduleId}`);
+
+// API cho Student: Xem tất cả lessons trong class (all semesters/modules)
+export const getLessonsByClass = (classId: number) => api.get(`/api/lessons/class/${classId}`);
 
 // API cho Student: Xem chi tiết 1 lesson
 export const getLessonById = (lessonId: number) => api.get(`/api/lessons/${lessonId}`);
