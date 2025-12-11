@@ -7,8 +7,8 @@ import tseslint from 'typescript-eslint';
 
 // ESLint v9 flat config
 export default [
-    // Ignore build output
-    { ignores: ['dist'] },
+    // Ignore build output and third-party libs
+    { ignores: ['dist', 'public/webviewer-lib/**'] },
 
     // Base recommended configs
     js.configs.recommended,

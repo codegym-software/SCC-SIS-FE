@@ -459,24 +459,9 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                     <div className="border-b bg-gray-50">
                         <div className="px-6 flex gap-1">
                             <button
-                                onClick={() => setMainTab('lessons')}
-                                className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
-                                    mainTab === 'lessons'
-                                        ? 'border-blue-600 text-blue-600'
-                                        : 'border-transparent text-gray-600 hover:text-gray-900'
-                                }`}
+                                className="px-4 py-3 text-sm font-medium transition-colors border-b-2 border-blue-600 text-blue-600"
                             >
                                 📚 Bài học ({lessons.length})
-                            </button>
-                            <button
-                                onClick={() => setMainTab('resources')}
-                                className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
-                                    mainTab === 'resources'
-                                        ? 'border-blue-600 text-blue-600'
-                                        : 'border-transparent text-gray-600 hover:text-gray-900'
-                                }`}
-                            >
-                                📎 Tài liệu ({resources.length})
                             </button>
                         </div>
                     </div>
@@ -646,8 +631,8 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
                             </div>
                         )}
 
-                        {/* Resources Tab - Syllabus Section */}
-                        {mainTab === 'resources' && (
+                        {/* Resources Tab - Syllabus Section - HIDDEN */}
+                        {false && mainTab === 'resources' && (
                             <div>
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-base font-semibold flex items-center gap-2">

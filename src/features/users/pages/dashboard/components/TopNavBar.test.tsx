@@ -37,19 +37,17 @@ vi.mock('@/shared/api/student-warnings', () => ({
 
 vi.mock('@/shared/api/notifications', () => ({
     notificationsApi: {
-        fetchNotifications: async () => ({
-            notifications: [
-                {
-                    id: 'n1',
-                    type: 'SYSTEM_ANNOUNCEMENT',
-                    title: 'Thông báo hệ thống',
-                    message: 'Bảo trì 22:00',
-                    createdAt: new Date().toISOString(),
-                    unread: true,
-                },
-            ],
-            total: 1,
-        }),
+        getMyNotifications: async () => [
+            {
+                id: 1,
+                type: 'SYSTEM_ANNOUNCEMENT',
+                title: 'Thông báo hệ thống',
+                message: 'Bảo trì 22:00',
+                createdAt: new Date().toISOString(),
+                isRead: false,
+                severity: 'medium',
+            },
+        ],
         getMock: () => [],
     },
 }));

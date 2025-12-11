@@ -186,12 +186,6 @@ function AppLayout({ children }: AppLayoutProps) {
                             icon: User,
                         },
                         {
-                            id: 'broadcast-notification',
-                            label: 'Gửi Thông báo',
-                            path: '/notifications/broadcast',
-                            icon: Bell,
-                        },
-                        {
                             id: 'statistics',
                             label: 'Thống kê',
                             path: '/statistics',

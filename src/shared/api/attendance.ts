@@ -136,3 +136,5 @@ export interface StudentAttendanceHistory {
  */
 export const getStudentAttendanceHistory = (studentId: number, classId: number) =>
     http.get<StudentAttendanceHistory>(`/api/students/${studentId}/classes/${classId}/attendance`);
+
+

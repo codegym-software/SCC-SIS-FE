@@ -163,8 +163,19 @@ export default function QuizTakePage() {
             setSubmitResult(response.data);
             setViewState('result');
 
-            // Update lesson progress if quiz is passed
-            if (response.data.isPassed && classId && moduleId && lessonId) {
+            // Update lesson progress - save to backend when quiz is submitted
+            if (classId && moduleId && lessonId) {
+                try {
+                    await updateLessonProgress(parseInt(lessonId), {
+                        progressPercentage: 100,
+                        lastWatchedPosition: 0,
+                        timeSpentSeconds: 0,
+                    });
+                    console.log('✅ Quiz completed, lesson progress saved to backend');
+                } catch (err) {
+                    console.error('⚠️ Failed to save lesson progress:', err);
+                }
+                
                 // Update local state
                 setLessonStatus(classId, moduleId, lessonId, 'completed');
 
