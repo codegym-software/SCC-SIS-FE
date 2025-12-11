@@ -178,6 +178,19 @@ export default function QuizTakePage() {
                 
                 // Update local state
                 setLessonStatus(classId, moduleId, lessonId, 'completed');
+
+                // Save to backend
+                try {
+                    await updateLessonProgress(parseInt(lessonId), {
+                        progressPercentage: 100,
+                        lastWatchedPosition: 0,
+                        timeSpentSeconds: 0,
+                    });
+                    console.log('✅ Quiz completed - Lesson progress saved to backend');
+                } catch (error) {
+                    console.error('⚠️ Failed to save lesson progress:', error);
+                    // Continue anyway, local state is already updated
+                }
             }
 
             // Reload history để cập nhật số lần làm
@@ -218,8 +231,12 @@ export default function QuizTakePage() {
     };
 
     const navigateToModuleList = () => {
-        // Navigate back to My Classes dashboard
-        navigate('/my-classes');
+        // Navigate back to lesson viewer page
+        if (classId && moduleId && lessonId) {
+            navigate(`/my-classes/${classId}/modules/${moduleId}/lessons/${lessonId}`);
+        } else {
+            navigate('/my-classes');
+        }
     };
 
     const formatTime = (seconds: number) => {

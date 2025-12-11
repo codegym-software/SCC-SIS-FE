@@ -28,6 +28,8 @@ export default function LessonViewerPage() {
 
     const [lesson, setLesson] = useState<Lesson | null>(null);
     const [allLessons, setAllLessons] = useState<Lesson[]>([]);
+    const [modulesBySemester, setModulesBySemester] = useState<ModulesBySemester>({});
+    const [expandedSemesters, setExpandedSemesters] = useState<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
     const [currentStatus, setCurrentStatus] = useState<'not-started' | 'in-progress' | 'completed'>('not-started');
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -336,7 +338,7 @@ export default function LessonViewerPage() {
                             <p className="text-sm text-white/90 mt-1">{allLessons.length} bài học trong lớp</p>
                         </div>
 
-                        {/* Lessons list - scrollable */}
+                        {/* Lessons by semester - Accordion */}
                         <div className="flex-1 overflow-y-auto">
                             <div className="space-y-0">
                                 {/* Group lessons by module */}

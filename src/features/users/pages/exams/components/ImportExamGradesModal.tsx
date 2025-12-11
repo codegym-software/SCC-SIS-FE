@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { X, Upload, FileDown, Edit2, Save, Download } from 'lucide-react';
 import { importGradesFromExcel, downloadGradeTemplate } from '@/shared/api/grade-entries';
 import { useToast } from '@/shared/hooks/useToast';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 type Props = {
     open: boolean;
@@ -69,21 +69,44 @@ export default function ImportExamGradesModal({
 
         try {
             const arrayBuffer = await selectedFile.arrayBuffer();
-            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(arrayBuffer);
+
+            const worksheet = workbook.worksheets[0];
+            if (!worksheet) {
+                error('File rỗng', 'File Excel không có sheet nào');
+                return;
+            }
 
             // Convert to JSON
-            const jsonData: ExcelRow[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+            const jsonData: ExcelRow[] = [];
+            const cols: string[] = [];
+
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber === 1) {
+                    // First row is header
+                    row.eachCell((cell) => {
+                        cols.push(String(cell.value || ''));
+                    });
+                } else {
+                    // Data rows
+                    const rowData: ExcelRow = {};
+                    row.eachCell((cell, colNumber) => {
+                        const header = cols[colNumber - 1];
+                        if (header) {
+                            rowData[header] = cell.value as string | number;
+                        }
+                    });
+                    jsonData.push(rowData);
+                }
+            });
 
             if (jsonData.length === 0) {
                 error('File rỗng', 'File Excel không có dữ liệu');
                 return;
             }
 
-            // Get headers
-            const firstRow = jsonData[0];
-            const cols = Object.keys(firstRow);
+            // Set headers and data
             setHeaders(cols);
             setExcelData(jsonData);
             setEditedData(jsonData.map((row) => ({ ...row }))); // Deep copy
@@ -105,7 +128,9 @@ export default function ImportExamGradesModal({
 
         // Tự động tính điểm tổng và pass/fail nếu có lý thuyết và thực hành
         const theoryHeader = headers.find((h) => h.toLowerCase().includes('theory') || h.toLowerCase().includes('lt'));
-        const practiceHeader = headers.find((h) => h.toLowerCase().includes('practice') || h.toLowerCase().includes('th'));
+        const practiceHeader = headers.find(
+            (h) => h.toLowerCase().includes('practice') || h.toLowerCase().includes('th'),
+        );
 
         if (theoryHeader && practiceHeader) {
             const theory = newData[rowIndex][theoryHeader];
@@ -114,9 +139,14 @@ export default function ImportExamGradesModal({
             const passStatus = getPassStatus(finalScore);
 
             // Cập nhật final score và pass status nếu có cột
-            const finalHeader = headers.find((h) => h.toLowerCase().includes('final') || h.toLowerCase().includes('tổng'));
+            const finalHeader = headers.find(
+                (h) => h.toLowerCase().includes('final') || h.toLowerCase().includes('tổng'),
+            );
             const passHeader = headers.find(
-                (h) => h.toLowerCase().includes('pass') || h.toLowerCase().includes('status') || h.toLowerCase().includes('kết quả'),
+                (h) =>
+                    h.toLowerCase().includes('pass') ||
+                    h.toLowerCase().includes('status') ||
+                    h.toLowerCase().includes('kết quả'),
             );
 
             if (finalHeader && finalScore !== null) {
@@ -130,23 +160,37 @@ export default function ImportExamGradesModal({
         setEditedData(newData);
     };
 
-    const handleExportEditedExcel = () => {
+    const handleExportEditedExcel = async () => {
         try {
             // Create workbook
-            const workbook = XLSX.utils.book_new();
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Sheet1');
 
-            // Convert edited data to worksheet
-            const worksheet = XLSX.utils.json_to_sheet(editedData);
+            // Add header row
+            if (headers.length > 0) {
+                worksheet.addRow(headers);
+            }
 
-            // Add worksheet to workbook
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+            // Add data rows
+            editedData.forEach((row) => {
+                const rowValues = headers.map((header) => row[header] || '');
+                worksheet.addRow(rowValues);
+            });
 
             // Generate file name
             const fileName = file?.name.replace(/\.(xlsx|xls)$/i, '') || 'edited_grades';
             const exportFileName = `${fileName}_edited.xlsx`;
 
             // Write file
-            XLSX.writeFile(workbook, exportFileName);
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = exportFileName;
+            link.click();
+            URL.revokeObjectURL(link.href);
 
             success('Đã xuất file', `File đã được lưu với tên: ${exportFileName}`);
         } catch (err) {
@@ -155,15 +199,25 @@ export default function ImportExamGradesModal({
         }
     };
 
-    const handleSaveAndContinue = () => {
+    const handleSaveAndContinue = async () => {
         try {
             // Create workbook from edited data
-            const workbook = XLSX.utils.book_new();
-            const worksheet = XLSX.utils.json_to_sheet(editedData);
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Sheet1');
+
+            // Add header row
+            if (headers.length > 0) {
+                worksheet.addRow(headers);
+            }
+
+            // Add data rows
+            editedData.forEach((row) => {
+                const rowValues = headers.map((header) => row[header] || '');
+                worksheet.addRow(rowValues);
+            });
 
             // Convert workbook to blob
-            const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+            const excelBuffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([excelBuffer], {
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             });
@@ -199,10 +253,21 @@ export default function ImportExamGradesModal({
         let fileToImport = file;
         if (showEditor && editedData.length > 0) {
             try {
-                const workbook = XLSX.utils.book_new();
-                const worksheet = XLSX.utils.json_to_sheet(editedData);
-                XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-                const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+                const workbook = new ExcelJS.Workbook();
+                const worksheet = workbook.addWorksheet('Sheet1');
+
+                // Add header row
+                if (headers.length > 0) {
+                    worksheet.addRow(headers);
+                }
+
+                // Add data rows
+                editedData.forEach((row) => {
+                    const rowValues = headers.map((header) => row[header] || '');
+                    worksheet.addRow(rowValues);
+                });
+
+                const excelBuffer = await workbook.xlsx.writeBuffer();
                 const blob = new Blob([excelBuffer], {
                     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 });
@@ -312,9 +377,7 @@ export default function ImportExamGradesModal({
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         placeholder="YYYY-MM-DD"
                                     />
-                                    <p className="text-xs text-gray-500">
-                                        Định dạng: YYYY-MM-DD (ví dụ: 2025-01-15)
-                                    </p>
+                                    <p className="text-xs text-gray-500">Định dạng: YYYY-MM-DD (ví dụ: 2025-01-15)</p>
                                 </div>
 
                                 {/* Actions */}
@@ -433,8 +496,8 @@ export default function ImportExamGradesModal({
                                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                                         <p className="text-sm text-yellow-800">
                                             💡 <strong>Lưu ý:</strong> Khi bạn nhập điểm lý thuyết và thực hành, hệ
-                                            thống sẽ tự động tính điểm tổng và kết quả (PASS/FAIL). Điểm tổng = Lý thuyết
-                                            × 30% + Thực hành × 70%. Đạt nếu điểm tổng ≥ 50.
+                                            thống sẽ tự động tính điểm tổng và kết quả (PASS/FAIL). Điểm tổng = Lý
+                                            thuyết × 30% + Thực hành × 70%. Đạt nếu điểm tổng ≥ 50.
                                         </p>
                                     </div>
 
@@ -459,14 +522,20 @@ export default function ImportExamGradesModal({
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-gray-200">
                                                     {editedData.map((row, rowIndex) => {
-                                                        const theoryHeader = headers.find((h) =>
-                                                            h.toLowerCase().includes('theory') || h.toLowerCase().includes('lt'),
+                                                        const theoryHeader = headers.find(
+                                                            (h) =>
+                                                                h.toLowerCase().includes('theory') ||
+                                                                h.toLowerCase().includes('lt'),
                                                         );
-                                                        const practiceHeader = headers.find((h) =>
-                                                            h.toLowerCase().includes('practice') || h.toLowerCase().includes('th'),
+                                                        const practiceHeader = headers.find(
+                                                            (h) =>
+                                                                h.toLowerCase().includes('practice') ||
+                                                                h.toLowerCase().includes('th'),
                                                         );
-                                                        const finalHeader = headers.find((h) =>
-                                                            h.toLowerCase().includes('final') || h.toLowerCase().includes('tổng'),
+                                                        const finalHeader = headers.find(
+                                                            (h) =>
+                                                                h.toLowerCase().includes('final') ||
+                                                                h.toLowerCase().includes('tổng'),
                                                         );
                                                         const passHeader = headers.find(
                                                             (h) =>
@@ -487,28 +556,31 @@ export default function ImportExamGradesModal({
                                                                 </td>
                                                                 {headers.map((header, colIndex) => {
                                                                     // Check if column is read-only (Final Score, Pass Status, or Student ID)
-                                                                    const isStudentIdColumn = 
-                                                                        header.toLowerCase().includes('student') && 
-                                                                        (header.toLowerCase().includes('id') || header.toLowerCase().includes('code'));
+                                                                    const isStudentIdColumn =
+                                                                        header.toLowerCase().includes('student') &&
+                                                                        (header.toLowerCase().includes('id') ||
+                                                                            header.toLowerCase().includes('code'));
                                                                     const isReadOnly =
-                                                                        header === finalHeader || 
-                                                                        header === passHeader || 
+                                                                        header === finalHeader ||
+                                                                        header === passHeader ||
                                                                         isStudentIdColumn;
-                                                                    
+
                                                                     return (
                                                                         <td
                                                                             key={colIndex}
                                                                             className="px-3 py-1 border-r border-gray-200 last:border-r-0"
                                                                         >
                                                                             {isReadOnly ? (
-                                                                                <span className={`text-xs font-medium ${isStudentIdColumn ? 'text-gray-700' : 'text-blue-600'}`}>
+                                                                                <span
+                                                                                    className={`text-xs font-medium ${isStudentIdColumn ? 'text-gray-700' : 'text-blue-600'}`}
+                                                                                >
                                                                                     {header === finalHeader
                                                                                         ? finalScore !== null
                                                                                             ? finalScore.toFixed(2)
                                                                                             : '--'
                                                                                         : header === passHeader
-                                                                                        ? passStatus || '--'
-                                                                                        : row[header] || '--'}
+                                                                                          ? passStatus || '--'
+                                                                                          : row[header] || '--'}
                                                                                 </span>
                                                                             ) : (
                                                                                 <input
@@ -588,4 +660,3 @@ export default function ImportExamGradesModal({
         </div>
     );
 }
-
