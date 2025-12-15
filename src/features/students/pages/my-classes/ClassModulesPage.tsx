@@ -89,14 +89,14 @@ export default function ClassModulesPage() {
                         if (lessons.length > 0) {
                             const lessonIds = lessons.map((l: Lesson) => l.lessonId);
                             const progressData = await lessonProgressApi.getProgressBulk(lessonIds);
-                            
+
                             // Calculate completed lessons
                             const completed = Object.values(progressData).filter(
-                                (p: LessonProgressResponse) => p.status === 'COMPLETED'
+                                (p: LessonProgressResponse) => p.status === 'COMPLETED',
                             ).length;
-                            
+
                             const percentage = Math.round((completed / lessons.length) * 100);
-                            
+
                             const newProgress = {
                                 total: lessons.length,
                                 completed: completed,
@@ -185,16 +185,15 @@ export default function ClassModulesPage() {
                                     try {
                                         const lessonIds = lessons.map((l: Lesson) => l.lessonId);
                                         const progressData = await lessonProgressApi.getProgressBulk(lessonIds);
-                                        
+
                                         // Calculate completed lessons
                                         const completed = Object.values(progressData).filter(
-                                            (p: LessonProgressResponse) => p.status === 'COMPLETED'
+                                            (p: LessonProgressResponse) => p.status === 'COMPLETED',
                                         ).length;
-                                        
-                                        const percentage = lessons.length > 0 
-                                            ? Math.round((completed / lessons.length) * 100) 
-                                            : 0;
-                                        
+
+                                        const percentage =
+                                            lessons.length > 0 ? Math.round((completed / lessons.length) * 100) : 0;
+
                                         progressMap[m.moduleId] = {
                                             total: lessons.length,
                                             completed: completed,
@@ -202,10 +201,10 @@ export default function ClassModulesPage() {
                                         };
                                     } catch (err) {
                                         console.error(`Failed to load progress for module ${m.moduleId}:`, err);
-                                        progressMap[m.moduleId] = { 
-                                            total: lessons.length, 
-                                            completed: 0, 
-                                            percentage: 0 
+                                        progressMap[m.moduleId] = {
+                                            total: lessons.length,
+                                            completed: 0,
+                                            percentage: 0,
                                         };
                                     }
                                 } else {
@@ -469,7 +468,11 @@ export default function ClassModulesPage() {
                                                         <div className="ml-6 flex-shrink-0">
                                                             {/* Circular Progress */}
                                                             <div className="relative w-20 h-20">
-                                                                <svg width="80" height="80" className="transform -rotate-90">
+                                                                <svg
+                                                                    width="80"
+                                                                    height="80"
+                                                                    className="transform -rotate-90"
+                                                                >
                                                                     <circle
                                                                         cx="40"
                                                                         cy="40"
@@ -483,12 +486,23 @@ export default function ClassModulesPage() {
                                                                         cy="40"
                                                                         r="36"
                                                                         fill="none"
-                                                                        stroke={progressPercentage >= 100 ? "#22c55e" : "#00796B"}
+                                                                        stroke={
+                                                                            progressPercentage >= 100
+                                                                                ? '#22c55e'
+                                                                                : '#00796B'
+                                                                        }
                                                                         strokeWidth="6"
                                                                         strokeDasharray={2 * Math.PI * 36}
-                                                                        strokeDashoffset={2 * Math.PI * 36 * (1 - progressPercentage / 100)}
+                                                                        strokeDashoffset={
+                                                                            2 *
+                                                                            Math.PI *
+                                                                            36 *
+                                                                            (1 - progressPercentage / 100)
+                                                                        }
                                                                         strokeLinecap="round"
-                                                                        style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+                                                                        style={{
+                                                                            transition: 'stroke-dashoffset 0.3s ease',
+                                                                        }}
                                                                     />
                                                                 </svg>
                                                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -511,9 +525,11 @@ export default function ClassModulesPage() {
                                                                         (a.lessonOrder || 0) - (b.lessonOrder || 0),
                                                                 )
                                                                 .map((lesson) => {
-                                                                    const lessonProgress = lessonProgressMap[lesson.lessonId];
-                                                                    const isCompleted = lessonProgress?.status === 'COMPLETED';
-                                                                    
+                                                                    const lessonProgress =
+                                                                        lessonProgressMap[lesson.lessonId];
+                                                                    const isCompleted =
+                                                                        lessonProgress?.status === 'COMPLETED';
+
                                                                     return (
                                                                         <div
                                                                             key={lesson.lessonId}
@@ -537,7 +553,10 @@ export default function ClassModulesPage() {
                                                                                 {lesson.lessonTitle}
                                                                             </div>
                                                                             {isCompleted && (
-                                                                                <CheckCircle size={20} className="flex-shrink-0 text-green-600" />
+                                                                                <CheckCircle
+                                                                                    size={20}
+                                                                                    className="flex-shrink-0 text-green-600"
+                                                                                />
                                                                             )}
                                                                             {lesson.lessonType === 'QUIZ' && (
                                                                                 <span className="flex-shrink-0 text-xs px-2 py-1 bg-[#F3E5F5] text-[#6A1B9A] rounded-full font-medium">

@@ -1,47 +1,63 @@
 import React from 'react';
-import { BookOpen, Clock, TrendingUp, Trophy, BarChart3, Layers } from 'lucide-react';
+import { BookOpen, Clock, TrendingUp, Trophy, BarChart3, Layers, CheckCircle2 } from 'lucide-react';
 
 export default function StudentDashboard() {
-    // Mock data - sẽ được thay thế bằng API thực
-    // Đổi sang palette trung tính & icon chuyên nghiệp
-    const courses = [
+    // Mock data cho demo - TODO: Kết nối API thật sau
+    type Course = {
+        id: number;
+        name: string;
+        description: string;
+        progress: number;
+        icon?: React.ReactNode;
+        level: string;
+        lessons: { completed: number; total: number };
+    };
+
+    const mockCourses: Course[] = [
         {
             id: 1,
-            name: 'AI ứng dụng trong lớp học',
-            progress: 35,
-            icon: <BarChart3 className="h-6 w-6" />,
-            level: 'Đang học',
+            name: 'Java Spring Boot',
+            description: 'Học framework Spring Boot từ cơ bản đến nâng cao',
+            progress: 45,
+            level: 'intermediate',
+            lessons: { completed: 7, total: 20 },
+            icon: <Layers className="h-5 w-5" />,
         },
         {
             id: 2,
-            name: 'Phương pháp sư phạm số',
-            progress: 65,
-            icon: <Layers className="h-6 w-6" />,
-            level: 'Đang học',
+            name: 'HTML & CSS Fundamentals',
+            description: 'Nền tảng thiết kế web với HTML5 và CSS3',
+            progress: 100,
+            level: 'beginner',
+            lessons: { completed: 15, total: 15 },
+            icon: <CheckCircle2 className="h-5 w-5" />,
         },
         {
             id: 3,
-            name: 'Tài liệu tham khảo chuẩn',
+            name: 'ReactJS Advanced',
+            description: 'Xây dựng ứng dụng web hiện đại với React',
             progress: 0,
-            icon: <BookOpen className="h-6 w-6" />,
-            level: 'Chưa bắt đầu',
+            level: 'advanced',
+            lessons: { completed: 0, total: 25 },
+            icon: <BookOpen className="h-5 w-5" />,
         },
     ];
 
+    const [courses] = React.useState<Course[]>(mockCourses);
     const learningStreak = 5;
     const totalPoints = 520;
     const completedCourses = 3;
 
     return (
-        <div className="space-y-8">
-            {/* Welcome Header */}
-            <div className="rounded-2xl bg-gray-800 p-8 text-white shadow-sm">
-                <h1 className="mb-2 text-3xl font-semibold">Chào mừng trở lại</h1>
+        <div className="space-y-6">
+            {/* Welcome Header - Giảm padding */}
+            <div className="rounded-2xl bg-gray-800 p-6 text-white shadow-sm">
+                <h1 className="mb-1 text-3xl font-semibold">Chào mừng trở lại</h1>
                 <p className="text-sm text-gray-300">Tiếp tục hành trình học tập của bạn hôm nay với eduMange</p>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Stats Cards - Giữ nguyên */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
                     <div className="flex items-center justify-between">
                         <div>
@@ -95,86 +111,182 @@ export default function StudentDashboard() {
                 </div>
             </div>
 
-            {/* Courses Section */}
+            {/* Courses Section - Tối ưu */}
             <div>
-                <div className="mb-6 flex items-center justify-between">
+                <div className="mb-4 flex items-center justify-between">
                     <div>
                         <h2 className="text-2xl font-bold text-gray-900">Các lớp học của tôi</h2>
-                        <p className="mt-1 text-sm text-gray-600">Tiếp tục học tập từ nơi bạn đã dừng lại</p>
+                        <p className="mt-0.5 text-sm text-gray-600">Tiếp tục học tập từ nơi bạn đã dừng lại</p>
                     </div>
-                    <button className="rounded-md border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100">
+                    <button className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100">
                         Quản lý lớp học
                     </button>
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {courses.map((course) => (
-                        <div
-                            key={course.id}
-                            className="group overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-sm"
-                        >
-                            {/* Course Header */}
-                            <div className="flex items-start justify-between border-b border-gray-100 p-5">
-                                <div className="flex items-center space-x-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-100 text-gray-600">
-                                        {course.icon}
+                {/* Lớp đang học - Grid layout */}
+                <div className="mb-6">
+                    <h3 className="mb-3 text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                        Đang học ({courses.filter((c) => c.progress > 0 && c.progress < 100).length})
+                    </h3>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {courses
+                            .filter((c) => c.progress > 0 && c.progress < 100)
+                            .map((course) => (
+                                <div
+                                    key={course.id}
+                                    className="group overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md hover:border-blue-300"
+                                >
+                                    {/* Progress bar ngay trên cùng */}
+                                    <div className="h-1 bg-gray-100">
+                                        <div
+                                            className="h-full bg-blue-600 transition-all duration-500"
+                                            style={{ width: `${course.progress}%` }}
+                                        />
                                     </div>
-                                    <h3 className="text-base font-medium text-gray-900 leading-tight">{course.name}</h3>
-                                </div>
-                                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-                                    {course.level}
-                                </span>
-                            </div>
 
-                            {/* Course Progress */}
-                            <div className="p-6">
-                                <div className="mb-2 flex items-center justify-between text-sm">
-                                    <span className="font-medium text-gray-700">Tiến độ</span>
-                                    <span className="font-semibold text-gray-900">{course.progress}%</span>
-                                </div>
-                                <div className="h-2 overflow-hidden rounded-full bg-gray-200">
-                                    <div
-                                        className="h-full rounded-full bg-blue-600 transition-all duration-500"
-                                        style={{ width: `${course.progress}%` }}
-                                    />
-                                </div>
+                                    {/* Course Content - Giảm padding */}
+                                    <div className="p-4">
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex items-center gap-2 flex-1">
+                                                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-50 text-blue-600 flex-shrink-0">
+                                                    {course.icon}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="text-sm font-semibold text-gray-900 leading-tight truncate">
+                                                        {course.name}
+                                                    </h3>
+                                                    <p className="text-xs text-gray-500 line-clamp-1">
+                                                        {course.description}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span className="text-xs font-bold text-blue-600 ml-2">
+                                                {course.progress}%
+                                            </span>
+                                        </div>
 
-                                <button className="mt-4 w-full rounded-md border border-gray-300 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100">
-                                    {course.progress > 0 ? 'Tiếp tục' : 'Bắt đầu'}
-                                </button>
-                            </div>
-                        </div>
-                    ))}
+                                        <div className="flex items-center justify-between text-xs text-gray-600 mb-3">
+                                            <span>
+                                                {course.lessons.completed}/{course.lessons.total} bài học
+                                            </span>
+                                            <span className="text-gray-400">•</span>
+                                            <span>
+                                                {Math.round((course.lessons.completed / course.lessons.total) * 100)}%
+                                                hoàn thành
+                                            </span>
+                                        </div>
+
+                                        <button className="w-full rounded-md bg-blue-600 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700">
+                                            Tiếp tục học
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                    </div>
                 </div>
+
+                {/* Lớp hoàn thành - List layout như Khan Academy */}
+                {courses.filter((c) => c.progress === 100).length > 0 && (
+                    <div className="mb-6">
+                        <h3 className="mb-3 text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            Đã hoàn thành ({courses.filter((c) => c.progress === 100).length})
+                        </h3>
+                        <div className="space-y-2">
+                            {courses
+                                .filter((c) => c.progress === 100)
+                                .map((course) => (
+                                    <div
+                                        key={course.id}
+                                        className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 transition-all hover:shadow-sm hover:border-green-300"
+                                    >
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-green-50 text-green-600">
+                                                <CheckCircle2 className="h-5 w-5" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <h3 className="text-sm font-semibold text-gray-900">{course.name}</h3>
+                                                <p className="text-xs text-gray-500">{course.description}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs font-medium text-green-600">
+                                                {course.lessons.total} bài học
+                                            </span>
+                                            <button className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50">
+                                                Xem lại
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Lớp chưa bắt đầu - List layout compact */}
+                {courses.filter((c) => c.progress === 0).length > 0 && (
+                    <div>
+                        <h3 className="mb-3 text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            Chưa bắt đầu ({courses.filter((c) => c.progress === 0).length})
+                        </h3>
+                        <div className="space-y-2">
+                            {courses
+                                .filter((c) => c.progress === 0)
+                                .map((course) => (
+                                    <div
+                                        key={course.id}
+                                        className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 transition-all hover:shadow-sm hover:border-gray-300"
+                                    >
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-100 text-gray-400">
+                                                {course.icon}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h3 className="text-sm font-semibold text-gray-900">{course.name}</h3>
+                                                <p className="text-xs text-gray-500">{course.description}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-gray-500">
+                                                {course.lessons.total} bài học
+                                            </span>
+                                            <button className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-800">
+                                                Bắt đầu
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* Achievements Section */}
-            <div className="rounded-xl border border-gray-200 bg-white p-8">
-                <div className="mb-6 flex items-center justify-between">
+            {/* Achievements Section - Giảm khoảng cách */}
+            <div className="rounded-xl border border-gray-200 bg-white p-6">
+                <div className="mb-4 flex items-center justify-between">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Thành tích gần đây</h2>
-                        <p className="mt-1 text-sm text-gray-600">Các cột mốc học tập đã đạt</p>
+                        <h2 className="text-xl font-bold text-gray-900">Thành tích gần đây</h2>
+                        <p className="mt-0.5 text-xs text-gray-600">Các cột mốc học tập đã đạt</p>
                     </div>
-                    <button className="text-sm font-medium text-gray-600 hover:text-gray-800">Xem tất cả →</button>
+                    <button className="text-sm font-medium text-blue-600 hover:text-blue-700">Xem tất cả →</button>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {[
-                        { title: 'Chuỗi 5 ngày', desc: 'Học liên tục', icon: <TrendingUp className="h-5 w-5" /> },
-                        { title: '500+ điểm', desc: 'Điểm tích luỹ', icon: <Trophy className="h-5 w-5" /> },
-                        { title: '3 khóa hoàn thành', desc: 'Tiến độ tốt', icon: <BookOpen className="h-5 w-5" /> },
-                        { title: '12 giờ / tuần', desc: 'Thời gian học', icon: <Clock className="h-5 w-5" /> },
+                        { title: 'Chuỗi 5 ngày', desc: 'Học liên tục', icon: <TrendingUp className="h-4 w-4" /> },
+                        { title: '500+ điểm', desc: 'Điểm tích luỹ', icon: <Trophy className="h-4 w-4" /> },
+                        { title: '3 khóa hoàn thành', desc: 'Tiến độ tốt', icon: <BookOpen className="h-4 w-4" /> },
+                        { title: '12 giờ / tuần', desc: 'Thời gian học', icon: <Clock className="h-4 w-4" /> },
                     ].map((a, i) => (
                         <div
                             key={i}
-                            className="flex items-start space-x-3 rounded-md border border-gray-200 bg-white p-4"
+                            className="flex items-start space-x-2.5 rounded-md border border-gray-200 bg-white p-3"
                         >
-                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-100 text-gray-600">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-100 text-gray-600">
                                 {a.icon}
                             </div>
-                            <div className="space-y-1">
-                                <h3 className="text-sm font-medium text-gray-900">{a.title}</h3>
-                                <p className="text-xs text-gray-600">{a.desc}</p>
+                            <div className="space-y-0.5">
+                                <h3 className="text-xs font-semibold text-gray-900">{a.title}</h3>
+                                <p className="text-xs text-gray-500">{a.desc}</p>
                             </div>
                         </div>
                     ))}
