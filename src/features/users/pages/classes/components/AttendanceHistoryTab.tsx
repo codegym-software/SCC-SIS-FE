@@ -49,7 +49,6 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
             );
             setSessions(sorted);
         } catch (error) {
-            console.error('Error fetching sessions:', error);
             // Don't show toast on error to avoid spam
         } finally {
             setIsLoading(false);
@@ -98,7 +97,6 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
             setIsModalOpen(true);
             setIsEditMode(false);
         } catch (error) {
-            console.error('Error fetching session detail:', error);
             showErrorToast('Lỗi', 'Không thể tải chi tiết điểm danh');
         }
     };
@@ -127,7 +125,6 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
             setIsModalOpen(false);
             fetchSessions();
         } catch (error: any) {
-            console.error('Error updating session:', error);
             showErrorToast('Lỗi', error?.response?.data?.message || 'Không thể cập nhật điểm danh');
         }
     };
@@ -141,7 +138,6 @@ const AttendanceHistoryTab: React.FC<AttendanceHistoryTabProps> = ({ classId }) 
             setIsModalOpen(false);
             fetchSessions();
         } catch (error: any) {
-            console.error('Error deleting session:', error);
             showErrorToast('Lỗi', error?.response?.data?.message || 'Không thể xóa điểm danh');
         }
     };

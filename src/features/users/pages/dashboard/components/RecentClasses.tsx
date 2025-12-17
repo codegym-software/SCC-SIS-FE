@@ -53,7 +53,6 @@ export default function RecentClasses() {
               }
             });
           }
-          console.log(`[RecentClasses] Class ${cls.classId} (${cls.name}): ${activeCount} active students`);
           return { ...cls, activeStudentCount: activeCount };
         });
 
@@ -69,7 +68,6 @@ export default function RecentClasses() {
         
         setClasses(sorted.slice(0, 3));
       } catch (e) {
-        console.error('[RecentClasses] Error:', e);
         setClasses([]);
       } finally {
         setLoading(false);

@@ -117,7 +117,6 @@ export default function CreateStudentModal({ open, onClose, onSuccess }: CreateS
             onSuccess();
             onClose();
         } catch (error: any) {
-            console.error('Error creating student:', error);
             const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi tạo học viên';
             
             // Kiểm tra nếu lỗi liên quan đến email trùng (có thể là 400 hoặc các status khác)

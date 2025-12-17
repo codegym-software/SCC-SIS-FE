@@ -208,7 +208,6 @@ const ExamManagementPage: React.FC = () => {
             }));
             setAllClasses(classOptions);
         } catch (error) {
-            console.error('Error loading classes:', error);
             toast.error('Không thể tải danh sách lớp');
         }
     };
@@ -222,7 +221,6 @@ const ExamManagementPage: React.FC = () => {
             const response = await getModulesByProgram({ programId });
             setAllModules(response.data);
         } catch (error) {
-            console.error('Error loading modules:', error);
             toast.error('Không thể tải danh sách module');
             setAllModules([]);
         }
@@ -255,7 +253,6 @@ const ExamManagementPage: React.FC = () => {
             });
             setStudentsMap(map);
         } catch (error) {
-            console.error('Error loading students:', error);
             // Không show error vì không critical
         }
     };
@@ -288,7 +285,6 @@ const ExamManagementPage: React.FC = () => {
                 setModules(moduleOptions);
             }
         } catch (error: any) {
-            console.error('Error loading grade entries:', error);
             toast.error(error.response?.data?.message || 'Không thể tải danh sách đợt nhập điểm');
             setGradeEntries([]);
         } finally {
@@ -375,7 +371,6 @@ const ExamManagementPage: React.FC = () => {
                 setFilteredResults([]);
             }
         } catch (error: any) {
-            console.error('Error loading student grades:', error);
             toast.error(error.response?.data?.message || 'Không thể tải danh sách điểm');
             setExamResults([]);
             setFilteredResults([]);
@@ -488,7 +483,6 @@ const ExamManagementPage: React.FC = () => {
                 setExamResults([]);
             }
         } catch (error: any) {
-            console.error('Error loading student grades:', error);
             toast.error(error.response?.data?.message || 'Không thể tải danh sách điểm');
             setExamResults([]);
             setFilteredResults([]);
@@ -535,23 +529,12 @@ const ExamManagementPage: React.FC = () => {
             
             // Load điểm của đợt này với moduleId của entry
             if (selectedSemester && selectedClass) {
-                console.log('=== LOADING ENTRY DETAILS ===');
-                console.log('Entry:', entry);
-                console.log('ClassId:', selectedClass, 'Semester:', selectedSemester, 'ModuleId:', entry.moduleId);
-                
                 const response = await getStudentGrades(selectedClass, selectedSemester, entry.moduleId);
-                
-                console.log('API Response:', response);
-                console.log('Grade Records:', response.gradeRecords);
-                
                 if (response.gradeRecords && response.gradeRecords.length > 0) {
                     // Filter chỉ lấy records có entryDate khớp với entry được click
                     const recordsForThisEntry = response.gradeRecords.filter(
                         (record: GradeRecordResponse) => record.entryDate === entry.entryDate
                     );
-
-                    console.log('Filtered Records for entry date', entry.entryDate, ':', recordsForThisEntry);
-
                     if (recordsForThisEntry.length > 0) {
                         // Map thành ExamResultResponse format
                         const mappedResults: ExamResultResponse[] = [{
@@ -579,25 +562,18 @@ const ExamManagementPage: React.FC = () => {
                                 };
                             }),
                         }];
-                        
-                        console.log('Mapped Results:', mappedResults);
-                        console.log('Setting examResults and filteredResults...');
-                        
                         setExamResults(mappedResults);
                         setFilteredResults(mappedResults);
                         
                         // Mở dialog sau khi set state
-                        console.log('Opening dialog...');
                         setShowEntryDetailDialog(true);
                     } else {
-                        console.warn('No records found for entry date:', entry.entryDate);
                         setExamResults([]);
                         setFilteredResults([]);
                         // Vẫn mở dialog để hiển thị "Chưa có điểm"
                         setShowEntryDetailDialog(true);
                     }
                 } else {
-                    console.warn('No grade records in response');
                     setExamResults([]);
                     setFilteredResults([]);
                     // Vẫn mở dialog để hiển thị "Chưa có điểm"
@@ -608,7 +584,6 @@ const ExamManagementPage: React.FC = () => {
                 setShowEntryDetailDialog(true);
             }
         } catch (error: any) {
-            console.error('Error loading entry details:', error);
             toast.error(error.response?.data?.message || 'Không thể tải chi tiết đợt nhập điểm');
             setExamResults([]);
             setFilteredResults([]);
@@ -635,7 +610,6 @@ const ExamManagementPage: React.FC = () => {
                         return;
                     }
                 } catch (error) {
-                    console.error('Error getting grade entries:', error);
                     toast.error('Không thể lấy thông tin đợt nhập điểm');
                     return;
                 }
@@ -653,7 +627,6 @@ const ExamManagementPage: React.FC = () => {
                 }
             }
         } catch (error: any) {
-            console.error('Error deleting exam result:', error);
             toast.error(error.response?.data?.message || 'Không thể xóa đợt nhập điểm');
         }
     };
@@ -697,7 +670,6 @@ const ExamManagementPage: React.FC = () => {
                 }
             }
         } catch (error) {
-            console.error('Error deleting exam results:', error);
             toast.error('Không thể xóa đợt nhập điểm');
         } finally {
             setDeleting(false);
@@ -770,7 +742,6 @@ const ExamManagementPage: React.FC = () => {
                         entryDate = new Date().toISOString().split('T')[0];
                     }
                 } catch (error) {
-                    console.error('Error getting grade entries:', error);
                     // Fallback to today if error
                     entryDate = new Date().toISOString().split('T')[0];
                 }
@@ -784,17 +755,7 @@ const ExamManagementPage: React.FC = () => {
                 entryDate: entryDate,
                 gradeRecords: gradeRecords,
             };
-
-            console.log('=== FRONTEND UPDATE REQUEST ===');
-            console.log('Request:', JSON.stringify(updateRequest, null, 2));
-            console.log('================================');
-
             const response = await updateGradeRecords(updateRequest);
-            
-            console.log('=== FRONTEND RESPONSE ===');
-            console.log('Response:', JSON.stringify(response, null, 2));
-            console.log('=========================');
-
             toast.success('Cập nhật điểm thành công');
             setEditingRow(null);
             setEditingScores(null);
@@ -813,7 +774,6 @@ const ExamManagementPage: React.FC = () => {
                 loadGradeEntries(selectedClass, selectedModule || undefined);
             }
         } catch (error: any) {
-            console.error('Error updating exam result:', error);
             toast.error(error.response?.data?.message || 'Không thể cập nhật điểm');
         } finally {
             setSaving(false);
@@ -843,7 +803,6 @@ const ExamManagementPage: React.FC = () => {
             await exportGrades(selectedClass, selectedSemester, selectedModule, selectedDate);
             toast.success('Export điểm thành công');
         } catch (error: any) {
-            console.error('Error exporting grades:', error);
             toast.error(error.response?.data?.message || 'Không thể export điểm');
         } finally {
             setExporting(false);
@@ -1503,7 +1462,6 @@ const ExamManagementPage: React.FC = () => {
                                                         loadGradeEntries(selectedClass, selectedModule || undefined);
                                                     }
                                                 } catch (error: any) {
-                                                    console.error('Error deleting entry:', error);
                                                     toast.error(error.response?.data?.message || 'Không thể xóa đợt nhập điểm');
                                                 }
                                             }

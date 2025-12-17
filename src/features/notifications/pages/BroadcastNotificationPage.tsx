@@ -48,7 +48,6 @@ export default function BroadcastNotificationPage() {
             setRecipientType('all');
             setSeverity('INFO');
         } catch (error: any) {
-            console.error('Failed to send broadcast notification:', error);
             toast.error(error.response?.data?.message || 'Gửi thông báo thất bại');
         } finally {
             setLoading(false);

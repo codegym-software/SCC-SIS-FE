@@ -17,7 +17,6 @@ export async function ensureValidToken(minSeconds = 30): Promise<string | null> 
         await keycloak.updateToken(minSeconds);
         return keycloak.token ?? null;
     } catch (error) {
-        console.error('Token refresh failed:', error);
         await keycloak.login();
         return keycloak.token ?? null;
     }

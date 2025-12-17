@@ -36,7 +36,6 @@ export default function EditRoleModal({ open, onClose, onSuccess, role, permissi
                     })
                     setSelected(new Set(detail.permissionIds || []))
                 } catch (error) {
-                    console.error('Failed to load role detail:', error)
                     // Fallback to basic role data
                     setRoleDetail(role)
                     setFormData({
@@ -89,7 +88,6 @@ export default function EditRoleModal({ open, onClose, onSuccess, role, permissi
             onSuccess()
             onClose()
         } catch (error) {
-            console.error('Error updating role:', error)
             setErrors({ name: 'Có lỗi xảy ra khi cập nhật vai trò' })
         }
     }

@@ -45,7 +45,6 @@ export default function ActivityLogPage() {
       const response = await listUsers();
       setUsers(response.data);
     } catch (error) {
-      console.error('Failed to load users:', error);
     }
   };
 
@@ -67,7 +66,6 @@ export default function ActivityLogPage() {
       const data = await notificationsApi.getMyNotifications();
       setActivities(data);
     } catch (error) {
-      console.error('Failed to load activities:', error);
     } finally {
       setLoading(false);
     }
@@ -175,7 +173,6 @@ export default function ActivityLogPage() {
       // Reload activities to show new notification
       loadActivities();
     } catch (error: any) {
-      console.error('Failed to send broadcast notification:', error);
       toast.error(
         'Gửi thông báo thất bại',
         error.response?.data?.message || 'Có lỗi xảy ra khi gửi thông báo'

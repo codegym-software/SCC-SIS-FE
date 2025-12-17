@@ -54,20 +54,17 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({
       // Event: Document loaded
       documentViewer.addEventListener('documentLoaded', () => {
         setIsLoading(false);
-        console.log('✅ Document loaded:', fileName);
       });
 
       // Event: Document load error
       documentViewer.addEventListener('documentLoadError', (error) => {
         setIsLoading(false);
         setError('Không thể tải tài liệu. Vui lòng thử lại sau.');
-        console.error('❌ Document load error:', error);
       });
 
     }).catch((err) => {
       setIsLoading(false);
       setError('Không thể khởi tạo document viewer.');
-      console.error('❌ WebViewer initialization error:', err);
     });
 
   }, [documentUrl, fileName]);

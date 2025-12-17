@@ -155,7 +155,6 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                 setAssignedInstructorsFromAPI(mappedInstructors);
                 setLocalAssignedInstructors(mappedInstructors);
             } catch (error) {
-                console.error('Error fetching assigned instructors:', error);
                 setAssignedInstructorsFromAPI([]);
                 setLocalAssignedInstructors([]);
             }
@@ -193,7 +192,6 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
 
             setInstructors(mappedInstructors);
         } catch (error) {
-            console.error('Error fetching available instructors:', error);
             setInstructors([]);
         }
     };
@@ -351,7 +349,6 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                 [lecturerId]: classes,
             }));
         } catch (error) {
-            console.error('Error fetching lecturer classes:', error);
             setLecturerEnrolledClasses((prev) => ({
                 ...prev,
                 [lecturerId]: [],
@@ -477,8 +474,6 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                 setSearchTerm('');
             }
         } catch (error: any) {
-            console.error('Error assigning instructors:', error);
-
             if (error.response?.status === 409) {
                 const errorCode = error.response.data?.code;
                 if (errorCode === 'CLASS_MAX_ACTIVE_LECTURERS_EXCEEDED') {
@@ -548,8 +543,6 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
 
             setRemoveConfirm(null);
         } catch (error: any) {
-            console.error('Error removing instructor:', error);
-
             if (error.response?.status === 404) {
                 showErrorToast(
                     'Không tìm thấy phân công',
@@ -592,7 +585,6 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                         <button
                             className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
                             onClick={() => {
-                                console.log('Close button clicked');
                                 onClose?.();
                             }}
                         >
@@ -738,7 +730,6 @@ const AssignInstructorModal: React.FC<AssignInstructorModalProps> = ({ classItem
                 <div className="px-4 py-3 border-t flex justify-end">
                     <button
                         onClick={() => {
-                            console.log('Close footer button clicked');
                             onClose?.();
                         }}
                         className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"

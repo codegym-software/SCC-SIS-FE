@@ -84,7 +84,6 @@ const EditExamResultModal: React.FC<EditExamResultModalProps> = ({ examResult, o
             toast.success('Cập nhật điểm thành công');
             onSuccess();
         } catch (error: any) {
-            console.error('Error updating exam result:', error);
             toast.error(error.response?.data?.message || 'Không thể cập nhật điểm');
         } finally {
             setSubmitting(false);

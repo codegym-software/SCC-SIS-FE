@@ -116,7 +116,6 @@ const ProgramModulesManager: React.FC<ProgramModulesManagerProps> = ({
             // Hiển thị thông báo thành công
             toast.success('Sắp xếp thành công!', `Module "${draggedItem.name}" đã được di chuyển`);
         } catch (error) {
-            console.error('Failed to reorder module:', error);
             toast.error('Lỗi sắp xếp', 'Có lỗi xảy ra khi sắp xếp module. Vui lòng thử lại!');
         } finally {
             setIsReordering(false);

@@ -51,7 +51,6 @@ export default function CreateRoleModal({ open, onClose, onSuccess, permissions 
             onSuccess()
             onClose()
         } catch (error) {
-            console.error('Error creating role:', error)
             setErrors({ name: 'Có lỗi xảy ra khi tạo vai trò' })
         }
     }

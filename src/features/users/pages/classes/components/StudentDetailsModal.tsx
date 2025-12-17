@@ -50,7 +50,6 @@ const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ student, clas
             onStatusUpdated?.();
             onClose?.();
         } catch (error: any) {
-            console.error('Error updating status:', error);
             showErrorToast(error?.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái');
         } finally {
             setIsSubmitting(false);

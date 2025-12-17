@@ -101,7 +101,6 @@ export default function AttendancePage() {
                 classStudyTimeMapRef.current = studyTimeMap;
                 setClassesLoaded(true);
             } catch (error) {
-                console.error('Failed to fetch classes info:', error);
                 setClassesLoaded(true); // Still proceed even if failed
             }
         };
@@ -156,7 +155,6 @@ export default function AttendancePage() {
                                 sessionIdMap.set(key, session.sessionId);
                             });
                         } catch (error) {
-                            console.error(`Failed to fetch sessions for class ${classId}:`, error);
                         }
                     })
                 );
@@ -172,7 +170,6 @@ export default function AttendancePage() {
                 });
                 setSessions(enrichedSessions);
             } catch (error) {
-                console.error('Failed to fetch schedule:', error);
                 setSessions([]);
             } finally {
                 setLoading(false);

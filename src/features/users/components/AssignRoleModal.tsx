@@ -117,7 +117,6 @@ export default function AssignRoleModal({ userId, onClose, onSuccess }: AssignRo
         setDrafts([])
         setErrors({})
       } catch (error) {
-        console.error('[AssignRoleModal] Load data failed:', error)
         toast.error('Lỗi', 'Không thể tải dữ liệu người dùng')
       } finally {
         setLoading(false)
@@ -348,7 +347,6 @@ export default function AssignRoleModal({ userId, onClose, onSuccess }: AssignRo
       if (onSuccess) onSuccess()
       onClose()
     } catch (error: any) {
-      console.error('[AssignRoleModal] Submit failed:', error)
       toast.error('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra khi cập nhật vai trò')
     }
   }

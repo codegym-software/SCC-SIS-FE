@@ -54,7 +54,6 @@ export default function StudentWarnings({ onCountChange }: Props) {
                 setWarnings(mappedWarnings);
                 onCountChange?.(response.totalCount);
             } catch (error) {
-                console.error('Failed to fetch student warnings:', error);
             } finally {
                 setLoading(false);
             }

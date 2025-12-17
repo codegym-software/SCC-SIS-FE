@@ -28,8 +28,6 @@ export default function LessonViewerPage() {
 
     const [lesson, setLesson] = useState<Lesson | null>(null);
     const [allLessons, setAllLessons] = useState<Lesson[]>([]);
-    const [modulesBySemester, setModulesBySemester] = useState<ModulesBySemester>({});
-    const [expandedSemesters, setExpandedSemesters] = useState<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
     const [currentStatus, setCurrentStatus] = useState<'not-started' | 'in-progress' | 'completed'>('not-started');
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -77,12 +75,10 @@ export default function LessonViewerPage() {
                             const progressData = await lessonProgressApi.getProgressBulk(lessonIds);
                             setProgressMap(progressData);
                         } catch (error) {
-                            console.log('No progress data found');
                         }
                     }
                 } catch (error) {
                     // Fallback: nếu API getLessonsByClass không có, dùng getLessonsByModule
-                    console.log('⚠️ getLessonsByClass failed, fallback to getLessonsByModule');
                     const lessonsResponse = await getLessonsByModule(parseInt(moduleId));
                     const lessons = lessonsResponse.data.sort((a, b) => (a.lessonOrder || 0) - (b.lessonOrder || 0));
                     setAllLessons(lessons);
@@ -95,7 +91,6 @@ export default function LessonViewerPage() {
                             const progressData = await lessonProgressApi.getProgressBulk(lessonIds);
                             setProgressMap(progressData);
                         } catch (error) {
-                            console.log('No progress data found');
                         }
                     }
                 }
@@ -118,7 +113,6 @@ export default function LessonViewerPage() {
                             }
                         }
                     } catch (error) {
-                        console.log('No previous progress found');
                     }
                 }
 
@@ -128,7 +122,6 @@ export default function LessonViewerPage() {
 
                 // If not started, mark as in-progress and save to backend
                 if (status === 'not-started') {
-                    console.log('📚 Học viên bắt đầu xem bài học lần đầu, tạo progress...');
                     try {
                         // Call API to create progress record in backend
                         await updateLessonProgress(parseInt(lessonId), {
@@ -136,9 +129,7 @@ export default function LessonViewerPage() {
                             lastWatchedPosition: 0,
                             timeSpentSeconds: 0,
                         });
-                        console.log('✅ Progress record created in backend');
                     } catch (error: any) {
-                        console.error('⚠️ Failed to create initial progress:', error);
                         // Continue anyway, will try again on complete
                     }
 
@@ -147,7 +138,6 @@ export default function LessonViewerPage() {
                     setCurrentStatus('in-progress');
                 }
             } catch (error: any) {
-                console.error('Failed to load lesson:', error);
                 toast.error(error?.response?.data?.message || 'Không thể tải bài học');
             } finally {
                 setLoading(false);
@@ -159,10 +149,6 @@ export default function LessonViewerPage() {
 
     const handleComplete = async () => {
         if (!classId || !moduleId || !lessonId) return;
-
-        console.log('🎯 Completing lesson:', { classId, moduleId, lessonId });
-        console.log('📤 Calling API: POST /api/lessons/' + lessonId + '/progress with progressPercentage: 100');
-
         try {
             // Call API to save progress to backend
             const response = await updateLessonProgress(parseInt(lessonId), {
@@ -170,30 +156,18 @@ export default function LessonViewerPage() {
                 lastWatchedPosition: 0,
                 timeSpentSeconds: 0,
             });
-            console.log('✅ Progress saved to backend successfully!', response.data);
-
             // Update progress store (local state)
             progressStore.setLessonStatus(classId, moduleId, lessonId, 'completed');
 
             // Update local state immediately
             setCurrentStatus('completed');
-
-            console.log('✅ Lesson marked as completed');
             toast.success('Đã hoàn thành bài học!');
 
             // Delay navigation to show completed state
             setTimeout(() => {
-                console.log('🔙 Navigating back to modules page...');
                 navigate(`/my-classes/${classId}/modules`);
             }, 1500);
         } catch (error: any) {
-            console.error('❌ Failed to update lesson progress:', error);
-            console.error('❌ Error details:', {
-                status: error?.response?.status,
-                statusText: error?.response?.statusText,
-                data: error?.response?.data,
-                message: error?.message,
-            });
             toast.error(
                 'Không thể cập nhật tiến độ: ' +
                     (error?.response?.data?.message || error?.message || 'Lỗi không xác định'),
@@ -291,7 +265,7 @@ export default function LessonViewerPage() {
                             progressPercentage: progress,
                             lastWatchedPosition: currentTime,
                             timeSpentSeconds: Math.floor(currentTime),
-                        }).catch(console.error);
+                        }).catch(() => {});
                     }
 
                     // Auto-complete if watched > 90%

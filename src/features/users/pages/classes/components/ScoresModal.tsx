@@ -74,7 +74,6 @@ const ScoresModal: React.FC<ScoresModalProps> = ({ classItem, onClose }) => {
 
                 setStudents(studentsData);
             } catch (error) {
-                console.error('Error fetching students:', error);
                 showErrorToast('Lỗi tải dữ liệu', 'Không thể tải danh sách học viên');
             } finally {
                 setIsLoading(false);
@@ -104,7 +103,6 @@ const ScoresModal: React.FC<ScoresModalProps> = ({ classItem, onClose }) => {
 
                 setScores(mappedScores);
             } catch (error) {
-                console.error('Error fetching scores:', error);
                 // Mock data for demonstration
                 setScores([
                     {
@@ -216,7 +214,6 @@ const ScoresModal: React.FC<ScoresModalProps> = ({ classItem, onClose }) => {
             setEditingScore(null);
             setShowAddModal(false);
         } catch (error) {
-            console.error('Error saving score:', error);
             showErrorToast('Lỗi lưu điểm', 'Không thể lưu điểm');
         } finally {
             setIsSubmitting(false);
@@ -244,7 +241,6 @@ const ScoresModal: React.FC<ScoresModalProps> = ({ classItem, onClose }) => {
             setScores(prev => prev.filter(score => score.id !== scoreId));
             showSuccessToast('Xóa điểm thành công', 'Điểm đã được xóa');
         } catch (error) {
-            console.error('Error deleting score:', error);
             showErrorToast('Lỗi xóa điểm', 'Không thể xóa điểm');
         }
     };

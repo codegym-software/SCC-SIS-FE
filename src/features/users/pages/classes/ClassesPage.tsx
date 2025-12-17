@@ -473,7 +473,6 @@ export default function ClassesPage() {
                     } catch (error: any) {
                         // Bỏ qua lỗi 403 - user không có quyền truy cập centers
                         if (error?.response?.status !== 403) {
-                            console.error('Failed to load centers:', error);
                         }
                     }
                 }
@@ -497,7 +496,6 @@ export default function ClassesPage() {
                         }
                         return { classId: cls.id, studentCount: activeCount };
                     } catch (e) {
-                        console.error(`Failed to load student count for class ${cls.id}`, e);
                         return { classId: cls.id, studentCount: 0 };
                     }
                 });
@@ -516,7 +514,6 @@ export default function ClassesPage() {
                             }));
                         return { classId: cls.id, instructors };
                     } catch (e) {
-                        console.error(`Failed to load instructors for class ${cls.id}`, e);
                         return { classId: cls.id, instructors: [] };
                     }
                 });
@@ -539,7 +536,6 @@ export default function ClassesPage() {
                     }),
                 );
             } catch (error) {
-                console.error('Failed to fetch data:', error);
                 toast.error('Lỗi tải dữ liệu', 'Không thể tải danh sách lớp học');
             } finally {
                 setIsLoading(false);
@@ -590,7 +586,6 @@ export default function ClassesPage() {
                 }));
                 handleUpdateInstructors(classId, mapped);
             } catch (e) {
-                console.error('Failed to load assigned instructors', e);
                 // Do not toast-spam; show a gentle message once when detail opens
                 toast.error?.('Không tải được giảng viên', 'Vui lòng thử lại sau');
             }
@@ -621,7 +616,6 @@ export default function ClassesPage() {
             setSelectedClass((prev) => (prev && prev.id === classId ? { ...prev, students: activeCount } : prev));
             setClasses((prev) => prev.map((c) => (c.id === classId ? { ...c, students: activeCount } : c)));
         } catch (e) {
-            console.error('Failed to load active student count', e);
         }
     };
 
@@ -644,7 +638,6 @@ export default function ClassesPage() {
                 const response = await getModulesByProgram({ programId: selectedClass.programId });
                 setModules(response.data || []);
             } catch (error) {
-                console.error('Failed to load modules:', error);
                 toast.error?.('Không thể tải danh sách modules');
                 setModules([]);
             } finally {
@@ -895,23 +888,6 @@ export default function ClassesPage() {
                             toast.success('Tạo thành công!', `Lớp học ${name} đã được thêm vào hệ thống`);
                         }
                     } catch (error: any) {
-                        console.error('Failed to save class:', error);
-                        console.error('Error response:', error.response?.data);
-                        console.error('Error status:', error.response?.status);
-                        console.error(
-                            'Full error:',
-                            JSON.stringify(
-                                {
-                                    message: error.message,
-                                    status: error.response?.status,
-                                    statusText: error.response?.statusText,
-                                    data: error.response?.data,
-                                    headers: error.response?.headers,
-                                },
-                                null,
-                                2,
-                            ),
-                        );
 
                         const errorMessage =
                             error.response?.data?.message ||

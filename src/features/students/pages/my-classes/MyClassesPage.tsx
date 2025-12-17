@@ -106,7 +106,6 @@ export default function MyClassesPage() {
             await findContinueLesson(response.data);
         } catch (error: any) {
             toast.error(error?.response?.data?.message || 'Không thể tải danh sách lớp học');
-            console.error('Error loading classes:', error);
         } finally {
             setLoading(false);
         }
@@ -171,7 +170,6 @@ export default function MyClassesPage() {
             setModules(modulesData);
         } catch (error: any) {
             toast.error(error?.response?.data?.message || 'Không thể tải danh sách module');
-            console.error('Error loading modules:', error);
         } finally {
             setLoading(false);
         }

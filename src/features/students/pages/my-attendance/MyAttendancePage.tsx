@@ -50,7 +50,6 @@ export default function MyAttendancePage() {
                 setSelectedClass(myClasses[0]);
             }
         } catch (error: any) {
-            console.error('Failed to load classes:', error);
             toast.error('Không thể tải danh sách lớp');
         } finally {
             setLoading(false);
@@ -67,7 +66,6 @@ export default function MyAttendancePage() {
             // Giải pháp: Lấy từ enrollment trong myClasses
             const enrollment = classes.find(c => c.classId === selectedClass.classId);
             if (!enrollment) {
-                console.error('Class not found in enrollments');
                 setAttendanceData(null);
                 return;
             }
@@ -78,7 +76,6 @@ export default function MyAttendancePage() {
             );
             setAttendanceData(response.data);
         } catch (error: any) {
-            console.error('Failed to load attendance:', error);
             if (error?.response?.status !== 404) {
                 toast.error('Không thể tải điểm danh');
             }

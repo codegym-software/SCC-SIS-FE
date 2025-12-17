@@ -64,7 +64,6 @@ export function GradeEntryPage() {
             setGradeInputs(inputs);
         } catch (err) {
             setError('Không thể tải dữ liệu điểm. Vui lòng thử lại.');
-            console.error('Error loading grade entry:', err);
         } finally {
             setLoading(false);
         }
@@ -119,7 +118,6 @@ export function GradeEntryPage() {
             setTimeout(() => setSuccessMessage(null), 3000);
         } catch (err) {
             setError('Không thể lưu điểm. Vui lòng thử lại.');
-            console.error('Error saving grades:', err);
         } finally {
             setSaving(false);
         }
@@ -136,7 +134,6 @@ export function GradeEntryPage() {
             navigate('/grades');
         } catch (err) {
             setError('Không thể xóa đợt nhập điểm. Vui lòng thử lại.');
-            console.error('Error deleting grade entry:', err);
         } finally {
             setDeleting(false);
             setShowDeleteDialog(false);

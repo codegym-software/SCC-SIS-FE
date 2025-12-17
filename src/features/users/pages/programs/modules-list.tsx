@@ -37,7 +37,6 @@ const ModulesList: React.FC<ModulesListProps> = ({
 
     // Debug: Log modules khi component nhận props mới
     useEffect(() => {
-        console.log('[ModulesList] Received modules:', modules.length, modules);
     }, [modules]);
     
     const handleProgramFilterChange = (value: string) => {
@@ -45,7 +44,6 @@ const ModulesList: React.FC<ModulesListProps> = ({
         // Gọi callback để fetch lại modules từ API
         if (onProgramFilterChange) {
             const programId = value === 'Tất cả' ? null : Number(value);
-            console.log('[ModulesList] Program filter changed:', { value, programId });
             onProgramFilterChange(programId);
         }
     };
@@ -123,8 +121,6 @@ const ModulesList: React.FC<ModulesListProps> = ({
                     <select
                         value={programFilter}
                         onChange={(e) => {
-                            console.log('[ModulesList] Dropdown changed:', e.target.value);
-                            console.log('[ModulesList] Available programs:', programs);
                             handleProgramFilterChange(e.target.value);
                         }}
                         className="h-9 rounded-md border px-3 text-sm"

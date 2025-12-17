@@ -68,7 +68,6 @@ export default function AttendanceStatisticsPage() {
                 const { data } = await getCentersLite();
                 setCenters(data);
             } catch (error) {
-                console.error('Error fetching centers:', error);
             }
         };
 
@@ -106,7 +105,6 @@ export default function AttendanceStatisticsPage() {
                     setSelectedClass(classesData[0].classId.toString());
                 }
             } catch (error) {
-                console.error('Error fetching classes:', error);
                 setClasses([]);
             }
         };
@@ -139,7 +137,6 @@ export default function AttendanceStatisticsPage() {
                 });
                 setStatistics(data);
             } catch (error) {
-                console.error('Error fetching statistics:', error);
                 setStatistics(null);
             } finally {
                 setLoading(false);
@@ -187,7 +184,6 @@ export default function AttendanceStatisticsPage() {
             link.remove();
             window.URL.revokeObjectURL(url);
         } catch (error) {
-            console.error('Error exporting to Excel:', error);
             alert('Không thể xuất file Excel. Vui lòng thử lại.');
         }
     };

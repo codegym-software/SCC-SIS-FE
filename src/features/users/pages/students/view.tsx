@@ -14,7 +14,6 @@ interface StudentViewProps {
 }
 
 const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
-    console.log('🎯 StudentView component rendered for:', student.name, student.id);
     alert('Component rendered: ' + student.name); // DEBUG
     
     const { error: showErrorToast } = useToast();
@@ -28,12 +27,8 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
     const loadStudentGrades = async () => {
         try {
             setIsLoadingGrades(true);
-            console.log('🔥 Loading grades for student ID:', student.id);
             alert('Calling API for student: ' + student.id); // DEBUG - xóa sau
             const grades = await getStudentGradesByStudentId(parseInt(student.id));
-            console.log('✅ Received grades from API:', grades);
-            console.log('📊 Number of grades:', grades.length);
-            
             // Sort by semester and entry date
             grades.sort((a, b) => {
                 if (a.semester !== b.semester) {
@@ -41,12 +36,8 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                 }
                 return (a.entryDate || '').localeCompare(b.entryDate || '');
             });
-            
-            console.log('Sorted grades:', grades);
             setStudentGrades(grades);
         } catch (error: any) {
-            console.error('Error loading student grades:', error);
-            console.error('Error details:', error?.response?.data);
             showErrorToast('Lỗi tải điểm thi', error?.response?.data?.message || 'Không thể tải điểm thi của học viên');
         } finally {
             setIsLoadingGrades(false);
@@ -85,7 +76,6 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                     }
                 } catch (error) {
                     // Skip if can't access this class
-                    console.log(`Cannot access class ${classItem.classId}`);
                 }
             }
             
@@ -101,7 +91,6 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
                 });
             }
         } catch (error: any) {
-            console.error('Error loading enrollments:', error);
             showErrorToast('Lỗi tải danh sách lớp học', error?.response?.data?.message || 'Không thể tải danh sách lớp học');
         } finally {
             setIsLoadingEnrollments(false);
@@ -110,7 +99,6 @@ const StudentView: React.FC<StudentViewProps> = ({ student, onClose }) => {
 
     // Load student's enrollments and grades when component mounts
     useEffect(() => {
-        console.log('🚀 === StudentView useEffect triggered for student:', student.id, student.name);
         alert('useEffect triggered! Student: ' + student.name); // DEBUG - xóa sau
         loadEnrollments(); // Load ngay khi mount để có activeEnrollment
         loadStudentGrades(); // Load điểm của học viên

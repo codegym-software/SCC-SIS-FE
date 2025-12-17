@@ -59,7 +59,6 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ classItem, onClose, i
 
                 setStudents(studentsData);
             } catch (error) {
-                console.error('Error fetching students:', error);
                 showErrorToast('Lỗi tải dữ liệu', 'Không thể tải danh sách học viên');
             } finally {
                 setIsLoading(false);

@@ -90,7 +90,6 @@ export default function UsersPage() {
                     } else if (Array.isArray(dataObj.items)) {
                         rolesData = dataObj.items;
                     } else {
-                        console.log('[DEBUG] Unknown data structure, keys:', Object.keys(dataObj));
                         rolesData = [];
                     }
                 }
@@ -102,7 +101,6 @@ export default function UsersPage() {
             } catch (e: any) {
                 // Bỏ qua lỗi 403 - user không có quyền truy cập
                 if (e?.response?.status !== 403) {
-                    console.error('[DROPDOWN LOAD ERR]', e?.response?.status, e?.response?.data);
                     toast.error('Lỗi', 'Không tải được danh sách vai trò/trung tâm');
                 }
             }
@@ -130,11 +128,6 @@ export default function UsersPage() {
 
             setUsers(data);
         } catch (e: any) {
-            console.error('GET /api/user-views failed', {
-                status: e?.response?.status,
-                data: e?.response?.data,
-                url: e?.config?.url,
-            });
             setError(e?.response?.data?.message || 'Tải danh sách người dùng thất bại');
         } finally {
             setLoading(false);
@@ -148,7 +141,6 @@ export default function UsersPage() {
             const res = await getRoleStats(params);
             setRoleStats((res.data as Record<string, number>) || {});
         } catch (e: any) {
-            console.error('[ROLE STATS ERR]', e?.response?.status, e?.response?.data);
             // không chặn UI
         }
     };
@@ -273,7 +265,6 @@ export default function UsersPage() {
                         await fetchUsers();
                         await fetchRoleStats();
                     } catch (e: any) {
-                        console.error('[CREATE USER ERR]', e?.response?.status, e?.response?.data);
                         const msg =
                             e?.response?.data?.message ||
                             e?.message ||

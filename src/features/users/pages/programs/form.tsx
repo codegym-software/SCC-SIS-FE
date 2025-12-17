@@ -67,8 +67,6 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
                 if (description && description.trim() !== '') {
                     formData.description = description.trim();
                 }
-                
-                console.log('Form data before submit:', formData);
                 onSubmit(formData);
             }}
         >

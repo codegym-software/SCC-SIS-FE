@@ -46,7 +46,6 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                 setWarnings(response.warnings);
                 setWarningCount(response.totalCount);
             } catch (error) {
-                console.error('Failed to fetch student warnings:', error);
                 setWarnings([]);
                 setWarningCount(0);
             } finally {
@@ -70,7 +69,6 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                     setWarningCount(highSeverityCount);
                 }
             } catch (error) {
-                console.error('Failed to fetch notifications:', error);
                 setNotifications([]);
             }
         };
@@ -225,7 +223,6 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                             const updated = await notificationsApi.getMyNotifications();
                                                             setNotifications(updated);
                                                         } catch (error) {
-                                                            console.error('Failed to mark all as read:', error);
                                                         }
                                                     }}
                                                 />
@@ -316,7 +313,6 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                                             setWarningCount(highSeverityCount);
                                                                         }
                                                                     } catch (error) {
-                                                                        console.error('Failed to mark notification as read:', error);
                                                                     }
                                                                 }}
                                                                 className="w-full"
@@ -387,7 +383,6 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                                     setNotifications(updated);
                                                                 }
                                                             } catch (error) {
-                                                                console.error('Failed to mark notification as read:', error);
                                                             }
                                                         }}
                                                         className="w-full"

@@ -77,8 +77,6 @@ export default function ClassModulesPage() {
 
     const refreshProgressData = async () => {
         if (modules.length === 0) return;
-
-        console.log('🔄 Refreshing progress data for', modules.length, 'modules');
         const progressMap: Record<number, { total: number; completed: number; percentage: number }> = {};
 
         try {
@@ -103,15 +101,10 @@ export default function ClassModulesPage() {
                                 percentage: percentage,
                             };
                             progressMap[m.moduleId] = newProgress;
-                            console.log(
-                                `✅ Module ${m.moduleId} (${m.name}):`,
-                                `${newProgress.completed}/${newProgress.total} hoàn thành (${percentage}%)`,
-                            );
                         } else {
                             progressMap[m.moduleId] = { total: 0, completed: 0, percentage: 0 };
                         }
                     } catch (err) {
-                        console.error(`❌ Failed to load progress for module ${m.moduleId}:`, err);
                         progressMap[m.moduleId] = moduleProgressData[m.moduleId] || {
                             total: 0,
                             completed: 0,
@@ -121,9 +114,7 @@ export default function ClassModulesPage() {
                 }),
             );
             setModuleProgressData(progressMap);
-            console.log('✅ All progress data updated successfully');
         } catch (error) {
-            console.error('❌ Error refreshing progress:', error);
         }
     };
 
@@ -132,7 +123,6 @@ export default function ClassModulesPage() {
         if (modules.length > 0 && !loading) {
             // Delay slightly to ensure modules state is stable
             const timer = setTimeout(() => {
-                console.log('🔄 Refreshing progress data after page load...');
                 refreshProgressData();
             }, 500);
             return () => clearTimeout(timer);
@@ -201,7 +191,6 @@ export default function ClassModulesPage() {
                                             percentage: percentage,
                                         };
                                     } catch (err) {
-                                        console.error(`Failed to load progress for module ${m.moduleId}:`, err);
                                         progressMap[m.moduleId] = { 
                                             total: lessons.length, 
                                             completed: 0, 
@@ -212,7 +201,6 @@ export default function ClassModulesPage() {
                                     progressMap[m.moduleId] = { total: 0, completed: 0, percentage: 0 };
                                 }
                             } catch (err) {
-                                console.error(`Failed to load lessons for module ${m.moduleId}:`, err);
                                 lessonsMap[m.moduleId] = [];
                                 progressMap[m.moduleId] = { total: 0, completed: 0, percentage: 0 };
                             }
@@ -231,7 +219,6 @@ export default function ClassModulesPage() {
                             const lessonProgress = await lessonProgressApi.getProgressBulk(allLessonIds);
                             setLessonProgressMap(lessonProgress);
                         } catch (err) {
-                            console.log('No lesson progress data found');
                         }
                     }
                 }
