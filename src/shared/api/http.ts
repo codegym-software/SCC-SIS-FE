@@ -4,7 +4,7 @@ import { ensureValidToken, keycloak } from '../../keycloak';
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:7000', // fallback nếu không có env
-    timeout: 15000,
+    timeout: 60000, // 60 seconds for AI chat (Cohere + Qdrant can be slow)
 });
 
 // Cooldown để tránh spam toast (5 giây)

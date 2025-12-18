@@ -1,15 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Trash2, Loader2, Bot, User, Maximize2, MessageSquare, Paperclip } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { sendAIMessage, getChatHistory, clearChatHistory, type AIChatMessage } from '@/shared/api/ai-chat';
+import { createChatSession, getChatSessionDetails, sendChatMessage, deleteChatSession, type ChatMessageResponse } from '@/shared/api/chat';
 import { useUserProfile } from '@/stores/userProfile';
 import { useToast } from '@/shared/hooks/useToast';
+
+// Type adapter for compatibility with existing UI
+type AIChatMessage = {
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: string;
+};
 
 interface AIAssistantProps {
     className?: string;
 }
 
 export default function AIAssistant({ className = '' }: AIAssistantProps) {
+    console.log('🟢 AIAssistant component loaded!');
+    
     const [isOpen, setIsOpen] = useState(false);
     const [isExiting, setIsExiting] = useState(false);
     const [messages, setMessages] = useState<AIChatMessage[]>([]);
@@ -18,6 +27,7 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+    const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,8 +45,8 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
     }, [messages]);
 
     useEffect(() => {
-        if (isOpen && profile?.userId && messages.length === 0) {
-            loadChatHistory();
+        if (isOpen && profile?.userId && !currentSessionId) {
+            initializeSession();
         }
     }, [isOpen, profile?.userId]);
 
@@ -66,22 +76,46 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
         };
     }, [isOpen]);
 
-    const loadChatHistory = async () => {
+    const initializeSession = async () => {
         if (!profile?.userId) return;
 
         setIsLoadingHistory(true);
         try {
-            const history = await getChatHistory(profile.userId);
-            setMessages(history);
+            // Create new session for this chat
+            const session = await createChatSession('Trò chuyện với AI');
+            setCurrentSessionId(session.sessionId);
+            
+            // Load session details (should be empty initially)
+            const details = await getChatSessionDetails(session.sessionId);
+            const formattedMessages: AIChatMessage[] = (details.messages || []).map((msg: ChatMessageResponse) => ({
+                role: msg.role,
+                content: msg.content,
+                timestamp: msg.createdAt,
+            }));
+            setMessages(formattedMessages);
         } catch (error) {
-            console.error('Failed to load chat history:', error);
+            console.error('Failed to initialize session:', error);
+            toast.error('Lỗi', 'Không thể khởi tạo phiên chat');
         } finally {
             setIsLoadingHistory(false);
         }
     };
 
     const handleSendMessage = async () => {
-        if (!inputValue.trim() || isLoading || !profile?.userId) return;
+        console.log('🔵 handleSendMessage called', { 
+            inputValue: inputValue.trim(), 
+            isLoading, 
+            currentSessionId 
+        });
+        
+        if (!inputValue.trim() || isLoading || !currentSessionId) {
+            console.log('❌ Early return:', { 
+                noInput: !inputValue.trim(), 
+                isLoading, 
+                noSession: !currentSessionId 
+            });
+            return;
+        }
 
         const userMessage = inputValue.trim();
         setInputValue('');
@@ -96,17 +130,15 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
         setIsLoading(true);
 
         try {
-            const response = await sendAIMessage({
-                message: userMessage,
-                userId: profile.userId,
-                userName: profile.fullName || profile.keycloak?.username || 'bạn',
-                useOpenAI: false,
-            });
+            // Call real backend API
+            console.log('📤 Calling sendChatMessage:', { currentSessionId, userMessage });
+            const response = await sendChatMessage(currentSessionId, userMessage);
+            console.log('📥 Response received:', response);
 
             const assistantMessage: AIChatMessage = {
                 role: 'assistant',
-                content: response.message,
-                timestamp: new Date().toISOString(),
+                content: response.message, // Backend returns 'message'
+                timestamp: response.timestamp, // Backend returns 'timestamp'
             };
             setMessages((prev) => [...prev, assistantMessage]);
         } catch (error) {
@@ -125,10 +157,15 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
     };
 
     const handleClearHistory = async () => {
-        if (!profile?.userId) return;
+        if (!currentSessionId) return;
 
         try {
-            await clearChatHistory(profile.userId);
+            // Delete current session
+            await deleteChatSession(currentSessionId);
+            
+            // Create new session
+            const session = await createChatSession('Trò chuyện với AI');
+            setCurrentSessionId(session.sessionId);
             setMessages([]);
             setShowClearConfirm(false);
             toast.success('Thành công', 'Đã xóa lịch sử chat');

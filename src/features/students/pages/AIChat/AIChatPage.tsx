@@ -13,7 +13,8 @@ import {
     Upload,
     FileText,
 } from 'lucide-react';
-import { sendAIMessage, getChatHistory, clearChatHistory, type AIChatMessage } from '@/shared/api/ai-chat';
+import { createChatSession, getChatSessions, getChatSessionDetails, sendChatMessage, deleteChatSession, type ChatSessionDTO, type ChatMessageResponse, type ChatSessionDetailsResponse } from '@/shared/api/chat';
+import type { AIChatMessage } from '@/shared/api/ai-chat';
 import { useUserProfile } from '@/stores/userProfile';
 import { useToast } from '@/shared/hooks/useToast';
 
@@ -37,9 +38,11 @@ export default function AIChatPage() {
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [isLoadingSession, setIsLoadingSession] = useState(false);
     const [showClearConfirm, setShowClearConfirm] = useState(false);
+    const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
     const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
-    const [currentSessionId, setCurrentSessionId] = useState<string>('default');
+    const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
     const [savedFiles, setSavedFiles] = useState<UploadedFile[]>([]);
     const [showFilesSection, setShowFilesSection] = useState(false);
@@ -77,20 +80,45 @@ export default function AIChatPage() {
 
         setIsLoadingHistory(true);
         try {
-            const history = await getChatHistory(profile.userId);
-            setMessages(history);
+            const sessions = await getChatSessions();
 
-            // Create a session from history if exists
-            if (history.length > 0) {
-                const firstUserMessage = history.find((m) => m.role === 'user');
-                setChatSessions([
-                    {
-                        id: 'default',
-                        title: firstUserMessage?.content.slice(0, 30) + '...' || 'Cuộc trò chuyện mới',
-                        lastMessage: history[history.length - 1].content.slice(0, 50) + '...',
-                        timestamp: history[history.length - 1].timestamp,
-                    },
-                ]);
+            if (sessions.length > 0) {
+                // Convert backend sessions to UI format
+                const uiSessions: ChatSession[] = sessions.map((s: ChatSessionDTO) => ({
+                    id: s.sessionId.toString(),
+                    title: s.title,
+                    lastMessage: 'Nhấn để xem chi tiết',
+                    timestamp: s.updatedAt,
+                }));
+                setChatSessions(uiSessions);
+
+                // Load the most recent session
+                const latestSession = sessions[0];
+                setCurrentSessionId(latestSession.sessionId);
+                
+                // Load messages from the session
+                const sessionDetails = await getChatSessionDetails(latestSession.sessionId);
+                
+                if (sessionDetails.messages && sessionDetails.messages.length > 0) {
+                    const uiMessages: AIChatMessage[] = sessionDetails.messages.map((m: ChatMessageResponse) => ({
+                        role: m.role === 'user' ? 'user' : 'assistant',
+                        content: m.message,
+                        timestamp: m.timestamp,
+                    }));
+                    setMessages(uiMessages);
+                } else {
+                    setMessages([]);
+                }
+            } else {
+                // Create a new session if no sessions exist
+                const newSession = await createChatSession('Trò chuyện mới');
+                setCurrentSessionId(newSession.sessionId);
+                setChatSessions([{
+                    id: newSession.sessionId.toString(),
+                    title: newSession.title,
+                    lastMessage: '',
+                    timestamp: newSession.createdAt,
+                }]);
             }
         } catch (error) {
             console.error('Failed to load chat history:', error);
@@ -100,7 +128,7 @@ export default function AIChatPage() {
     };
 
     const handleSendMessage = async () => {
-        if (!inputValue.trim() || isLoading || !profile?.userId) return;
+        if (!inputValue.trim() || isLoading || !currentSessionId) return;
 
         const userMessage = inputValue.trim();
         setInputValue('');
@@ -113,49 +141,32 @@ export default function AIChatPage() {
         };
         setMessages((prev) => [...prev, newUserMessage]);
 
-        // Update session if this is the first message
-        if (messages.length === 0) {
-            setChatSessions([
-                {
-                    id: currentSessionId,
-                    title: userMessage.slice(0, 30) + (userMessage.length > 30 ? '...' : ''),
-                    lastMessage: userMessage.slice(0, 50) + (userMessage.length > 50 ? '...' : ''),
-                    timestamp: new Date().toISOString(),
-                },
-            ]);
-        }
-
         setIsLoading(true);
 
         try {
-            const response = await sendAIMessage({
-                message: userMessage,
-                userId: profile.userId,
-                userName: profile.fullName || profile.keycloak?.username || 'bạn',
-                useOpenAI: false,
-            });
+            const response = await sendChatMessage(currentSessionId, userMessage);
 
             // Add assistant response
             const assistantMessage: AIChatMessage = {
                 role: 'assistant',
                 content: response.message,
-                timestamp: new Date().toISOString(),
+                timestamp: response.timestamp,
             };
             setMessages((prev) => [...prev, assistantMessage]);
 
             // Update session last message
             setChatSessions((prev) =>
                 prev.map((s) =>
-                    s.id === currentSessionId
+                    s.id === currentSessionId.toString()
                         ? {
                               ...s,
                               lastMessage: response.message.slice(0, 50) + '...',
-                              timestamp: new Date().toISOString(),
+                              timestamp: response.timestamp,
                           }
                         : s,
                 ),
             );
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to send message:', error);
             toast.error('Lỗi', 'Không thể gửi tin nhắn. Vui lòng thử lại.');
 
@@ -171,17 +182,62 @@ export default function AIChatPage() {
     };
 
     const handleClearHistory = async () => {
-        if (!profile?.userId) return;
+        if (!currentSessionId) return;
 
         try {
-            await clearChatHistory(profile.userId);
+            await deleteChatSession(currentSessionId);
+            
+            // Create new session
+            const newSession = await createChatSession('Trò chuyện mới');
+            setCurrentSessionId(newSession.sessionId);
             setMessages([]);
-            setChatSessions([]);
+            setChatSessions([{
+                id: newSession.sessionId.toString(),
+                title: newSession.title,
+                lastMessage: '',
+                timestamp: newSession.createdAt,
+            }]);
+            
             setShowClearConfirm(false);
             toast.success('Thành công', 'Đã xóa lịch sử chat');
         } catch (error) {
             console.error('Failed to clear history:', error);
             toast.error('Lỗi', 'Không thể xóa lịch sử chat');
+        }
+    };
+
+    const handleDeleteSession = async () => {
+        if (!sessionToDelete) return;
+
+        try {
+            const sessionId = parseInt(sessionToDelete);
+            await deleteChatSession(sessionId);
+            
+            // Remove from sessions list
+            setChatSessions((prev) => prev.filter((s) => s.id !== sessionToDelete));
+            
+            // If deleted session was current session, create new one
+            if (currentSessionId === sessionId) {
+                const newSession = await createChatSession('Trò chuyện mới');
+                setCurrentSessionId(newSession.sessionId);
+                setMessages([]);
+                setChatSessions((prev) => [
+                    {
+                        id: newSession.sessionId.toString(),
+                        title: newSession.title,
+                        lastMessage: '',
+                        timestamp: newSession.createdAt,
+                    },
+                    ...prev,
+                ]);
+            }
+            
+            setSessionToDelete(null);
+            toast.success('Thành công', 'Đã xóa cuộc trò chuyện');
+        } catch (error) {
+            console.error('Failed to delete session:', error);
+            toast.error('Lỗi', 'Không thể xóa cuộc trò chuyện');
+            setSessionToDelete(null);
         }
     };
 
@@ -252,10 +308,29 @@ export default function AIChatPage() {
         return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     };
 
-    const handleNewChat = () => {
-        setCurrentSessionId('new-' + Date.now());
-        setMessages([]);
-        inputRef.current?.focus();
+    const handleNewChat = async () => {
+        try {
+            const newSession = await createChatSession('Cuộc trò chuyện mới');
+            setCurrentSessionId(newSession.sessionId);
+            setMessages([]);
+            
+            // Add to sessions list
+            setChatSessions((prev) => [
+                {
+                    id: newSession.sessionId.toString(),
+                    title: newSession.title,
+                    lastMessage: '',
+                    timestamp: newSession.createdAt,
+                },
+                ...prev,
+            ]);
+            
+            inputRef.current?.focus();
+            toast.success('Thành công', 'Đã tạo cuộc trò chuyện mới');
+        } catch (error) {
+            console.error('Failed to create new session:', error);
+            toast.error('Lỗi', 'Không thể tạo cuộc trò chuyện mới');
+        }
     };
 
     return (
@@ -302,23 +377,69 @@ export default function AIChatPage() {
                         ) : (
                             <div className="space-y-1">
                                 {chatSessions.map((session) => (
-                                    <button
+                                    <div
                                         key={session.id}
-                                        onClick={() => setCurrentSessionId(session.id)}
-                                        className={`w-full text-left rounded-lg p-3 transition-colors ${
-                                            currentSessionId === session.id
+                                        className={`relative group w-full rounded-lg p-3 transition-colors ${
+                                            currentSessionId?.toString() === session.id
                                                 ? 'bg-blue-50 border border-blue-200'
                                                 : 'hover:bg-gray-50 border border-transparent'
                                         }`}
                                     >
-                                        <h4 className="text-sm font-medium text-gray-900 mb-1 truncate">
-                                            {session.title}
-                                        </h4>
-                                        <p className="text-xs text-gray-500 truncate">{session.lastMessage}</p>
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            {new Date(session.timestamp).toLocaleDateString('vi-VN')}
-                                        </p>
-                                    </button>
+                                        <button
+                                            onClick={async () => {
+                                                const sessionId = parseInt(session.id);
+                                                console.log('🖱️ Clicked session:', sessionId);
+                                                setCurrentSessionId(sessionId);
+                                                setIsLoadingSession(true);
+                                                
+                                                // Load messages for this session
+                                                try {
+                                                    console.log('📚 Loading session details:', sessionId);
+                                                    const response = await getChatSessionDetails(sessionId);
+                                                    console.log('📥 Backend response:', response);
+                                                    console.log('📨 Messages count:', response.messages?.length || 0);
+                                                    
+                                                    if (response.messages && response.messages.length > 0) {
+                                                        const uiMessages: AIChatMessage[] = response.messages.map((m: ChatMessageResponse) => ({
+                                                            role: m.role === 'user' ? 'user' : 'assistant',
+                                                            content: m.message,
+                                                            timestamp: m.timestamp,
+                                                        }));
+                                                        console.log('✅ Setting messages:', uiMessages.length);
+                                                        setMessages(uiMessages);
+                                                    } else {
+                                                        console.log('⚠️ No messages in this session');
+                                                        setMessages([]);
+                                                    }
+                                                } catch (error) {
+                                                    console.error('❌ Failed to load session:', error);
+                                                    toast.error('Lỗi', 'Không thể tải tin nhắn');
+                                                    setMessages([]);
+                                                } finally {
+                                                    setIsLoadingSession(false);
+                                                }
+                                            }}
+                                            className="w-full text-left pr-8"
+                                        >
+                                            <h4 className="text-sm font-medium text-gray-900 mb-1 truncate">
+                                                {session.title}
+                                            </h4>
+                                            <p className="text-xs text-gray-500 truncate">{session.lastMessage}</p>
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                {new Date(session.timestamp).toLocaleDateString('vi-VN')}
+                                            </p>
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSessionToDelete(session.id);
+                                            }}
+                                            className="absolute top-2 right-2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all"
+                                            title="Xóa cuộc trò chuyện"
+                                        >
+                                            <X className="h-4 w-4 text-red-600" />
+                                        </button>
+                                    </div>
                                 ))}
                             </div>
                         )}
@@ -393,9 +514,10 @@ export default function AIChatPage() {
                     {/* Messages Area */}
                     <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-gray-50 to-white">
                         <div className="max-w-4xl mx-auto space-y-6 h-full">
-                            {isLoadingHistory ? (
+                            {(isLoadingHistory || isLoadingSession) ? (
                                 <div className="flex items-center justify-center h-full">
                                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                                    <span className="ml-3 text-gray-600">Tải tin nhắn...</span>
                                 </div>
                             ) : messages.length === 0 ? (
                                 <div
@@ -571,6 +693,40 @@ export default function AIChatPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Delete Session Confirmation Modal */}
+                {sessionToDelete && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                        <div className="w-[90%] max-w-md rounded-xl bg-white p-6 shadow-2xl">
+                            <div className="mb-4">
+                                <h4 className="text-lg font-semibold text-gray-900">
+                                    Xóa cuộc trò chuyện?
+                                </h4>
+                                <p className="mt-2 text-sm text-gray-600">
+                                    Cuộc trò chuyện này và tất cả tin nhắn trong đó sẽ bị xóa vĩnh viễn.
+                                </p>
+                                <p className="mt-1 text-xs text-red-600 font-medium">
+                                    Hành động này không thể hoàn tác.
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setSessionToDelete(null)}
+                                    className="flex-1 rounded-lg bg-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    onClick={handleDeleteSession}
+                                    className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                >
+                                    Xóa
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Clear History Confirmation Modal */}
                 {showClearConfirm && (
