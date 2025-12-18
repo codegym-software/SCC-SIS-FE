@@ -24,13 +24,13 @@ export default function MyGradesPage() {
         if (grades.length > 0) {
             // Find the newest grade date
             const sortedGrades = [...grades].sort((a, b) => {
-                const dateA = a.gradeDate ? new Date(a.gradeDate).getTime() : 0;
-                const dateB = b.gradeDate ? new Date(b.gradeDate).getTime() : 0;
+                const dateA = a.entryDate ? new Date(a.entryDate).getTime() : 0;
+                const dateB = b.entryDate ? new Date(b.entryDate).getTime() : 0;
                 return dateB - dateA;
             });
             
-            if (sortedGrades[0]?.gradeDate) {
-                const date = new Date(sortedGrades[0].gradeDate);
+            if (sortedGrades[0]?.entryDate) {
+                const date = new Date(sortedGrades[0].entryDate);
                 setSelectedYear(date.getFullYear());
                 setSelectedMonth(date.getMonth() + 1);
             }

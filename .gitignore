@@ -23,3 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 node_modules_old/
+
+# Documentation
+README_CICD.md
+
+# Docker
+docker-compose.yml

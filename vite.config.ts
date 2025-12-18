@@ -11,6 +11,15 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
         },
     },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'exceljs-vendor': ['exceljs'],
+                },
+            },
+        },
+    },
     server: {
         port: 5173,
         strictPort: true, // Không tự động tìm port khác nếu 5173 bị chiếm

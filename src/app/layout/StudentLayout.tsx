@@ -25,6 +25,7 @@ import { getMyClasses, type ClassDto } from '@/shared/api/classes';
 import { notificationsApi } from '@/shared/api/notifications';
 import type { NotificationItem } from '@/shared/api/notifications';
 import { studentWarningsApi, type MyWarning } from '@/shared/api/student-warnings';
+import AIAssistant from '@/components/AIAssistant/AIAssistant';
 
 type StudentLayoutProps = {
     children: React.ReactNode;
@@ -642,6 +643,9 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                     </main>
                 </div>
             </div>
+
+            {/* AI Assistant - Floating on all student pages */}
+            <AIAssistant className="bottom-6 right-6" />
         </div>
     );
 }

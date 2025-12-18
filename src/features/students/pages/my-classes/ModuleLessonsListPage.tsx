@@ -42,7 +42,7 @@ export default function ModuleLessonsListPage() {
                             const lessonsResponse = await getLessonsByModule(parseInt(moduleId));
                             const loadedLessons = lessonsResponse.data || [];
                             setLessons(loadedLessons);
-                            
+
                             // Load progress for all lessons
                             if (loadedLessons.length > 0) {
                                 try {
@@ -143,31 +143,32 @@ export default function ModuleLessonsListPage() {
                     </div>
 
                     {/* Progress bar */}
-                    {lessons.length > 0 && (() => {
-                        const total = lessons.length;
-                        const completed = lessons.filter(l => progressMap[l.lessonId]?.status === 'COMPLETED').length;
-                        const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+                    {lessons.length > 0 &&
+                        (() => {
+                            const total = lessons.length;
+                            const completed = lessons.filter(
+                                (l) => progressMap[l.lessonId]?.status === 'COMPLETED',
+                            ).length;
+                            const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-                        return (
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="font-medium text-gray-700">Tiến độ hoàn thành</span>
-                                    <span className="font-bold text-blue-600">
-                                        {completed}/{total} bài học
-                                    </span>
+                            return (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="font-medium text-gray-700">Tiến độ hoàn thành</span>
+                                        <span className="font-bold text-blue-600">
+                                            {completed}/{total} bài học
+                                        </span>
+                                    </div>
+                                    <div className="relative w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                                        <div
+                                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+                                            style={{ width: `${percentage}%` }}
+                                        />
+                                    </div>
+                                    <div className="text-xs text-gray-500 text-right">{percentage}% hoàn thành</div>
                                 </div>
-                                <div className="relative w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                                    <div
-                                        className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
-                                        style={{ width: `${percentage}%` }}
-                                    />
-                                </div>
-                                <div className="text-xs text-gray-500 text-right">
-                                    {percentage}% hoàn thành
-                                </div>
-                            </div>
-                        );
-                    })()}
+                            );
+                        })()}
                 </div>
 
                 {/* Lessons list */}
@@ -181,7 +182,8 @@ export default function ModuleLessonsListPage() {
                         lessons.map((lesson, idx) => {
                             const progress = progressMap[lesson.lessonId];
                             const isCompleted = progress?.status === 'COMPLETED';
-                            const isInProgress = progress && progress.progressPercentage > 0 && progress.status !== 'COMPLETED';
+                            const isInProgress =
+                                progress && progress.progressPercentage > 0 && progress.status !== 'COMPLETED';
                             const progressPercentage = progress?.progressPercentage || 0;
 
                             return (
@@ -216,7 +218,9 @@ export default function ModuleLessonsListPage() {
                                                             stroke="#3b82f6"
                                                             strokeWidth="3"
                                                             strokeDasharray={2 * Math.PI * 18}
-                                                            strokeDashoffset={2 * Math.PI * 18 * (1 - progressPercentage / 100)}
+                                                            strokeDashoffset={
+                                                                2 * Math.PI * 18 * (1 - progressPercentage / 100)
+                                                            }
                                                             strokeLinecap="round"
                                                             style={{ transition: 'stroke-dashoffset 0.3s ease' }}
                                                         />

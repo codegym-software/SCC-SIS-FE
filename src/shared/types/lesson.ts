@@ -20,26 +20,26 @@ export interface Lesson {
 }
 
 export interface LessonProgress {
-  lessonId: number;
-  studentId: number;
-  progressPercentage: number;
-  isCompleted: boolean;
-  lastWatchedPosition?: number;
-  timeSpentSeconds?: number;
-  completedAt?: string;
-  updatedAt: string;
+    lessonId: number;
+    studentId: number;
+    progressPercentage: number;
+    isCompleted: boolean;
+    lastWatchedPosition?: number;
+    timeSpentSeconds?: number;
+    completedAt?: string;
+    updatedAt: string;
 }
 
 export interface ModuleProgress {
-  moduleId: number;
-  totalLessons: number;
-  completedLessons: number;
-  progressPercentage: number;
-  lessons: Array<{
-    lessonId: number;
-    lessonTitle: string;
-    lessonType: LessonType;
-    isMandatory: boolean;
-    progress?: LessonProgress;
-  }>;
+    moduleId: number;
+    totalLessons: number;
+    completedLessons: number;
+    progressPercentage: number;
+    lessons: Array<{
+        lessonId: number;
+        lessonTitle: string;
+        lessonType: LessonType;
+        isMandatory: boolean;
+        progress?: LessonProgress;
+    }>;
 }

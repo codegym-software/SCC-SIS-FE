@@ -21,6 +21,7 @@ import { NavLink } from 'react-router-dom';
 import { useUserProfile } from '../../stores/userProfile';
 import { roleDisplay } from '../../utils/roleLabel';
 import TopNavBar from '@/features/users/pages/dashboard/components/TopNavBar';
+import AIAssistant from '@/components/AIAssistant/AIAssistant';
 
 function RootLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -226,8 +227,6 @@ function AppLayout({ children }: AppLayoutProps) {
                 <aside
                     className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r bg-gradient-to-b from-gray-50 to-white hidden md:flex md:flex-col fixed left-0 top-14 bottom-0 overflow-y-auto z-40 transition-all duration-300 shadow-sm`}
                 >
-
-
                     {/* Added extra top spacing so all menu items sit a bit lower */}
                     <nav className="flex-1 px-2 pt-8 pb-3 space-y-1">
                         {menuGroups.map((group) => (
@@ -309,6 +308,9 @@ function AppLayout({ children }: AppLayoutProps) {
                     <main className="flex-1 w-full min-h-screen p-6">{children}</main>
                 </div>
             </div>
+
+            {/* AI Assistant - Floating button at bottom right */}
+            <AIAssistant className="bottom-6 right-6" />
         </div>
     );
 }
