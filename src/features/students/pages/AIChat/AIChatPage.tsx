@@ -1,5 +1,6 @@
 // src/features/students/pages/AIChat/AIChatPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Send,
     Trash2,
@@ -12,6 +13,7 @@ import {
     X,
     Upload,
     FileText,
+    ArrowLeft,
 } from 'lucide-react';
 import { createChatSession, getChatSessions, getChatSessionDetails, sendChatMessage, deleteChatSession, type ChatSessionDTO, type ChatMessageResponse, type ChatSessionDetailsResponse } from '@/shared/api/chat';
 import type { AIChatMessage } from '@/shared/api/ai-chat';
@@ -34,6 +36,7 @@ interface UploadedFile {
 }
 
 export default function AIChatPage() {
+    const navigate = useNavigate();
     const [messages, setMessages] = useState<AIChatMessage[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -53,6 +56,10 @@ export default function AIChatPage() {
 
     const { me: profile } = useUserProfile();
     const toast = useToast();
+
+    const handleBack = () => {
+        navigate(-1); // Quay lại trang trước
+    };
 
     // Auto-scroll to bottom when new messages arrive
     const scrollToBottom = () => {
@@ -337,14 +344,26 @@ export default function AIChatPage() {
         <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             {/* Top Header - Trợ lý AI (Full Width) */}
             <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-5 shadow-sm">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                        <Bot className="h-6 w-6 text-white" />
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                            <Bot className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-semibold text-white">Trợ lý AI</h2>
+                            <p className="text-xs text-blue-50">Luôn sẵn sàng hỗ trợ</p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-lg font-semibold text-white">Trợ lý AI</h2>
-                        <p className="text-xs text-blue-50">Luôn sẵn sàng hỗ trợ</p>
-                    </div>
+                    
+                    {/* Nút Trở lại */}
+                    <button
+                        onClick={handleBack}
+                        className="flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-white/20 backdrop-blur-sm"
+                        aria-label="Quay lại"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="hidden sm:inline">Trở lại</span>
+                    </button>
                 </div>
             </div>
 
