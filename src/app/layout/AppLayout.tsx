@@ -15,6 +15,7 @@ import {
     FileText,
     Bell,
     BarChart3,
+    MessageSquare,
 } from 'lucide-react';
 import { keycloak } from '../../keycloak';
 import { NavLink } from 'react-router-dom';
@@ -136,7 +137,7 @@ function AppLayout({ children }: AppLayoutProps) {
                         },
                         {
                             id: 'statistics',
-                            label: 'Thống kê',
+                            label: 'Thống kê Điểm danh',
                             path: '/statistics',
                             icon: BarChart3,
                         },
@@ -188,9 +189,15 @@ function AppLayout({ children }: AppLayoutProps) {
                         },
                         {
                             id: 'statistics',
-                            label: 'Thống kê',
+                            label: 'Thống kê Điểm danh',
                             path: '/statistics',
                             icon: BarChart3,
+                        },
+                        {
+                            id: 'ai-chat-analytics',
+                            label: 'Thống kê AI Chat',
+                            path: '/ai-chat-analytics',
+                            icon: MessageSquare,
                         },
                     ],
         },
