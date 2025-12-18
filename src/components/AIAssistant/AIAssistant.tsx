@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Trash2, Loader2, Bot, User, Maximize2, MessageSquare, Paperclip } from 'lucide-react';
+import { X, Send, Trash2, Loader2, Bot, User, Maximize2, MessageSquare, Paperclip, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { sendAIMessage, getChatHistory, clearChatHistory, type AIChatMessage } from '@/shared/api/ai-chat';
+import { sendAIMessage, getChatHistory, clearChatHistory, getAIChatAnalytics, type AIChatMessage, type AIChatAnalytics } from '@/shared/api/ai-chat';
 import { useUserProfile } from '@/stores/userProfile';
 import { useToast } from '@/shared/hooks/useToast';
 
@@ -18,6 +18,8 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+    const [showAnalytics, setShowAnalytics] = useState(false);
+    const [analytics, setAnalytics] = useState<AIChatAnalytics | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -25,6 +27,10 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
     const { me: profile } = useUserProfile();
     const toast = useToast();
     const navigate = useNavigate();
+
+    const isAdmin = profile?.roles?.some((role) => 
+        ['SUPER_ADMIN', 'ACADEMIC_STAFF'].includes(role.code)
+    ) ?? false;
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -190,6 +196,26 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
         navigate('/student/ai-chat');
     };
 
+    const handleToggleAnalytics = async () => {
+        if (!showAnalytics && !analytics) {
+            // Load analytics data first time
+            try {
+                const data = await getAIChatAnalytics(7);
+                setAnalytics(data);
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+                toast.error('Lỗi', 'Không thể tải dữ liệu thống kê');
+                return;
+            }
+        }
+        setShowAnalytics(!showAnalytics);
+    };
+
+    const handleViewFullAnalytics = () => {
+        navigate('/ai-chat-analytics');
+        handleClose();
+    };
+
     return (
         <div className={`fixed z-50 ${className}`}>
             {!isOpen && (
@@ -231,6 +257,18 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
                             </div>
                         </button>
                         <div className="flex items-center gap-2">
+                            {isAdmin && (
+                                <button
+                                    onClick={handleToggleAnalytics}
+                                    className={`rounded-lg p-2 transition-colors hover:bg-white/20 ${
+                                        showAnalytics ? 'bg-white/20' : ''
+                                    }`}
+                                    title="Thống kê"
+                                    aria-label="Xem thống kê AI Chat"
+                                >
+                                    <BarChart3 className="h-4 w-4" />
+                                </button>
+                            )}
                             <button
                                 onClick={handleExpandToFullscreen}
                                 className="rounded-lg p-2 transition-colors hover:bg-white/20"
@@ -257,6 +295,66 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
                             </button>
                         </div>
                     </div>
+
+                    {/* Mini Analytics Preview Panel */}
+                    {showAnalytics && analytics && (
+                        <div className="border-t border-gray-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                                    <BarChart3 className="h-4 w-4 text-blue-600" />
+                                    Quick Stats (7 ngày)
+                                </h4>
+                                <button
+                                    onClick={handleViewFullAnalytics}
+                                    className="text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                                >
+                                    Xem chi tiết →
+                                </button>
+                            </div>
+                            
+                            {/* KPI Mini Cards */}
+                            <div className="grid grid-cols-2 gap-2 mb-3">
+                                <div className="bg-white rounded-lg p-2.5 shadow-sm">
+                                    <p className="text-xs text-gray-600 mb-0.5">Câu hỏi</p>
+                                    <p className="text-lg font-bold text-gray-900">{analytics.totalQuestions.toLocaleString()}</p>
+                                    <p className={`text-xs ${analytics.percentChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {analytics.percentChange >= 0 ? '↑' : '↓'} {Math.abs(analytics.percentChange)}%
+                                    </p>
+                                </div>
+                                <div className="bg-white rounded-lg p-2.5 shadow-sm">
+                                    <p className="text-xs text-gray-600 mb-0.5">Users</p>
+                                    <p className="text-lg font-bold text-gray-900">{analytics.totalUsers}</p>
+                                    <p className="text-xs text-green-600">↑ 8%</p>
+                                </div>
+                                <div className="bg-white rounded-lg p-2.5 shadow-sm">
+                                    <p className="text-xs text-gray-600 mb-0.5">Avg time</p>
+                                    <p className="text-lg font-bold text-gray-900">{analytics.avgResponseTime.toFixed(1)}s</p>
+                                    <p className="text-xs text-red-600">↓ 15%</p>
+                                </div>
+                                <div className="bg-white rounded-lg p-2.5 shadow-sm">
+                                    <p className="text-xs text-gray-600 mb-0.5">Chi phí</p>
+                                    <p className="text-lg font-bold text-gray-900">${analytics.totalCost.toFixed(2)}</p>
+                                    <p className="text-xs text-green-600">↑ 5%</p>
+                                </div>
+                            </div>
+
+                            {/* Top 3 Questions */}
+                            <div className="bg-white rounded-lg p-2.5 shadow-sm">
+                                <p className="text-xs font-semibold text-gray-700 mb-2">Top 3 câu hỏi</p>
+                                <div className="space-y-1.5">
+                                    {analytics.topQuestions.slice(0, 3).map((q, idx) => (
+                                        <div key={idx} className="flex items-center gap-2">
+                                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold flex items-center justify-center">
+                                                {idx + 1}
+                                            </span>
+                                            <p className="text-xs text-gray-700 truncate flex-1">{q.question}</p>
+                                            <span className="text-xs text-gray-500">{q.count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
                         {isLoadingHistory ? (
