@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import AIAssistant from '../AIAssistant';
 import * as aiChatApi from '@/shared/api/ai-chat';
 import { useUserProfile } from '@/stores/userProfile';
@@ -14,6 +15,11 @@ vi.mock('@/shared/hooks/useToast', () => ({
         info: vi.fn(),
     }),
 }));
+
+// Helper function to render with router
+const renderWithRouter = (component: React.ReactElement) => {
+    return render(<MemoryRouter>{component}</MemoryRouter>);
+};
 
 describe('AIAssistant', () => {
     const mockProfile = {
@@ -30,7 +36,7 @@ describe('AIAssistant', () => {
     });
 
     it('should render floating button when closed', () => {
-        render(<AIAssistant />);
+        renderWithRouter(<AIAssistant />);
         const button = screen.getByLabelText('Mở trợ lý AI');
         expect(button).toBeInTheDocument();
     });
@@ -38,7 +44,7 @@ describe('AIAssistant', () => {
     it('should open chat window when button is clicked', async () => {
         (aiChatApi.getChatHistory as any).mockResolvedValue([]);
 
-        render(<AIAssistant />);
+        renderWithRouter(<AIAssistant />);
         const button = screen.getByLabelText('Mở trợ lý AI');
 
         fireEvent.click(button);
@@ -55,7 +61,7 @@ describe('AIAssistant', () => {
         ];
         (aiChatApi.getChatHistory as any).mockResolvedValue(mockHistory);
 
-        render(<AIAssistant />);
+        renderWithRouter(<AIAssistant />);
         const button = screen.getByLabelText('Mở trợ lý AI');
 
         fireEvent.click(button);
@@ -75,7 +81,7 @@ describe('AIAssistant', () => {
             success: true,
         });
 
-        render(<AIAssistant />);
+        renderWithRouter(<AIAssistant />);
         const button = screen.getByLabelText('Mở trợ lý AI');
         fireEvent.click(button);
 
@@ -111,7 +117,7 @@ describe('AIAssistant', () => {
         // Mock window.confirm
         window.confirm = vi.fn(() => true);
 
-        render(<AIAssistant />);
+        renderWithRouter(<AIAssistant />);
         const button = screen.getByLabelText('Mở trợ lý AI');
         fireEvent.click(button);
 
@@ -130,7 +136,7 @@ describe('AIAssistant', () => {
     it('should close chat window when X button is clicked', async () => {
         (aiChatApi.getChatHistory as any).mockResolvedValue([]);
 
-        render(<AIAssistant />);
+        renderWithRouter(<AIAssistant />);
         const openButton = screen.getByLabelText('Mở trợ lý AI');
         fireEvent.click(openButton);
 
@@ -150,7 +156,7 @@ describe('AIAssistant', () => {
         (aiChatApi.getChatHistory as any).mockResolvedValue([]);
         (aiChatApi.sendAIMessage as any).mockRejectedValue(new Error('Network error'));
 
-        render(<AIAssistant />);
+        renderWithRouter(<AIAssistant />);
         const button = screen.getByLabelText('Mở trợ lý AI');
         fireEvent.click(button);
 
@@ -177,7 +183,7 @@ describe('AIAssistant', () => {
             success: true,
         });
 
-        render(<AIAssistant />);
+        renderWithRouter(<AIAssistant />);
         const button = screen.getByLabelText('Mở trợ lý AI');
         fireEvent.click(button);
 
@@ -198,7 +204,7 @@ describe('AIAssistant', () => {
     it('should not send empty messages', async () => {
         (aiChatApi.getChatHistory as any).mockResolvedValue([]);
 
-        render(<AIAssistant />);
+        renderWithRouter(<AIAssistant />);
         const button = screen.getByLabelText('Mở trợ lý AI');
         fireEvent.click(button);
 
