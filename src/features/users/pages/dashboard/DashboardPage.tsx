@@ -210,15 +210,8 @@ export default function DashboardPage() {
                 setLecturersCount(0);
             }
 
-            // Fetch warnings count - students with issues (placeholder logic)
-            // TODO: Replace with actual warnings/alerts API when available
-            try {
-                // For now, approximate by checking inactive or problematic students
-                // This could be students with overdue payments, low attendance, etc.
-                setWarningsCount(5); // Placeholder
-            } catch (err) {
-                setWarningsCount(0);
-            }
+            // Fetch warnings count - Will be set by StudentWarnings component via onCountChange callback
+            setWarningsCount(0); // Initial value, will be updated by StudentWarnings
         } catch (error) {
             // Set default values in case of error (based on actual API responses)
             setCentersCount(5);
@@ -279,6 +272,18 @@ export default function DashboardPage() {
             onClick: () => navigate('/students'),
         },
         {
+            label: 'Trung tâm',
+            value: centersCount.toString(),
+            sub: `${centersCount} trung tâm hoạt động`,
+            change: null,
+            changeType: 'neutral' as const,
+            icon: Building2 as React.ComponentType<{ size?: number }>,
+            iconColor: 'from-indigo-500 to-purple-500',
+            bgGradient: 'from-indigo-50 to-purple-50',
+            glowColor: 'shadow-indigo-200',
+            onClick: () => navigate('/centers'),
+        },
+        {
             label: 'Lớp đang hoạt động',
             value: classesCount.toString(),
             sub: `${classesCount} lớp đang hoạt động`,
@@ -301,17 +306,6 @@ export default function DashboardPage() {
             bgGradient: 'from-blue-50 to-cyan-50',
             glowColor: 'shadow-blue-200',
             onClick: () => navigate('/users'),
-        },
-        {
-            label: 'Cảnh báo',
-            value: warningsCount.toString(),
-            sub: `${warningsCount} vấn đề cần xử lý`,
-            change: null,
-            changeType: 'neutral' as const,
-            icon: AlertTriangle as React.ComponentType<{ size?: number }>,
-            iconColor: 'from-red-500 to-orange-500',
-            bgGradient: 'from-red-50 to-orange-50',
-            glowColor: 'shadow-red-200',
         },
     ];
 
