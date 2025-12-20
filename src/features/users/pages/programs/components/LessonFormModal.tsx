@@ -122,7 +122,6 @@ const LessonFormModal: React.FC<LessonFormModalProps> = ({
       showSuccess('Thành công', `Đã import câu hỏi từ file ${file.name}`);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error: any) {
-      console.error('Error uploading quiz file:', error);
       showError(
         'Lỗi tải lên file', 
         error?.response?.data?.message || 'Không thể import câu hỏi. Vui lòng kiểm tra lại định dạng file.'

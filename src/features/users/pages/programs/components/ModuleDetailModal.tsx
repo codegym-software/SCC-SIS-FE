@@ -86,9 +86,6 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
         setResourceUrl('');
 
         // DEBUG: Log để kiểm tra
-        console.log('📦 Module data:', module);
-        console.log('📚 Resources:', module.resources);
-
         // Load lessons khi mở modal
         if (open) {
             loadLessons();
@@ -102,7 +99,6 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ open, onClose, mo
             const response = await getLessonsByModule(module.moduleId);
             setLessons(response.data || []);
         } catch (error: any) {
-            console.error('Failed to load lessons:', error);
             // Không hiện lỗi nếu chưa có lessons
             setLessons([]);
         } finally {

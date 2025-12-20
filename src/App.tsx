@@ -14,12 +14,8 @@ function AppContent() {
     const location = useLocation();
 
     // Debug: Log user profile
-    console.log('AppContent render - loading:', loading, 'me:', me, 'error:', error);
-
     // Kiểm tra nếu user là học sinh
     const isStudent = me?.roles?.some((role) => role.code === 'STUDENT') ?? false;
-    console.log('isStudent:', isStudent);
-
     // Check if current route should render without layout
     const currentRoute = appRoutes.find((r) => {
         if (r.path.includes(':')) {

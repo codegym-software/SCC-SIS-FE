@@ -127,7 +127,6 @@ export default function StudentProfilePage() {
             setEnrollmentMap(map);
             return map; // Return the map để sử dụng ngay
         } catch (error) {
-            console.error('Error loading enrollments:', error);
             return new Map();
         }
     };
@@ -196,7 +195,6 @@ export default function StudentProfilePage() {
             const studentsData = response.data.map((dto) => mapStudentDtoToStudent(dto, enrollMap));
             setStudents(studentsData);
         } catch (error) {
-            console.error('Error fetching students:', error);
         }
     };
 
@@ -210,7 +208,6 @@ export default function StudentProfilePage() {
             }));
             setPrograms(programList);
         } catch (error) {
-            console.error('Error loading programs:', error);
         }
     };
 
@@ -259,7 +256,6 @@ export default function StudentProfilePage() {
             const fullStudent = mapStudentDtoToStudent(response.data);
             setOpenView(fullStudent);
         } catch (error) {
-            console.error('Error fetching student details:', error);
             // Fallback to showing current student data
             setOpenView(student);
         }
@@ -289,7 +285,6 @@ export default function StudentProfilePage() {
             await reloadAllData();
             setOpenEdit(null);
         } catch (error: any) {
-            console.error('Error updating student:', error);
             const errorMessage = error?.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin học viên';
             toast.error('Cập nhật thất bại', errorMessage);
         }
@@ -382,7 +377,6 @@ export default function StudentProfilePage() {
             await reloadAllData();
             setDeleteConfirm(null);
         } catch (error: any) {
-            console.error('Error deleting student:', error);
             const errorMessage = error?.response?.data?.message || 'Có lỗi xảy ra khi xóa học viên';
             toast.error('Xóa thất bại', errorMessage);
         }

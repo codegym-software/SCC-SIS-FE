@@ -58,9 +58,7 @@ export function VimeoPlayer({ videoUrl, lessonId, lastPosition = 0, onProgressUp
 
             // Resume from last position if available
             if (lastPosition > 0) {
-                player.setCurrentTime(lastPosition).catch((err) => {
-                    if (isMounted) console.error('Error setting position:', err);
-                });
+                player.setCurrentTime(lastPosition).catch(() => {});
             }
 
             // Get video duration
@@ -69,7 +67,7 @@ export function VimeoPlayer({ videoUrl, lessonId, lastPosition = 0, onProgressUp
                 if (isMounted) {
                     videoDuration = Math.floor(duration);
                 }
-            }).catch(console.error);
+            }).catch(() => {});
 
             // Track progress every 5 seconds
             progressInterval = setInterval(async () => {
@@ -109,7 +107,6 @@ export function VimeoPlayer({ videoUrl, lessonId, lastPosition = 0, onProgressUp
                 } catch (error) {
                     // Ignore errors if component unmounted
                     if (isMounted) {
-                        console.error('Error tracking progress:', error);
                     }
                 }
             }, 5000);
@@ -133,7 +130,6 @@ export function VimeoPlayer({ videoUrl, lessonId, lastPosition = 0, onProgressUp
                     }
                 } catch (error) {
                     if (isMounted) {
-                        console.error('Error marking as completed:', error);
                     }
                 }
             });
@@ -147,7 +143,6 @@ export function VimeoPlayer({ videoUrl, lessonId, lastPosition = 0, onProgressUp
             });
         }).catch((error) => {
             if (isMounted) {
-                console.error('Error initializing Vimeo player:', error);
             }
         });
 

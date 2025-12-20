@@ -108,7 +108,6 @@ export default function CreateUserModal({ open, onClose, onSubmit }: CreateUserM
         setCentersData(centersArr);
       })
       .catch((err) => {
-        console.error("[CreateUserModal] Load roles/centers failed:", err);
         alert("Tải dữ liệu vai trò/trung tâm thất bại");
       })
       .finally(() => {

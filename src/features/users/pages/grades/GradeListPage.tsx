@@ -151,7 +151,6 @@ export function GradeListPage() {
             }));
             setAllClasses(classOptions);
         } catch (error) {
-            console.error('Error loading classes:', error);
             toast.error('Không thể tải danh sách lớp');
         }
     };
@@ -165,7 +164,6 @@ export function GradeListPage() {
             const response = await getModulesByProgram({ programId });
             setAllModules(response.data);
         } catch (error) {
-            console.error('Error loading modules:', error);
             toast.error('Không thể tải danh sách module');
             setAllModules([]);
         }
@@ -183,7 +181,6 @@ export function GradeListPage() {
                 setModules(moduleOptions);
             }
         } catch (error) {
-            console.error('Error loading modules for semester:', error);
             toast.error('Không thể tải danh sách module');
             setModules([]);
         }
@@ -197,7 +194,6 @@ export function GradeListPage() {
             const data = await getGradeEntries(selectedClass, selectedModule || undefined);
             setGradeEntries(data);
         } catch (err) {
-            console.error('Error loading grade entries:', err);
             toast.error('Không thể tải danh sách đợt nhập điểm');
         } finally {
             setLoading(false);
@@ -234,7 +230,6 @@ export function GradeListPage() {
             await loadGradeEntries();
         } catch (err) {
             toast.error('Không thể xóa đợt nhập điểm. Vui lòng thử lại.');
-            console.error('Error deleting grade entry:', err);
         } finally {
             setDeleting(false);
             setShowDeleteDialog(false);
@@ -259,7 +254,6 @@ export function GradeListPage() {
             toast.success('Xuất file Excel thành công');
         } catch (err) {
             toast.error('Không thể xuất file Excel. Vui lòng thử lại.');
-            console.error('Error exporting grades:', err);
         } finally {
             setExporting(false);
         }

@@ -17,7 +17,6 @@ async function bootstrap() {
         // Clear any corrupted OAuth state
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('error')) {
-            console.error('OAuth error:', urlParams.get('error'));
             window.history.replaceState({}, document.title, window.location.pathname);
             localStorage.removeItem('kc-callback');
         }
@@ -38,20 +37,12 @@ async function bootstrap() {
             return;
         }
 
-        // 🔑 Token for Postman testing
-        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🔑 TOKEN FOR POSTMAN:');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log(keycloak.token);
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-        // Expose token to window
+        // Expose token to window for debugging (access via window.token in console if needed)
         (window as any).token = keycloak.token;
 
         // Fetch user profile after Keycloak is ready and WAIT for it
         const { useUserProfile } = await import('./stores/userProfile');
         await useUserProfile.getState().fetchMe();
-        console.log('Profile loaded, rendering app...');
 
         ReactDOM.createRoot(document.getElementById('root')!).render(
             <React.StrictMode>
@@ -59,7 +50,7 @@ async function bootstrap() {
             </React.StrictMode>,
         );
     } catch (e) {
-        console.error('Keycloak init error:', e);
+        // Keycloak init error - handle silently or show user-friendly message
     }
 }
 

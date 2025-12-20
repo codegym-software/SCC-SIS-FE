@@ -87,7 +87,6 @@ api.interceptors.response.use(
             try {
                 await keycloak.login();
             } catch (loginError) {
-                console.error('Login redirect failed:', loginError);
             }
         }
 

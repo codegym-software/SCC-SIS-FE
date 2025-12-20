@@ -62,10 +62,8 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({
             } catch (error: any) {
                 // Backend API chưa sẵn sàng, sử dụng empty state
                 if (error.code === 'ECONNABORTED' || error.response?.status === 500 || error.response?.status === 404) {
-                    console.warn('Journal API chưa sẵn sàng');
                     setLogs([]); // Hiển thị empty state thay vì error
                 } else {
-                    console.error('Error fetching journals:', error);
                     showErrorToast('Lỗi tải dữ liệu', 'Không thể tải danh sách nhật ký');
                     setLogs([]);
                 }
@@ -105,9 +103,6 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({
             });
             setShowCreateModal(false);
         } catch (error: any) {
-            console.error('Error creating journal:', error);
-            console.log('Full error response:', error.response);
-            console.log('Error message from backend:', error.response?.data?.message);
             const errorMessage = error.response?.data?.message || error.message || 'Không thể tạo nhật ký';
             showErrorToast('Lỗi tạo nhật ký', errorMessage);
         } finally {
@@ -155,9 +150,6 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({
             setShowEditModal(false);
             setEditingJournal(null);
         } catch (error: any) {
-            console.error('Error updating journal:', error);
-            console.log('Full error response:', error.response);
-            console.log('Error message from backend:', error.response?.data?.message);
             const errorMessage = error.response?.data?.message || error.message || 'Không thể cập nhật nhật ký';
             showErrorToast('Lỗi cập nhật', errorMessage);
         } finally {
@@ -178,7 +170,6 @@ const ClassLogTab: React.FC<ClassLogTabProps> = ({
             showSuccessToast('Xóa thành công', 'Nhật ký đã được xóa');
             setDeleteConfirm(null);
         } catch (error: any) {
-            console.error('Error deleting journal:', error);
             const errorMessage = error.response?.data?.message || error.message || 'Không thể xóa nhật ký';
             showErrorToast('Lỗi xóa', errorMessage);
             setDeleteConfirm(null);

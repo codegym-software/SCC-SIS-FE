@@ -30,7 +30,6 @@ export default function BackendErrorHandler() {
         try {
             await keycloak.login();
         } catch (error) {
-            console.error('Login redirect failed:', error);
             // Fallback: reload page if login fails
             window.location.reload();
         }

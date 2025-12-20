@@ -28,7 +28,6 @@ function saveProgress(data: ProgressStore): void {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) {
-        console.error('Failed to save progress:', e);
     }
 }
 

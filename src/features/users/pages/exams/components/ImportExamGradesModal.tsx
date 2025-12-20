@@ -113,7 +113,6 @@ export default function ImportExamGradesModal({
             setShowEditor(true);
             success('Đã đọc file thành công', `Tìm thấy ${jsonData.length} dòng dữ liệu`);
         } catch (err) {
-            console.error('Error reading Excel file:', err);
             error('Lỗi đọc file', 'Không thể đọc file Excel. Vui lòng kiểm tra định dạng file.');
             setFile(null);
         }
@@ -194,7 +193,6 @@ export default function ImportExamGradesModal({
 
             success('Đã xuất file', `File đã được lưu với tên: ${exportFileName}`);
         } catch (err) {
-            console.error('Error exporting Excel:', err);
             error('Lỗi xuất file', 'Không thể xuất file Excel đã chỉnh sửa');
         }
     };
@@ -233,7 +231,6 @@ export default function ImportExamGradesModal({
 
             success('Đã lưu thay đổi', 'Dữ liệu đã được cập nhật. Bạn có thể import ngay.');
         } catch (err) {
-            console.error('Error saving edited data:', err);
             error('Lỗi lưu dữ liệu', 'Không thể lưu dữ liệu đã chỉnh sửa');
         }
     };
@@ -275,7 +272,6 @@ export default function ImportExamGradesModal({
                     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 });
             } catch (err) {
-                console.error('Error creating file from edited data:', err);
                 error('Lỗi', 'Không thể tạo file từ dữ liệu đã chỉnh sửa. Đang sử dụng file gốc.');
             }
         }

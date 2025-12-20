@@ -146,7 +146,6 @@ export default function DashboardPage() {
 
                 setActiveUsersCount(count);
             } catch (usersError) {
-                console.error('Error fetching students:', usersError);
                 setActiveUsersCount(0);
             }
 

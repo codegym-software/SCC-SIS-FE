@@ -132,7 +132,6 @@ export default function TakeAttendancePage() {
                     setAttendanceRecords(initialRecords);
                 }
             } catch (error) {
-                console.error('Error fetching data:', error);
                 showErrorToast('Lỗi', 'Không thể tải dữ liệu');
             } finally {
                 setIsLoading(false);
@@ -229,9 +228,6 @@ export default function TakeAttendancePage() {
             // Navigate back with viewMode and date parameters to restore correct view and date
             setTimeout(() => navigate(`/attendance?view=${viewMode}&date=${date}`), 500);
         } catch (error: any) {
-            console.error('Error saving attendance:', error);
-            console.error('Error response:', error?.response?.data);
-            
             const errorData = error?.response?.data;
             const errorMessage = errorData?.message || errorData?.error || 'Không thể lưu điểm danh';
             

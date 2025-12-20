@@ -73,7 +73,6 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                 const data = await notificationsApi.getMyNotifications();
                 setNotifications(data);
             } catch (error) {
-                console.error('Failed to fetch notifications:', error);
                 setNotifications([]);
             }
         };
@@ -87,7 +86,6 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                 const data = await studentWarningsApi.getMyWarnings();
                 setMyWarnings(data);
             } catch (error) {
-                console.error('Failed to fetch warnings:', error);
                 setMyWarnings([]);
             }
         };
@@ -113,7 +111,6 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             const response = await getMyClasses();
             setClasses(response.data);
         } catch (error) {
-            console.error('Error loading classes for sidebar:', error);
         } finally {
             setLoadingClasses(false);
         }
@@ -270,10 +267,6 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                                                                             await notificationsApi.getMyNotifications();
                                                                         setNotifications(updated);
                                                                     } catch (error) {
-                                                                        console.error(
-                                                                            'Failed to mark all as read:',
-                                                                            error,
-                                                                        );
                                                                     }
                                                                 }}
                                                             />
@@ -347,10 +340,6 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                                                                                 setNotifications(updated);
                                                                             }
                                                                         } catch (error) {
-                                                                            console.error(
-                                                                                'Failed to mark notification as read:',
-                                                                                error,
-                                                                            );
                                                                         }
                                                                     }}
                                                                     className="w-full"

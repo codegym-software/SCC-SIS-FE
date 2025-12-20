@@ -35,7 +35,6 @@ export default function RolesPage() {
             setRoles(response.items)
         } catch (err) {
             setError('Không thể tải danh sách vai trò')
-            console.error('Error loading roles:', err)
         } finally {
             setLoading(false)
         }
@@ -67,7 +66,6 @@ export default function RolesPage() {
             const groups = await getPermissionGroups()
             setPermissionGroups(groups)
         } catch (err) {
-            console.error('Failed to load permission groups:', err)
             setError('Không thể tải danh sách quyền')
         } finally {
             setLoading(false)
@@ -361,7 +359,6 @@ export default function RolesPage() {
                                                 setOpenDelete(null)
                                                 toast.success('Xóa vai trò thành công', `Vai trò "${openDelete.name}" đã được xóa khỏi hệ thống`)
                                             } catch (error) {
-                                                console.error('Error deleting role:', error)
                                                 toast.error('Lỗi xóa vai trò', 'Không thể xóa vai trò. Vui lòng thử lại')
                                             }
                                         }}

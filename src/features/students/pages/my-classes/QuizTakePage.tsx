@@ -66,7 +66,6 @@ export default function QuizTakePage() {
 
                 setViewState('intro');
             } catch (error: any) {
-                console.error('Failed to load quiz:', error);
                 toast.error(error?.response?.data?.message || 'Không thể tải bài kiểm tra');
                 setViewState('intro');
             }
@@ -103,7 +102,6 @@ export default function QuizTakePage() {
             setViewState('taking');
             toast.success('Đã bắt đầu làm bài kiểm tra');
         } catch (error: any) {
-            console.error('Failed to start quiz:', error);
             toast.error(error?.response?.data?.message || 'Không thể bắt đầu bài kiểm tra');
         }
     };
@@ -127,7 +125,6 @@ export default function QuizTakePage() {
             await saveQuizAnswers(attemptData.attemptId, answers);
             toast.success('Đã lưu câu trả lời');
         } catch (error: any) {
-            console.error('Failed to save answers:', error);
             toast.error(error?.response?.data?.message || 'Không thể lưu câu trả lời');
         }
     };
@@ -171,9 +168,7 @@ export default function QuizTakePage() {
                         lastWatchedPosition: 0,
                         timeSpentSeconds: 0,
                     });
-                    console.log('✅ Quiz completed, lesson progress saved to backend');
                 } catch (err) {
-                    console.error('⚠️ Failed to save lesson progress:', err);
                 }
                 
                 // Update local state
@@ -186,9 +181,7 @@ export default function QuizTakePage() {
                         lastWatchedPosition: 0,
                         timeSpentSeconds: 0,
                     });
-                    console.log('✅ Quiz completed - Lesson progress saved to backend');
                 } catch (error) {
-                    console.error('⚠️ Failed to save lesson progress:', error);
                     // Continue anyway, local state is already updated
                 }
             }
@@ -209,8 +202,6 @@ export default function QuizTakePage() {
                 toast.error(`Bạn chưa đạt. Điểm: ${response.data.percentage}%`);
             }
         } catch (error: any) {
-            console.error('Failed to submit quiz:', error);
-            console.error('Error details:', error?.response?.data);
             toast.error(error?.response?.data?.message || error?.response?.data || 'Không thể nộp bài kiểm tra');
         }
     };
@@ -224,7 +215,6 @@ export default function QuizTakePage() {
             setSubmitResult(response.data);
             setViewState('result');
         } catch (error: any) {
-            console.error('Failed to load attempt detail:', error);
             toast.error('Không thể tải chi tiết bài làm');
             setViewState('intro');
         }

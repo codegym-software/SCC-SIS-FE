@@ -273,8 +273,6 @@ export const getAttendanceStatistics = async (
             },
         };
     } catch (error) {
-        console.error('Error fetching attendance statistics:', error);
-        console.warn('Using mock data as fallback');
         return generateMockStatistics(params);
     }
 };

@@ -94,12 +94,9 @@ export default function StudentDetailPage() {
             
             try {
                 setGradesLoading(true);
-                console.log('Fetching grades for student:', id);
                 const data = await getStudentGradesByStudentId(parseInt(id));
-                console.log('Grades data received:', data);
                 setGrades(data || []);
             } catch (error) {
-                console.error('Error fetching grades:', error);
                 setGrades([]);
             } finally {
                 setGradesLoading(false);

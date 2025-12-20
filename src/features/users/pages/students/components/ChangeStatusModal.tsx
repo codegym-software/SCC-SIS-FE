@@ -49,7 +49,6 @@ const ChangeStatusModal: React.FC<ChangeStatusModalProps> = ({ student, onClose,
             onSave(student.id, selectedStatus);
             onClose();
         } catch (err: any) {
-            console.error('Error updating student status:', err);
             setError(err?.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái');
         } finally {
             setIsSubmitting(false);

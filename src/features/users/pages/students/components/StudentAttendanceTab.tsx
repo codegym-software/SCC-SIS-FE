@@ -39,7 +39,6 @@ const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) 
                 const response = await getStudentAttendanceHistory(parseInt(student.id), selectedClass.classId);
                 setAttendanceData(response.data);
             } catch (error: any) {
-                console.error('Error fetching attendance:', error);
                 // Silently handle 404 (no data yet), show error for other cases
                 if (error.response?.status !== 404) {
                     showErrorToast('Lỗi tải dữ liệu', 'Không thể tải lịch sử điểm danh');

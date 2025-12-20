@@ -46,7 +46,6 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                 setWarnings(response.warnings);
                 setWarningCount(response.totalCount);
             } catch (error) {
-                console.error('Failed to fetch student warnings:', error);
                 setWarnings([]);
                 setWarningCount(0);
             } finally {
@@ -70,7 +69,6 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                     setWarningCount(highSeverityCount);
                 }
             } catch (error) {
-                console.error('Failed to fetch notifications:', error);
                 setNotifications([]);
             }
         };
@@ -231,36 +229,24 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                 : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                                         }`}
                                     >
-                                        <span>
-                                            Hoạt động (
-                                            {notifications?.filter(
-                                                (n) => !hiddenNotificationIds.includes(n.id) && !n.isRead,
-                                            ).length || 0}
-                                            )
-                                        </span>
-                                        {activeTab === 'all' &&
-                                            notifications &&
-                                            notifications.filter(
-                                                (n) => !hiddenNotificationIds.includes(n.id) && !n.isRead,
-                                            ).length > 0 && (
-                                                <div title="Đánh dấu tất cả đã đọc">
-                                                    <MailOpen
-                                                        size={16}
-                                                        className="text-blue-500 hover:text-blue-700 cursor-pointer ml-1"
-                                                        onClick={async (e) => {
-                                                            e.stopPropagation();
-                                                            try {
-                                                                await notificationsApi.markAllAsRead();
-                                                                const updated =
-                                                                    await notificationsApi.getMyNotifications();
-                                                                setNotifications(updated);
-                                                            } catch (error) {
-                                                                console.error('Failed to mark all as read:', error);
-                                                            }
-                                                        }}
-                                                    />
-                                                </div>
-                                            )}
+                                        <span>Hoạt động ({notifications?.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length || 0})</span>
+                                        {activeTab === 'all' && notifications && notifications.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length > 0 && (
+                                            <div title="Đánh dấu tất cả đã đọc">
+                                                <MailOpen 
+                                                    size={16} 
+                                                    className="text-blue-500 hover:text-blue-700 cursor-pointer ml-1"
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        try {
+                                                            await notificationsApi.markAllAsRead();
+                                                            const updated = await notificationsApi.getMyNotifications();
+                                                            setNotifications(updated);
+                                                        } catch (error) {
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
                                     </button>
                                 </div>
                                 <div className="max-h-96 overflow-auto">
@@ -334,15 +320,27 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                             Không có cảnh báo nào
                                                         </div>
                                                     )}
-                                                    {notifications
-                                                        ?.filter((n) => n.severity === 'high')
-                                                        .slice(0, 6)
-                                                        .map((n) => (
-                                                            <div
-                                                                key={n.id}
-                                                                className={`relative w-full text-left px-5 py-4 border-b border-gray-100 hover:bg-white transition-all ${
-                                                                    !n.isRead ? 'bg-red-50' : 'bg-white'
-                                                                }`}
+                                                    {notifications?.filter(n => n.severity === 'high').slice(0, 6).map((n) => (
+                                                        <div
+                                                            key={n.id}
+                                                            className={`relative w-full text-left px-5 py-4 border-b border-gray-100 hover:bg-white transition-all ${
+                                                                !n.isRead ? 'bg-red-50' : 'bg-white'
+                                                            }`}
+                                                        >
+                                                            <button
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        if (!n.isRead) {
+                                                                            await notificationsApi.markAsRead(n.id);
+                                                                            const updated = await notificationsApi.getMyNotifications();
+                                                                            setNotifications(updated);
+                                                                            const highSeverityCount = updated.filter(x => x.severity === 'high' && !x.isRead).length;
+                                                                            setWarningCount(highSeverityCount);
+                                                                        }
+                                                                    } catch (error) {
+                                                                    }
+                                                                }}
+                                                                className="w-full"
                                                             >
                                                                 <button
                                                                     onClick={async () => {
@@ -433,15 +431,25 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                     <p className="text-sm">Không có thông báo nào</p>
                                                 </div>
                                             )}
-                                            {notifications
-                                                ?.filter((n) => !hiddenNotificationIds.includes(n.id))
-                                                .slice(0, 6)
-                                                .map((n) => (
-                                                    <div
-                                                        key={n.id}
-                                                        className={`relative w-full text-left px-5 py-4 border-b border-gray-100 hover:bg-white transition-all group ${
-                                                            !n.isRead ? 'bg-blue-50' : 'bg-white'
-                                                        }`}
+                                            {notifications?.filter(n => !hiddenNotificationIds.includes(n.id)).slice(0, 6).map((n) => (
+                                                <div
+                                                    key={n.id}
+                                                    className={`relative w-full text-left px-5 py-4 border-b border-gray-100 hover:bg-white transition-all group ${
+                                                        !n.isRead ? 'bg-blue-50' : 'bg-white'
+                                                    }`}
+                                                >
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                if (!n.isRead) {
+                                                                    await notificationsApi.markAsRead(n.id);
+                                                                    const updated = await notificationsApi.getMyNotifications();
+                                                                    setNotifications(updated);
+                                                                }
+                                                            } catch (error) {
+                                                            }
+                                                        }}
+                                                        className="w-full"
                                                     >
                                                         <button
                                                             onClick={async () => {

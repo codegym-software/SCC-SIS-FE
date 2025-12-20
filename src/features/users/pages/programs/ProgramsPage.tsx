@@ -75,20 +75,15 @@ export default function ProgramsPage() {
             const response = await getPrograms();
             setPrograms(response.data);
         } catch (error) {
-            console.error('Failed to fetch programs:', error);
         }
     };
 
     // Fetch modules for selected program or all programs
     const fetchModules = async (programId?: number) => {
         try {
-            console.log('[ProgramsPage] fetchModules called with programId:', programId);
-            
             if (programId) {
                 // Fetch modules for specific program
-                console.log('[ProgramsPage] Fetching modules for program:', programId);
                 const response = await getModulesByProgram({ programId });
-                console.log('[ProgramsPage] Fetched modules:', response.data.length);
                 setModules(response.data);
             } else {
                 // Fetch modules for ALL programs
@@ -96,8 +91,6 @@ export default function ProgramsPage() {
                     setModules([]);
                     return;
                 }
-
-                console.log('[ProgramsPage] Fetching modules for all programs:', programs.length);
                 // Call API for each program and merge results
                 const allModulesPromises = programs.map(program => 
                     getModulesByProgram({ programId: program.programId })
@@ -105,12 +98,9 @@ export default function ProgramsPage() {
                 
                 const allModulesResponses = await Promise.all(allModulesPromises);
                 const allModules = allModulesResponses.flatMap(response => response.data);
-                
-                console.log('[ProgramsPage] Total modules fetched:', allModules.length);
                 setModules(allModules);
             }
         } catch (error) {
-            console.error('Failed to fetch modules:', error);
             setModules([]);
         }
     };
@@ -155,10 +145,6 @@ export default function ProgramsPage() {
             // Show success toast
             toast.success('Tạo thành công!', `Chương trình ${formData.name} đã được thêm vào hệ thống`);
         } catch (error: any) {
-            console.error('Error saving program:', error);
-            console.error('Error response:', error?.response?.data);
-            console.error('Error status:', error?.response?.status);
-            
             // Show error toast with specific error messages
             if (error.response?.status === 400) {
                 const apiError = error.response.data;
@@ -219,8 +205,6 @@ export default function ProgramsPage() {
 
             toast.success('Cập nhật thành công!', `Chương trình ${formData.name} đã được cập nhật`);
         } catch (error: any) {
-            console.error('Error updating program:', error);
-
             if (error.response?.status === 400) {
                 toast.error('Dữ liệu không hợp lệ', error.response.data.message || 'Vui lòng kiểm tra lại thông tin');
             } else if (error.response?.status === 403) {
@@ -245,8 +229,6 @@ export default function ProgramsPage() {
 
             toast.success('Xóa thành công!', `Chương trình ${program.name} đã được xóa`);
         } catch (error: any) {
-            console.error('Error deleting program:', error);
-
             if (error.response?.status === 403) {
                 toast.error('Không có quyền', 'Bạn không có quyền xóa chương trình');
             } else if (error.response?.status === 404) {
@@ -272,7 +254,6 @@ export default function ProgramsPage() {
     const handleSaveModulesOrder = async (moduleIds: string[]) => {
         // Không cần gọi API ở đây vì đã reorder bằng API trong ProgramModulesManager
         // Chỉ cần reload lại modules
-        console.log('Module order saved:', moduleIds);
         if (openModulesManager) {
             await fetchModules(openModulesManager.programId);
         }
@@ -298,7 +279,6 @@ export default function ProgramsPage() {
                 await fetchModules();
                 toast.success('Xóa thành công!', `Module ${module.name} đã được xóa`);
             } catch (error: any) {
-                console.error('Error deleting module:', error);
                 const errorMessage = error.response?.data?.message || error.message || 'Không thể kết nối đến server';
                 toast.error('Lỗi hệ thống', errorMessage);
             }
@@ -358,8 +338,6 @@ export default function ProgramsPage() {
                 toast.success('Tạo thành công!', `Module ${formData.name} đã được thêm vào hệ thống`);
             }
         } catch (error: any) {
-            console.error('Error saving module:', error);
-            
             // Show error toast with specific error messages
             if (error.response?.status === 400) {
                 const apiError = error.response.data;

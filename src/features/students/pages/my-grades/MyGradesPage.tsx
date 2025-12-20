@@ -46,7 +46,6 @@ export default function MyGradesPage() {
             const response = await api.get<GradeRecordResponse[]>('/api/grade-entries/my-grades');
             setGrades(response.data || []);
         } catch (error: any) {
-            console.error('Failed to load grades:', error);
             if (error?.response?.status !== 404) {
                 toast.error('Không thể tải điểm: ' + (error?.response?.data?.message || error?.message));
             }

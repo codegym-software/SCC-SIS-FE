@@ -33,7 +33,6 @@ const CenterSwitcher: React.FC = () => {
                 }));
                 setCenters(mapped);
             } catch (err) {
-                console.error('Load centers failed', err);
             } finally {
                 setLoading(false);
             }

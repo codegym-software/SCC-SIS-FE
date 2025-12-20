@@ -336,7 +336,6 @@ export default function CentersPage() {
             const centersData = (response.data as CenterDto[]).map(mapCenterFromAPI)
             setCenters(centersData)
         } catch (error) {
-            console.error('Failed to load centers:', error)
             toast.error('Lỗi tải dữ liệu', 'Không thể tải danh sách trung tâm')
         } finally {
             setLoading(false)
@@ -519,7 +518,6 @@ export default function CentersPage() {
             setWardQuery('')
             setValidationErrors({})
         } catch (error: any) {
-            console.error('Failed to save center:', error)
             if (error.response?.status === 400) {
                 const apiError = error.response.data
                 if (apiError.field) {
@@ -572,7 +570,6 @@ export default function CentersPage() {
             await loadCenters()
             toast.success(`${action} thành công`, `${center.name} đã được cập nhật`)
         } catch (error) {
-            console.error('Failed to toggle center status:', error)
             toast.error('Lỗi cập nhật', 'Không thể cập nhật trạng thái trung tâm')
         }
     }

@@ -74,7 +74,6 @@ export const studentWarningsApi = {
                             classToCenterMap.set(cls.classId, cls.centerId);
                         });
                     } catch (err) {
-                        console.error('Failed to load classes for center filtering:', err);
                     }
                 }
                 
@@ -167,7 +166,6 @@ export const studentWarningsApi = {
                                 }
                             }
                         } catch (err) {
-                            console.error(`Error loading warnings for student ${student.studentId}:`, err);
                         }
                     })
                 );
@@ -177,7 +175,6 @@ export const studentWarningsApi = {
                     totalCount: warnings.length,
                 };
             } catch (err) {
-                console.error('Failed to calculate warnings from data:', err);
                 // Return empty if all fails
                 return {
                     warnings: [],

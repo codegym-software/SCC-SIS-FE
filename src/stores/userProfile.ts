@@ -14,12 +14,9 @@ export const useUserProfile = create<State>((set) => ({
     async fetchMe() {
         try {
             set({ loading: true, error: undefined });
-            console.log('fetchMe: Starting to fetch profile...');
             const { data } = await getProfile();
-            console.log('fetchMe: Profile fetched successfully:', data);
             set({ me: data, loading: false });
         } catch (e: any) {
-            console.error('fetchMe: Error fetching profile:', e);
             set({
                 error: e?.message || 'Fetch profile failed',
                 loading: false,

@@ -104,7 +104,6 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
     const loadStudents = async () => {
         try {
             setIsLoading(true);
-            console.log('[ManageStudentsModal] Loading ALL students (all statuses) for class:', classItem.id);
 
             // WORKAROUND: Backend có vấn đề với status filter
             // Khi update status sang SUSPENDED/DROPPED, API ?status=SUSPENDED trả về 0
@@ -115,7 +114,6 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
             
             try {
                 // Thử 1: Gọi KHÔNG có status param
-                console.log('[ManageStudentsModal] Trying API call WITHOUT status filter...');
                 const responseAll = await getClassStudents(parseInt(classItem.id), {
                     page: 0,
                     size: 1000,
@@ -128,21 +126,12 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                         allEnrollments = responseAll.data.content;
                     }
                 }
-                
-                console.log('[ManageStudentsModal] Without filter returned:', allEnrollments.length, 'students');
-                
                 // Nếu vẫn chỉ có ACTIVE, thì backend có vấn đề nghiêm trọng
                 const hasNonActive = allEnrollments.some(e => e.status !== 'ACTIVE');
                 if (!hasNonActive && allEnrollments.length > 0) {
-                    console.warn('[ManageStudentsModal] ⚠️ BACKEND ISSUE: API only returns ACTIVE students even without status filter!');
-                    console.warn('[ManageStudentsModal] ⚠️ Students with SUSPENDED/DROPPED/GRADUATED status are NOT being returned.');
-                    console.warn('[ManageStudentsModal] ⚠️ Please check backend: enrollment may be soft deleted or filtered incorrectly.');
                 }
             } catch (error) {
-                console.error('[ManageStudentsModal] Failed to load without status filter:', error);
-                
                 // Fallback: Thử gọi với từng status
-                console.log('[ManageStudentsModal] Fallback: Trying with individual status filters...');
                 const statuses = ['ACTIVE', 'SUSPENDED', 'DROPPED', 'GRADUATED'];
                 
                 const responses = await Promise.all(
@@ -152,7 +141,6 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                             page: 0,
                             size: 1000,
                         }).catch(err => {
-                            console.warn(`[ManageStudentsModal] Failed to load ${status} students:`, err);
                             return { data: { content: [] } };
                         })
                     )
@@ -168,16 +156,13 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                             enrollments = response.data.content;
                         }
                         allEnrollments.push(...enrollments);
-                        console.log(`[ManageStudentsModal] ${statuses[idx]} students: ${enrollments.length}`);
                     }
                 });
             }
 
-            console.log('[ManageStudentsModal] Total enrollments (all statuses):', allEnrollments.length);
             
             // Log each enrollment with its status
             allEnrollments.forEach((e, idx) => {
-                console.log(`[ManageStudentsModal] Enrollment ${idx}: ${e.studentName} - Status: ${e.status} - ID: ${e.enrollmentId}`);
             });
 
             const formattedStudents: Student[] = allEnrollments.map((enrollment) => ({
@@ -192,13 +177,8 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                 leftAt: enrollment.leftAt,
                 note: enrollment.note,
             }));
-
-            console.log('[ManageStudentsModal] Formatted students:', formattedStudents);
-            console.log('[ManageStudentsModal] Student statuses:', formattedStudents.map(s => `${s.name}: ${s.status}`));
             setStudents(formattedStudents);
         } catch (error: any) {
-            console.error('[ManageStudentsModal] Error loading students:', error);
-            console.error('[ManageStudentsModal] Error response:', error?.response);
             showErrorToast(error?.response?.data?.message || 'Không thể tải danh sách học viên');
         } finally {
             setIsLoading(false);
@@ -226,7 +206,6 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
             loadStudents();
             onStudentsChanged?.(); // notify parent
         } catch (error: any) {
-            console.error('Error removing student:', error);
             showErrorToast(error?.response?.data?.message || 'Có lỗi xảy ra khi xóa học viên');
         }
     };
@@ -267,7 +246,6 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
             loadStudents();
             onStudentsChanged?.(); // notify parent
         } catch (error: any) {
-            console.error('Error updating status:', error);
             showErrorToast(error?.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái');
         }
     };
@@ -340,18 +318,14 @@ const ManageStudentsModal: React.FC<ManageStudentsModalProps> = ({
                         );
                     }).length;
                     
-                    console.log(`[Warning] Student ${student.studentId} (${student.name}): absences=${absences}, failedExams=${failedExams}`);
                     
                     if (absences >= 2 || failedExams >= 2) {
                         warningsMap.set(student.studentId, { absences, failedExams });
                     }
                 } catch (error) {
-                    console.error(`Error loading warnings for student ${student.studentId}:`, error);
                 }
             })
         );
-        
-        console.log('[Warning] Final warnings map:', warningsMap);
         setStudentWarnings(warningsMap);
     };
 

@@ -50,11 +50,9 @@ export default function ModuleLessonsListPage() {
                                     const progressData = await lessonProgressApi.getProgressBulk(lessonIds);
                                     setProgressMap(progressData);
                                 } catch (progressError) {
-                                    console.log('No progress data found or error loading progress');
                                 }
                             }
                         } catch (lessonError) {
-                            console.error('Failed to load lessons:', lessonError);
                             toast.error('Không thể tải danh sách bài học');
                             setLessons([]);
                         }

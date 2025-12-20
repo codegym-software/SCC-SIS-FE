@@ -105,7 +105,6 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                     });
                 } catch (error) {
                     // Skip if can't access this class
-                    console.log(`Cannot access class ${classItem.classId}`);
                 }
             }
             
@@ -127,7 +126,6 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
             
             setAllStudents(formattedStudents);
         } catch (error: any) {
-            console.error('Error loading students:', error);
             showErrorToast(error?.response?.data?.message || 'Không thể tải danh sách học viên');
         } finally {
             setIsLoading(false);
@@ -252,7 +250,6 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
             onAddStudents([]);
             handleClose();
         } catch (error: any) {
-            console.error('Error adding students:', error);
             showErrorToast(error?.response?.data?.message || 'Có lỗi xảy ra khi thêm học viên');
         } finally {
             setIsSubmitting(false);

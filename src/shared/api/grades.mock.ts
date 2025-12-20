@@ -466,8 +466,6 @@ export const updateGradeRecords = async (
             record.updatedAt = new Date().toISOString();
         }
     });
-
-    console.log('✅ Mock: Updated grade records', records);
 };
 
 export const deleteGradeEntry = async (
@@ -488,6 +486,4 @@ export const deleteGradeEntry = async (
 
     // Remove grade records
     delete mockGradeRecordsData[entry.gradeEntryId];
-
-    console.log('✅ Mock: Deleted grade entry', { classId, moduleId, entryDate });
 };

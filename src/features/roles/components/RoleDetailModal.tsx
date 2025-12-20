@@ -22,7 +22,6 @@ export default function RoleDetailModal({ open, onClose, role, permissions }: Ro
                     const detail = await getRoleById(role.roleId)
                     setRoleDetail(detail)
                 } catch (error) {
-                    console.error('Failed to load role detail:', error)
                     // Fallback to basic role data
                     setRoleDetail(role)
                 } finally {

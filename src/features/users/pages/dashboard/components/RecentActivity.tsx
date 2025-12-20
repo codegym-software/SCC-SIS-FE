@@ -37,7 +37,6 @@ export default function RecentActivity() {
                 });
                 setActivities(sorted.slice(0, 4));
             } catch (err) {
-                console.error('Failed to load recent activities:', err);
                 setActivities([]);
             } finally {
                 setLoading(false);

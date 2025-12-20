@@ -90,7 +90,6 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, 
             const response = await getMyLecturerClasses();
             setClasses(response.data);
         } catch (error) {
-            console.error('Error loading classes:', error);
             toast.error('Không thể tải danh sách lớp');
         } finally {
             setLoadingClasses(false);
@@ -110,7 +109,6 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, 
             const modulesResponse = await getModulesByProgram({ programId: classData.programId });
             setModules(modulesResponse.data);
         } catch (error) {
-            console.error('Error loading class info:', error);
             toast.error('Không thể tải thông tin lớp');
         }
     };
@@ -120,17 +118,11 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, 
         
         try {
             setLoadingStudents(true);
-            console.log('[CreateExamResultModal] Loading students for class:', selectedClassId);
-            
             // Load ALL students (not filtering by status) - similar to ManageStudentsModal
             const response = await getClassStudents(selectedClassId, {
                 page: 0,
                 size: 1000,
             });
-            
-            console.log('[CreateExamResultModal] API Response:', response);
-            console.log('[CreateExamResultModal] Response data:', response.data);
-            
             // Handle Spring Page response structure
             let enrollments: EnrollmentResponse[] = [];
             if (response.data) {
@@ -141,20 +133,11 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, 
                     // If it's a Spring Page object with content property
                     enrollments = response.data.content;
                 } else {
-                    console.warn('[CreateExamResultModal] Unexpected response structure:', response.data);
                 }
             }
 
-            console.log('[CreateExamResultModal] All enrollments:', enrollments);
-            console.log('[CreateExamResultModal] All enrollments length:', enrollments.length);
-            console.log('[CreateExamResultModal] Enrollment statuses:', enrollments.map(e => ({ studentId: e.studentId, status: e.status })));
-
             // Filter to only ACTIVE enrollments (students currently studying)
             const activeEnrollments = enrollments.filter((e) => e.status === 'ACTIVE');
-
-            console.log('[CreateExamResultModal] Active enrollments:', activeEnrollments);
-            console.log('[CreateExamResultModal] Active enrollments length:', activeEnrollments.length);
-
             if (activeEnrollments.length === 0) {
                 if (enrollments.length === 0) {
                     toast.warning('Lớp này chưa có học viên nào');
@@ -169,7 +152,6 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, 
             const rows: ScoreRow[] = activeEnrollments.map((enrollment) => {
                 const studentId = enrollment.studentId;
                 if (!studentId) {
-                    console.error('[CreateExamResultModal] Enrollment missing studentId:', enrollment);
                     return null;
                 }
                 
@@ -188,12 +170,8 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, 
                     note: '',
                 };
             }).filter((row): row is ScoreRow => row !== null);
-            
-            console.log('[CreateExamResultModal] Score rows:', rows);
             setScoreRows(rows);
         } catch (error: any) {
-            console.error('[CreateExamResultModal] Error loading students:', error);
-            console.error('[CreateExamResultModal] Error response:', error?.response);
             toast.error(error?.response?.data?.message || 'Không thể tải danh sách học viên. Vui lòng thử lại.');
             setScoreRows([]);
         } finally {
@@ -258,7 +236,6 @@ const CreateExamResultModal: React.FC<CreateExamResultModalProps> = ({ onClose, 
             toast.success('Nhập điểm thành công');
             onSuccess();
         } catch (error: any) {
-            console.error('Error creating exam result:', error);
             toast.error(error.response?.data?.message || 'Không thể nhập điểm');
         } finally {
             setSubmitting(false);

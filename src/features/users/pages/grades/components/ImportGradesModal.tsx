@@ -104,7 +104,6 @@ export default function ImportGradesModal({ open, onClose, onSuccess, classId, m
             setShowEditor(true);
             success('Đã đọc file thành công', `Tìm thấy ${jsonData.length} dòng dữ liệu`);
         } catch (err) {
-            console.error('Error reading Excel file:', err);
             error('Lỗi đọc file', 'Không thể đọc file Excel. Vui lòng kiểm tra định dạng file.');
             setFile(null);
         }
@@ -176,7 +175,6 @@ export default function ImportGradesModal({ open, onClose, onSuccess, classId, m
                     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 });
             } catch (err) {
-                console.error('Error creating file from edited data:', err);
                 error('Lỗi', 'Không thể tạo file từ dữ liệu đã chỉnh sửa. Đang sử dụng file gốc.');
             }
         }
