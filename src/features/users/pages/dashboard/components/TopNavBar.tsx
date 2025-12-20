@@ -332,41 +332,26 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                                     try {
                                                                         if (!n.isRead) {
                                                                             await notificationsApi.markAsRead(n.id);
-                                                                            const updated = await notificationsApi.getMyNotifications();
+                                                                            const updated =
+                                                                                await notificationsApi.getMyNotifications();
                                                                             setNotifications(updated);
-                                                                            const highSeverityCount = updated.filter(x => x.severity === 'high' && !x.isRead).length;
+                                                                            const highSeverityCount =
+                                                                                updated.filter(
+                                                                                    (x) =>
+                                                                                        x.severity === 'high' &&
+                                                                                        !x.isRead,
+                                                                                ).length;
                                                                             setWarningCount(highSeverityCount);
                                                                         }
                                                                     } catch (error) {
+                                                                        console.error(
+                                                                            'Failed to mark notification as read:',
+                                                                            error,
+                                                                        );
                                                                     }
                                                                 }}
                                                                 className="w-full"
                                                             >
-                                                                <button
-                                                                    onClick={async () => {
-                                                                        try {
-                                                                            if (!n.isRead) {
-                                                                                await notificationsApi.markAsRead(n.id);
-                                                                                const updated =
-                                                                                    await notificationsApi.getMyNotifications();
-                                                                                setNotifications(updated);
-                                                                                const highSeverityCount =
-                                                                                    updated.filter(
-                                                                                        (x) =>
-                                                                                            x.severity === 'high' &&
-                                                                                            !x.isRead,
-                                                                                    ).length;
-                                                                                setWarningCount(highSeverityCount);
-                                                                            }
-                                                                        } catch (error) {
-                                                                            console.error(
-                                                                                'Failed to mark notification as read:',
-                                                                                error,
-                                                                            );
-                                                                        }
-                                                                    }}
-                                                                    className="w-full"
-                                                                >
                                                                     <div className="flex items-start gap-3">
                                                                         <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-red-100">
                                                                             <span className="text-lg text-red-600">
@@ -417,8 +402,8 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                                         </div>
                                                                     </div>
                                                                 </button>
-                                                            </div>
-                                                        ))}
+                                                        </div>
+                                                    ))}
                                                 </>
                                             )}
                                         </div>
@@ -443,32 +428,19 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                             try {
                                                                 if (!n.isRead) {
                                                                     await notificationsApi.markAsRead(n.id);
-                                                                    const updated = await notificationsApi.getMyNotifications();
+                                                                    const updated =
+                                                                        await notificationsApi.getMyNotifications();
                                                                     setNotifications(updated);
                                                                 }
                                                             } catch (error) {
+                                                                console.error(
+                                                                    'Failed to mark notification as read:',
+                                                                    error,
+                                                                );
                                                             }
                                                         }}
                                                         className="w-full"
                                                     >
-                                                        <button
-                                                            onClick={async () => {
-                                                                try {
-                                                                    if (!n.isRead) {
-                                                                        await notificationsApi.markAsRead(n.id);
-                                                                        const updated =
-                                                                            await notificationsApi.getMyNotifications();
-                                                                        setNotifications(updated);
-                                                                    }
-                                                                } catch (error) {
-                                                                    console.error(
-                                                                        'Failed to mark notification as read:',
-                                                                        error,
-                                                                    );
-                                                                }
-                                                            }}
-                                                            className="w-full"
-                                                        >
                                                             <div className="flex items-start gap-3">
                                                                 {/* Avatar/Icon */}
                                                                 <div

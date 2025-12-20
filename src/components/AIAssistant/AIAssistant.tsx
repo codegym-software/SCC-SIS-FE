@@ -34,8 +34,6 @@ interface AIAssistantProps {
 }
 
 export default function AIAssistant({ className = '' }: AIAssistantProps) {
-    console.log('🟢 AIAssistant component loaded!');
-    
     const [isOpen, setIsOpen] = useState(false);
     const [isExiting, setIsExiting] = useState(false);
     const [messages, setMessages] = useState<AIChatMessage[]>([]);
@@ -122,18 +120,7 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
     };
 
     const handleSendMessage = async () => {
-        console.log('🔵 handleSendMessage called', { 
-            inputValue: inputValue.trim(), 
-            isLoading, 
-            currentSessionId 
-        });
-        
         if (!inputValue.trim() || isLoading || !currentSessionId) {
-            console.log('❌ Early return:', { 
-                noInput: !inputValue.trim(), 
-                isLoading, 
-                noSession: !currentSessionId 
-            });
             return;
         }
 
@@ -151,9 +138,7 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
 
         try {
             // Call real backend API
-            console.log('📤 Calling sendChatMessage:', { currentSessionId, userMessage });
             const response = await sendChatMessage(currentSessionId, userMessage);
-            console.log('📥 Response received:', response);
 
             const assistantMessage: AIChatMessage = {
                 role: 'assistant',
