@@ -20,6 +20,9 @@ import { lessonProgressApi } from '@/shared/api/lesson-progress';
 import type { Lesson } from '@/shared/types/lesson';
 import { VimeoPlayer } from '@/features/students/components/VimeoPlayer';
 
+// Type definition
+type ModulesBySemester = Record<number, Lesson[]>;
+
 export default function LessonViewerPage() {
     const { classId, moduleId, lessonId } = useParams();
     const navigate = useNavigate();
@@ -28,6 +31,7 @@ export default function LessonViewerPage() {
 
     const [lesson, setLesson] = useState<Lesson | null>(null);
     const [allLessons, setAllLessons] = useState<Lesson[]>([]);
+    const [modulesBySemester, setModulesBySemester] = useState<ModulesBySemester>({});
     const [loading, setLoading] = useState(true);
     const [currentStatus, setCurrentStatus] = useState<'not-started' | 'in-progress' | 'completed'>('not-started');
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -48,22 +52,22 @@ export default function LessonViewerPage() {
                 try {
                     const classLessonsResponse = await getLessonsByClass(parseInt(classId));
                     const allClassLessons: Lesson[] = classLessonsResponse.data;
-                    
+
                     // Find current lesson to get its semester
                     const currentLesson = allClassLessons.find((l) => l.lessonId === parseInt(lessonId));
                     const currentSemester = currentLesson?.moduleSemester || 1;
                     const currentModuleId = currentLesson?.moduleId || parseInt(moduleId);
-                    
+
                     // Filter only lessons in the same semester
                     const sameSemesterLessons = allClassLessons.filter(
-                        (l) => (l.moduleSemester || 1) === currentSemester
+                        (l) => (l.moduleSemester || 1) === currentSemester,
                     );
                     setAllLessons(sameSemesterLessons);
 
                     // Initialize expanded state - expand current module by default
                     const initialExpandedState: Record<number, boolean> = {};
-                    const uniqueModules = [...new Set(sameSemesterLessons.map(l => l.moduleId))];
-                    uniqueModules.forEach(modId => {
+                    const uniqueModules = [...new Set(sameSemesterLessons.map((l) => l.moduleId))];
+                    uniqueModules.forEach((modId) => {
                         initialExpandedState[modId] = modId === currentModuleId;
                     });
                     setExpandedSemesters(initialExpandedState);
@@ -98,7 +102,7 @@ export default function LessonViewerPage() {
                 // Load lesson from backend
                 const response = await getLessonById(parseInt(lessonId));
                 setLesson(response.data);
-                
+
                 // Load video progress if it's a video lesson
                 if (response.data.lessonType === 'VIDEO') {
                     try {
@@ -237,11 +241,11 @@ export default function LessonViewerPage() {
         // From: https://drive.google.com/file/d/FILE_ID/view
         // To: https://drive.google.com/file/d/FILE_ID/preview?embedded=true
         let embedUrl = url.replace('/view', '/preview');
-        
+
         // Add parameters to hide UI elements and show only content
         const separator = embedUrl.includes('?') ? '&' : '?';
         embedUrl += `${separator}embedded=true&rm=minimal`;
-        
+
         return embedUrl;
     };
 
@@ -322,7 +326,7 @@ export default function LessonViewerPage() {
                                         if (!acc[moduleKey]) acc[moduleKey] = [];
                                         acc[moduleKey].push(lesson);
                                         return acc;
-                                    }, {})
+                                    }, {}),
                                 )
                                     .sort(([a], [b]) => {
                                         const [semA] = a.split('-');
@@ -334,24 +338,28 @@ export default function LessonViewerPage() {
                                         const moduleName = moduleNameParts.join('-');
                                         const moduleId = moduleLessons[0]?.moduleId;
                                         const isExpanded = expandedSemesters[moduleId || 0];
-                                        
+
                                         // Calculate module progress
-                                        const completedCount = moduleLessons.filter(l => 
-                                            progressMap[l.lessonId]?.status === 'COMPLETED'
+                                        const completedCount = moduleLessons.filter(
+                                            (l) => progressMap[l.lessonId]?.status === 'COMPLETED',
                                         ).length;
-                                        const progressPercent = Math.round((completedCount / moduleLessons.length) * 100);
+                                        const progressPercent = Math.round(
+                                            (completedCount / moduleLessons.length) * 100,
+                                        );
 
                                         // Check if this module contains the current lesson
-                                        const isActiveModule = moduleLessons.some(l => String(l.lessonId) === lessonId);
+                                        const isActiveModule = moduleLessons.some(
+                                            (l) => String(l.lessonId) === lessonId,
+                                        );
 
                                         return (
                                             <div key={moduleKey} className="border-b border-gray-200 last:border-b-0">
                                                 {/* Module header */}
                                                 <button
-                                                    onClick={() => 
-                                                        setExpandedSemesters(prev => ({ 
-                                                            ...prev, 
-                                                            [moduleId || 0]: !prev[moduleId || 0] 
+                                                    onClick={() =>
+                                                        setExpandedSemesters((prev) => ({
+                                                            ...prev,
+                                                            [moduleId || 0]: !prev[moduleId || 0],
                                                         }))
                                                     }
                                                     className={`w-full px-3 py-2.5 transition-all flex items-center justify-between gap-2.5 group border-l-4 ${
@@ -360,16 +368,28 @@ export default function LessonViewerPage() {
                                                             : 'bg-white border-l-transparent hover:border-l-gray-300 hover:bg-gray-50'
                                                     }`}
                                                 >
-                                                    <div className={`font-semibold text-base flex-1 text-left ${
-                                                        isActiveModule ? 'text-[#00796B]' : 'text-gray-900'
-                                                    }`}>
+                                                    <div
+                                                        className={`font-semibold text-base flex-1 text-left ${
+                                                            isActiveModule ? 'text-[#00796B]' : 'text-gray-900'
+                                                        }`}
+                                                    >
                                                         {moduleName}
                                                     </div>
                                                     <div className="flex-shrink-0">
                                                         {isExpanded ? (
-                                                            <ChevronDown size={18} className={isActiveModule ? 'text-[#00796B]' : 'text-gray-600'} />
+                                                            <ChevronDown
+                                                                size={18}
+                                                                className={
+                                                                    isActiveModule ? 'text-[#00796B]' : 'text-gray-600'
+                                                                }
+                                                            />
                                                         ) : (
-                                                            <ChevronUp size={18} className={isActiveModule ? 'text-[#00796B]' : 'text-gray-600'} />
+                                                            <ChevronUp
+                                                                size={18}
+                                                                className={
+                                                                    isActiveModule ? 'text-[#00796B]' : 'text-gray-600'
+                                                                }
+                                                            />
                                                         )}
                                                     </div>
                                                 </button>
@@ -380,84 +400,118 @@ export default function LessonViewerPage() {
                                                         {moduleLessons
                                                             .sort((a, b) => a.lessonOrder - b.lessonOrder)
                                                             .map((item) => {
-                                    const isActive = String(item.lessonId) === lessonId;
-                                    const status = getLessonStatus(String(item.lessonId));
-                                    const progress = progressMap[item.lessonId];
-                                    const isCompleted = progress?.status === 'COMPLETED';
-                                    const isInProgress = progress && progress.progressPercentage > 0 && progress.status !== 'COMPLETED';
-                                    const progressPercentage = isActive ? videoProgress : (progress?.progressPercentage || 0);
+                                                                const isActive = String(item.lessonId) === lessonId;
+                                                                const status = getLessonStatus(String(item.lessonId));
+                                                                const progress = progressMap[item.lessonId];
+                                                                const isCompleted = progress?.status === 'COMPLETED';
+                                                                const isInProgress =
+                                                                    progress &&
+                                                                    progress.progressPercentage > 0 &&
+                                                                    progress.status !== 'COMPLETED';
+                                                                const progressPercentage = isActive
+                                                                    ? videoProgress
+                                                                    : progress?.progressPercentage || 0;
 
-                                    return (
-                                        <button
-                                            key={item.lessonId}
-                                            onClick={() => handleLessonClick(String(item.lessonId), item.lessonType)}
-                                            className={`w-full text-left px-2.5 py-2 transition-all duration-200 group border-l-4 ${
-                                                isActive
-                                                    ? 'bg-[#E8F4F8] border-l-[#00796B]'
-                                                    : 'hover:bg-gray-50 border-l-transparent hover:border-l-gray-300'
-                                            }`}
-                                        >
-                                            <div className="flex items-start gap-1.5">
-                                                {/* Progress indicator or icon */}
-                                                <div className="flex-shrink-0 mt-0.5">
-                                                    {item.lessonType === 'VIDEO' && isCompleted ? (
-                                                        <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
-                                                            <CheckCircle size={14} className="text-gray-600" />
-                                                        </div>
-                                                    ) : item.lessonType === 'VIDEO' && (isInProgress || isActive) ? (
-                                                        <div className="relative w-6 h-6">
-                                                            <svg width="24" height="24" className="transform -rotate-90">
-                                                                <circle
-                                                                    cx="12"
-                                                                    cy="12"
-                                                                    r="10"
-                                                                    fill="none"
-                                                                    stroke="#e5e7eb"
-                                                                    strokeWidth="2"
-                                                                />
-                                                                <circle
-                                                                    cx="12"
-                                                                    cy="12"
-                                                                    r="10"
-                                                                    fill="none"
-                                                                    stroke="#6b7280"
-                                                                    strokeWidth="2"
-                                                                    strokeDasharray={2 * Math.PI * 10}
-                                                                    strokeDashoffset={2 * Math.PI * 10 * (1 - progressPercentage / 100)}
-                                                                    strokeLinecap="round"
-                                                                    style={{ transition: 'stroke-dashoffset 0.3s ease' }}
-                                                                />
-                                                            </svg>
-                                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                                <span className="text-[9px] font-bold text-gray-600">
-                                                                    {Math.round(progressPercentage)}%
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        getLessonTypeIcon(item.lessonType)
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p
-                                                        className={`text-sm line-clamp-2 transition-colors ${
-                                                            isActive
-                                                                ? 'text-[#00796B] font-semibold'
-                                                                : 'text-gray-700 font-normal group-hover:text-[#00796B] group-hover:font-medium'
-                                                        }`}
-                                                    >
-                                                        {item.lessonTitle}
-                                                    </p>
-                                                    {item.durationMinutes && (
-                                                        <p className="text-[10px] text-gray-500 mt-0.5">
-                                                            ⏱️ {item.durationMinutes} phút
-                                                        </p>
-                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </button>
-                                                            );
-                                                        })}
+                                                                return (
+                                                                    <button
+                                                                        key={item.lessonId}
+                                                                        onClick={() =>
+                                                                            handleLessonClick(
+                                                                                String(item.lessonId),
+                                                                                item.lessonType,
+                                                                            )
+                                                                        }
+                                                                        className={`w-full text-left px-2.5 py-2 transition-all duration-200 group border-l-4 ${
+                                                                            isActive
+                                                                                ? 'bg-[#E8F4F8] border-l-[#00796B]'
+                                                                                : 'hover:bg-gray-50 border-l-transparent hover:border-l-gray-300'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-start gap-1.5">
+                                                                            {/* Progress indicator or icon */}
+                                                                            <div className="flex-shrink-0 mt-0.5">
+                                                                                {item.lessonType === 'VIDEO' &&
+                                                                                isCompleted ? (
+                                                                                    <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
+                                                                                        <CheckCircle
+                                                                                            size={14}
+                                                                                            className="text-gray-600"
+                                                                                        />
+                                                                                    </div>
+                                                                                ) : item.lessonType === 'VIDEO' &&
+                                                                                  (isInProgress || isActive) ? (
+                                                                                    <div className="relative w-6 h-6">
+                                                                                        <svg
+                                                                                            width="24"
+                                                                                            height="24"
+                                                                                            className="transform -rotate-90"
+                                                                                        >
+                                                                                            <circle
+                                                                                                cx="12"
+                                                                                                cy="12"
+                                                                                                r="10"
+                                                                                                fill="none"
+                                                                                                stroke="#e5e7eb"
+                                                                                                strokeWidth="2"
+                                                                                            />
+                                                                                            <circle
+                                                                                                cx="12"
+                                                                                                cy="12"
+                                                                                                r="10"
+                                                                                                fill="none"
+                                                                                                stroke="#6b7280"
+                                                                                                strokeWidth="2"
+                                                                                                strokeDasharray={
+                                                                                                    2 * Math.PI * 10
+                                                                                                }
+                                                                                                strokeDashoffset={
+                                                                                                    2 *
+                                                                                                    Math.PI *
+                                                                                                    10 *
+                                                                                                    (1 -
+                                                                                                        progressPercentage /
+                                                                                                            100)
+                                                                                                }
+                                                                                                strokeLinecap="round"
+                                                                                                style={{
+                                                                                                    transition:
+                                                                                                        'stroke-dashoffset 0.3s ease',
+                                                                                                }}
+                                                                                            />
+                                                                                        </svg>
+                                                                                        <div className="absolute inset-0 flex items-center justify-center">
+                                                                                            <span className="text-[9px] font-bold text-gray-600">
+                                                                                                {Math.round(
+                                                                                                    progressPercentage,
+                                                                                                )}
+                                                                                                %
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    getLessonTypeIcon(item.lessonType)
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <p
+                                                                                    className={`text-sm line-clamp-2 transition-colors ${
+                                                                                        isActive
+                                                                                            ? 'text-[#00796B] font-semibold'
+                                                                                            : 'text-gray-700 font-normal group-hover:text-[#00796B] group-hover:font-medium'
+                                                                                    }`}
+                                                                                >
+                                                                                    {item.lessonTitle}
+                                                                                </p>
+                                                                                {item.durationMinutes && (
+                                                                                    <p className="text-[10px] text-gray-500 mt-0.5">
+                                                                                        ⏱️ {item.durationMinutes} phút
+                                                                                    </p>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </button>
+                                                                );
+                                                            })}
                                                     </div>
                                                 )}
                                             </div>
@@ -518,21 +572,22 @@ export default function LessonViewerPage() {
                                 lastPosition={lastWatchedPosition}
                                 onProgressUpdate={(progress, completed) => {
                                     // Kiểm tra xem video đã hoàn thành chưa (từ state hoặc từ progressMap)
-                                    const wasCompleted = videoCompleted || progressMap[lesson.lessonId]?.status === 'COMPLETED';
-                                    
+                                    const wasCompleted =
+                                        videoCompleted || progressMap[lesson.lessonId]?.status === 'COMPLETED';
+
                                     // Chỉ cập nhật UI nếu video chưa hoàn thành
                                     if (!wasCompleted) {
                                         setVideoProgress(progress);
                                         // Update progressMap for realtime sidebar display
-                                        setProgressMap(prev => ({
+                                        setProgressMap((prev) => ({
                                             ...prev,
                                             [lesson.lessonId]: {
                                                 progressPercentage: progress,
-                                                status: completed ? 'COMPLETED' : 'IN_PROGRESS'
-                                            }
+                                                status: completed ? 'COMPLETED' : 'IN_PROGRESS',
+                                            },
                                         }));
                                     }
-                                    
+
                                     // Chỉ trigger completed event lần đầu tiên
                                     if (completed && !videoCompleted) {
                                         setVideoCompleted(true);
@@ -544,7 +599,7 @@ export default function LessonViewerPage() {
                             />
                         </div>
                     )}
-                    
+
                     {/* Fallback for non-Vimeo or old iframe */}
                     {lesson.contentUrl && lesson.lessonType === 'VIDEO' && lesson.contentType !== 'VIMEO' && (
                         <div className="space-y-4">
@@ -560,7 +615,7 @@ export default function LessonViewerPage() {
                                     allowFullScreen
                                 />
                             </div>
-                            
+
                             {/* Video Progress Bar for non-Vimeo */}
                             {videoProgress > 0 && videoProgress < 100 && (
                                 <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
@@ -636,8 +691,6 @@ export default function LessonViewerPage() {
                             </div>
                         </div>
                     )}
-
-
                 </div>
             </div>
         </div>

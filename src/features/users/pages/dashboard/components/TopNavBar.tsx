@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Menu, Bell, Search, AlertTriangle, Mail, MailOpen } from 'lucide-react';
+import { Menu, Bell, Search, AlertTriangle, Mail, MailOpen, Bot } from 'lucide-react';
 import { useUserProfile } from '@/stores/userProfile';
 import CenterSwitcher from './CenterSwitcher';
 import { useCenterSelection } from '@/stores/centerSelection';
@@ -38,7 +38,7 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
     // Fetch student warnings from API (only for admin/teacher)
     useEffect(() => {
         if (!isAdminOrTeacher) return;
-        
+
         const fetchWarnings = async () => {
             setLoading(true);
             try {
@@ -62,10 +62,10 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
             try {
                 const data = await notificationsApi.getMyNotifications();
                 setNotifications(data);
-                
+
                 // For students: count high-severity notifications as warnings
                 if (!isAdminOrTeacher) {
-                    const highSeverityCount = data.filter(n => n.severity === 'high' && !n.isRead).length;
+                    const highSeverityCount = data.filter((n) => n.severity === 'high' && !n.isRead).length;
                     setWarningCount(highSeverityCount);
                 }
             } catch (error) {
@@ -115,7 +115,7 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
         }
         return () => document.removeEventListener('mousedown', onDocClick);
     }, [showNotifications]);
-    
+
     // Hiển thị CenterSwitcher trên trang tổng quan (path '/') cho các role có quyền xem số liệu theo trung tâm
     const canSelectCenter = me?.roles?.some((r) => ['CENTER_MANAGER', 'SUPER_ADMIN'].includes(r.code));
     const showCenterSwitcher = canSelectCenter && location.pathname === '/';
@@ -156,10 +156,23 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                 <div className="flex items-center gap-3">
                     {/* Center Switcher - chỉ hiển thị cho CENTER_MANAGER/SUPER_ADMIN */}
                     {showCenterSwitcher && <CenterSwitcher />}
-                    
+
                     {/* Language Selector */}
                     <button className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
                         <span className="text-sm font-medium text-gray-700">VN</span>
+                    </button>
+
+                    {/* AI Assistant Button */}
+                    <button
+                        onClick={() => {
+                            // Dispatch custom event to open AI Assistant
+                            window.dispatchEvent(new CustomEvent('openAIAssistant'));
+                        }}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white transition-all duration-200 shadow-sm hover:shadow-md"
+                        title="Trợ lý ảo"
+                    >
+                        <Bot size={18} />
+                        <span className="hidden lg:inline text-sm font-medium">Trợ lý ảo</span>
                     </button>
 
                     {/* Notifications dropdown with tabs */}
@@ -174,14 +187,20 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                             aria-expanded={showNotifications}
                         >
                             <Bell size={20} className="text-gray-700" />
-                            {(warningCount > 0 || (notifications && notifications.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length > 0)) && (
+                            {(warningCount > 0 ||
+                                (notifications &&
+                                    notifications.filter((n) => !hiddenNotificationIds.includes(n.id) && !n.isRead)
+                                        .length > 0)) && (
                                 <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 grid place-items-center text-[10px] font-semibold bg-red-600 text-white rounded-full shadow">
-                                    {warningCount + (notifications?.filter(n => !hiddenNotificationIds.includes(n.id) && !n.isRead).length || 0)}
+                                    {warningCount +
+                                        (notifications?.filter(
+                                            (n) => !hiddenNotificationIds.includes(n.id) && !n.isRead,
+                                        ).length || 0)}
                                 </span>
                             )}
                         </button>
                         {showNotifications && (
-                            <div 
+                            <div
                                 className="absolute right-0 mt-2 w-[420px] max-w-[90vw] bg-white border border-gray-200 rounded-2xl shadow-2xl z-[100] overflow-hidden"
                                 onClick={(e) => e.stopPropagation()}
                             >
@@ -195,8 +214,8 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                     <button
                                         onClick={() => setActiveTab('warnings')}
                                         className={`flex-1 px-4 py-3 font-medium text-sm transition-all ${
-                                            activeTab === 'warnings' 
-                                                ? 'text-red-600 border-b-2 border-red-500 bg-red-50' 
+                                            activeTab === 'warnings'
+                                                ? 'text-red-600 border-b-2 border-red-500 bg-red-50'
                                                 : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                                         }`}
                                     >
@@ -205,8 +224,8 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                     <button
                                         onClick={() => setActiveTab('all')}
                                         className={`flex-1 px-4 py-3 font-medium text-sm transition-all flex items-center justify-center gap-2 relative ${
-                                            activeTab === 'all' 
-                                                ? 'text-blue-600 border-b-2 border-blue-500 bg-blue-50' 
+                                            activeTab === 'all'
+                                                ? 'text-blue-600 border-b-2 border-blue-500 bg-blue-50'
                                                 : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                                         }`}
                                     >
@@ -259,11 +278,13 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                                     </p>
                                                                 </div>
                                                                 <div className="flex flex-wrap gap-2">
-                                                                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                                                                        w.reason?.includes('vắng')
-                                                                            ? 'bg-amber-100 text-amber-800'
-                                                                            : 'bg-red-100 text-red-800'
-                                                                    }`}>
+                                                                    <span
+                                                                        className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                                                                            w.reason?.includes('vắng')
+                                                                                ? 'bg-amber-100 text-amber-800'
+                                                                                : 'bg-red-100 text-red-800'
+                                                                        }`}
+                                                                    >
                                                                         {w.reason}
                                                                     </span>
                                                                 </div>
@@ -292,8 +313,12 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                     <div className="px-4 py-2 text-xs font-medium text-gray-500">
                                                         Cảnh báo của bạn
                                                     </div>
-                                                    {(!notifications || notifications.filter(n => n.severity === 'high').length === 0) && (
-                                                        <div className="px-4 py-6 text-sm text-gray-500">Không có cảnh báo nào</div>
+                                                    {(!notifications ||
+                                                        notifications.filter((n) => n.severity === 'high').length ===
+                                                            0) && (
+                                                        <div className="px-4 py-6 text-sm text-gray-500">
+                                                            Không có cảnh báo nào
+                                                        </div>
                                                     )}
                                                     {notifications?.filter(n => n.severity === 'high').slice(0, 6).map((n) => (
                                                         <div
@@ -317,44 +342,83 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                                 }}
                                                                 className="w-full"
                                                             >
-                                                                <div className="flex items-start gap-3">
-                                                                    <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-red-100">
-                                                                        <span className="text-lg text-red-600">
-                                                                            {n.type === 'ATTENDANCE_WARNING' ? '⚠️' : 
-                                                                             n.type === 'GRADE_WARNING' ? '❌' : '⚠️'}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <div className="flex items-center justify-between gap-2 mb-1">
-                                                                            <span className={`text-sm font-semibold ${!n.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
-                                                                                {n.title}
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        try {
+                                                                            if (!n.isRead) {
+                                                                                await notificationsApi.markAsRead(n.id);
+                                                                                const updated =
+                                                                                    await notificationsApi.getMyNotifications();
+                                                                                setNotifications(updated);
+                                                                                const highSeverityCount =
+                                                                                    updated.filter(
+                                                                                        (x) =>
+                                                                                            x.severity === 'high' &&
+                                                                                            !x.isRead,
+                                                                                    ).length;
+                                                                                setWarningCount(highSeverityCount);
+                                                                            }
+                                                                        } catch (error) {
+                                                                            console.error(
+                                                                                'Failed to mark notification as read:',
+                                                                                error,
+                                                                            );
+                                                                        }
+                                                                    }}
+                                                                    className="w-full"
+                                                                >
+                                                                    <div className="flex items-start gap-3">
+                                                                        <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-red-100">
+                                                                            <span className="text-lg text-red-600">
+                                                                                {n.type === 'ATTENDANCE_WARNING'
+                                                                                    ? '⚠️'
+                                                                                    : n.type === 'GRADE_WARNING'
+                                                                                      ? '❌'
+                                                                                      : '⚠️'}
                                                                             </span>
-                                                                            {!n.isRead && (
-                                                                                <span className="flex-shrink-0 h-2 w-2 bg-red-600 rounded-full"></span>
-                                                                            )}
                                                                         </div>
-                                                                        <p className="text-xs text-gray-600 line-clamp-2 mb-2">
-                                                                            {n.message}
-                                                                        </p>
-                                                                        <span className="text-xs text-gray-400">
-                                                                            {(() => {
-                                                                                const date = new Date(n.createdAt);
-                                                                                const now = new Date();
-                                                                                const diffMs = now.getTime() - date.getTime();
-                                                                                const diffMins = Math.floor(diffMs / 60000);
-                                                                                const diffHours = Math.floor(diffMs / 3600000);
-                                                                                
-                                                                                if (diffMins < 1) return 'Vừa xong';
-                                                                                if (diffMins < 60) return `${diffMins} phút trước`;
-                                                                                if (diffHours < 24) return `${diffHours} giờ trước`;
-                                                                                return date.toLocaleDateString('vi-VN');
-                                                                            })()}
-                                                                        </span>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="flex items-center justify-between gap-2 mb-1">
+                                                                                <span
+                                                                                    className={`text-sm font-semibold ${!n.isRead ? 'text-gray-900' : 'text-gray-600'}`}
+                                                                                >
+                                                                                    {n.title}
+                                                                                </span>
+                                                                                {!n.isRead && (
+                                                                                    <span className="flex-shrink-0 h-2 w-2 bg-red-600 rounded-full"></span>
+                                                                                )}
+                                                                            </div>
+                                                                            <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                                                                                {n.message}
+                                                                            </p>
+                                                                            <span className="text-xs text-gray-400">
+                                                                                {(() => {
+                                                                                    const date = new Date(n.createdAt);
+                                                                                    const now = new Date();
+                                                                                    const diffMs =
+                                                                                        now.getTime() - date.getTime();
+                                                                                    const diffMins = Math.floor(
+                                                                                        diffMs / 60000,
+                                                                                    );
+                                                                                    const diffHours = Math.floor(
+                                                                                        diffMs / 3600000,
+                                                                                    );
+
+                                                                                    if (diffMins < 1) return 'Vừa xong';
+                                                                                    if (diffMins < 60)
+                                                                                        return `${diffMins} phút trước`;
+                                                                                    if (diffHours < 24)
+                                                                                        return `${diffHours} giờ trước`;
+                                                                                    return date.toLocaleDateString(
+                                                                                        'vi-VN',
+                                                                                    );
+                                                                                })()}
+                                                                            </span>
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            </button>
-                                                        </div>
-                                                    ))}
+                                                                </button>
+                                                            </div>
+                                                        ))}
                                                 </>
                                             )}
                                         </div>
@@ -387,81 +451,141 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                                                         }}
                                                         className="w-full"
                                                     >
-                                                        <div className="flex items-start gap-3">
-                                                            {/* Avatar/Icon */}
-                                                            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                                                                n.severity === 'high' ? 'bg-red-100' :
-                                                                n.severity === 'medium' ? 'bg-amber-100' :
-                                                                'bg-blue-100'
-                                                            }`}>
-                                                                <span className={`text-lg ${
-                                                                    n.severity === 'high' ? 'text-red-600' :
-                                                                    n.severity === 'medium' ? 'text-amber-600' :
-                                                                    'text-blue-600'
-                                                                }`}>
-                                                                    {n.type === 'GRADE_UPDATED' ? '📊' :
-                                                                     n.type === 'ENROLLED_NEW_CLASS' ? '🎓' :
-                                                                     n.type === 'CLASS_UPDATED' ? '📅' :
-                                                                     n.type === 'CLASS_CREATED' ? '🏫' :
-                                                                     n.type === 'CENTER_CREATED' ? '🏢' :
-                                                                     n.type === 'LECTURER_GRADED' ? '📝' :
-                                                                     n.type === 'ATTENDANCE_RECORDED' ? '✅' :
-                                                                     n.type === 'ATTENDANCE_UPDATED' ? '🔄' :
-                                                                     n.type === 'ATTENDANCE_WARNING' ? '⚠️' :
-                                                                     n.type === 'GRADE_WARNING' ? '❌' :
-                                                                     n.type === 'SYSTEM_ANNOUNCEMENT' ? '📣' :
-                                                                     '📢'}
-                                                                </span>
-                                                            </div>
-
-                                                            {/* Content */}
-                                                            <div className="flex-1 min-w-0 pr-6">
-                                                                <div className="flex items-center justify-between gap-2 mb-1">
-                                                                    <span className={`text-sm font-semibold ${!n.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
-                                                                        {n.title}
+                                                        <button
+                                                            onClick={async () => {
+                                                                try {
+                                                                    if (!n.isRead) {
+                                                                        await notificationsApi.markAsRead(n.id);
+                                                                        const updated =
+                                                                            await notificationsApi.getMyNotifications();
+                                                                        setNotifications(updated);
+                                                                    }
+                                                                } catch (error) {
+                                                                    console.error(
+                                                                        'Failed to mark notification as read:',
+                                                                        error,
+                                                                    );
+                                                                }
+                                                            }}
+                                                            className="w-full"
+                                                        >
+                                                            <div className="flex items-start gap-3">
+                                                                {/* Avatar/Icon */}
+                                                                <div
+                                                                    className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                                                        n.severity === 'high'
+                                                                            ? 'bg-red-100'
+                                                                            : n.severity === 'medium'
+                                                                              ? 'bg-amber-100'
+                                                                              : 'bg-blue-100'
+                                                                    }`}
+                                                                >
+                                                                    <span
+                                                                        className={`text-lg ${
+                                                                            n.severity === 'high'
+                                                                                ? 'text-red-600'
+                                                                                : n.severity === 'medium'
+                                                                                  ? 'text-amber-600'
+                                                                                  : 'text-blue-600'
+                                                                        }`}
+                                                                    >
+                                                                        {n.type === 'GRADE_UPDATED'
+                                                                            ? '📊'
+                                                                            : n.type === 'ENROLLED_NEW_CLASS'
+                                                                              ? '🎓'
+                                                                              : n.type === 'CLASS_UPDATED'
+                                                                                ? '📅'
+                                                                                : n.type === 'CLASS_CREATED'
+                                                                                  ? '🏫'
+                                                                                  : n.type === 'CENTER_CREATED'
+                                                                                    ? '🏢'
+                                                                                    : n.type === 'LECTURER_GRADED'
+                                                                                      ? '📝'
+                                                                                      : n.type === 'ATTENDANCE_RECORDED'
+                                                                                        ? '✅'
+                                                                                        : n.type ===
+                                                                                            'ATTENDANCE_UPDATED'
+                                                                                          ? '🔄'
+                                                                                          : n.type ===
+                                                                                              'ATTENDANCE_WARNING'
+                                                                                            ? '⚠️'
+                                                                                            : n.type === 'GRADE_WARNING'
+                                                                                              ? '❌'
+                                                                                              : n.type ===
+                                                                                                  'SYSTEM_ANNOUNCEMENT'
+                                                                                                ? '📣'
+                                                                                                : '📢'}
                                                                     </span>
-                                                                    {!n.isRead && (
-                                                                        <span className="flex-shrink-0 h-2 w-2 bg-blue-600 rounded-full"></span>
-                                                                    )}
                                                                 </div>
-                                                                <p className="text-xs text-gray-600 line-clamp-2 mb-2">
-                                                                    {n.message}
-                                                                </p>
-                                                                <span className="text-xs text-gray-400">
-                                                                    {(() => {
-                                                                        const date = new Date(n.createdAt);
-                                                                        const now = new Date();
-                                                                        const diffMs = now.getTime() - date.getTime();
-                                                                        const diffMins = Math.floor(diffMs / 60000);
-                                                                        const diffHours = Math.floor(diffMs / 3600000);
-                                                                        
-                                                                        if (diffMins < 1) return 'Vừa xong';
-                                                                        if (diffMins < 60) return `${diffMins} phút trước`;
-                                                                        if (diffHours < 24) return `${diffHours} giờ trước`;
-                                                                        return date.toLocaleDateString('vi-VN');
-                                                                    })()}
-                                                                </span>
+
+                                                                {/* Content */}
+                                                                <div className="flex-1 min-w-0 pr-6">
+                                                                    <div className="flex items-center justify-between gap-2 mb-1">
+                                                                        <span
+                                                                            className={`text-sm font-semibold ${!n.isRead ? 'text-gray-900' : 'text-gray-600'}`}
+                                                                        >
+                                                                            {n.title}
+                                                                        </span>
+                                                                        {!n.isRead && (
+                                                                            <span className="flex-shrink-0 h-2 w-2 bg-blue-600 rounded-full"></span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                                                                        {n.message}
+                                                                    </p>
+                                                                    <span className="text-xs text-gray-400">
+                                                                        {(() => {
+                                                                            const date = new Date(n.createdAt);
+                                                                            const now = new Date();
+                                                                            const diffMs =
+                                                                                now.getTime() - date.getTime();
+                                                                            const diffMins = Math.floor(diffMs / 60000);
+                                                                            const diffHours = Math.floor(
+                                                                                diffMs / 3600000,
+                                                                            );
+
+                                                                            if (diffMins < 1) return 'Vừa xong';
+                                                                            if (diffMins < 60)
+                                                                                return `${diffMins} phút trước`;
+                                                                            if (diffHours < 24)
+                                                                                return `${diffHours} giờ trước`;
+                                                                            return date.toLocaleDateString('vi-VN');
+                                                                        })()}
+                                                                    </span>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    </button>
-                                                    
-                                                    {/* X button to hide notification from dropdown */}
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const updated = [...hiddenNotificationIds, n.id];
-                                                            setHiddenNotificationIds(updated);
-                                                            localStorage.setItem('hiddenNotifications', JSON.stringify(updated));
-                                                        }}
-                                                        className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 rounded-full"
-                                                        title="Ẩn khỏi danh sách"
-                                                    >
-                                                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            ))}
+                                                        </button>
+
+                                                        {/* X button to hide notification from dropdown */}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const updated = [...hiddenNotificationIds, n.id];
+                                                                setHiddenNotificationIds(updated);
+                                                                localStorage.setItem(
+                                                                    'hiddenNotifications',
+                                                                    JSON.stringify(updated),
+                                                                );
+                                                            }}
+                                                            className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 rounded-full"
+                                                            title="Ẩn khỏi danh sách"
+                                                        >
+                                                            <svg
+                                                                className="w-4 h-4 text-gray-500"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={2}
+                                                                    d="M6 18L18 6M6 6l12 12"
+                                                                />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                ))}
                                             {notifications && notifications.length > 0 && (
                                                 <div className="bg-white border-t border-gray-100 p-4">
                                                     <button
@@ -483,14 +607,14 @@ export default function TopNavBar({ sidebarCollapsed, onToggleSidebar }: TopNavB
                     </div>
 
                     {/* Avatar - Click to go to Settings */}
-                    <button 
+                    <button
                         onClick={() => navigate('/settings')}
                         className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
                     >
                         {userAvatar ? (
-                            <img 
-                                src={userAvatar} 
-                                alt="Avatar" 
+                            <img
+                                src={userAvatar}
+                                alt="Avatar"
                                 className="h-9 w-9 rounded-full object-cover shadow-md"
                             />
                         ) : (

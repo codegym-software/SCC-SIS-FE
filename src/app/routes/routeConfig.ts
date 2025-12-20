@@ -37,6 +37,8 @@ const AttendancePage = lazy(() => import('../../features/users/pages/attendance/
 const TakeAttendancePage = lazy(() => import('../../features/users/pages/attendance/TakeAttendancePage'));
 const ExamManagementPage = lazy(() => import('../../features/users/pages/exams/ExamManagementPage'));
 const AttendanceStatisticsPage = lazy(() => import('../../features/users/pages/statistics/AttendanceStatisticsPage'));
+const AIChatPage = lazy(() => import('../../features/students/pages/AIChat/AIChatPage'));
+const AIChatAnalyticsPage = lazy(() => import('../../features/users/pages/ai-chat-analytics/AIChatAnalyticsPage'));
 
 // List of all application routes. Order does not matter except for root redirect logic.
 export const appRoutes: AppRoute[] = [
@@ -58,9 +60,20 @@ export const appRoutes: AppRoute[] = [
         component: AttendanceStatisticsPage,
         allowedRoles: ['LECTURER', 'ACADEMIC_STAFF', 'SUPER_ADMIN'],
     },
+    {
+        path: '/ai-chat-analytics',
+        component: AIChatAnalyticsPage,
+        allowedRoles: ['ACADEMIC_STAFF', 'SUPER_ADMIN'],
+    },
     { path: '/my-classes', component: MyClassesPage, allowedRoles: ['STUDENT'] },
     { path: '/my-grades', component: MyGradesPage, allowedRoles: ['STUDENT'] },
     { path: '/my-attendance', component: MyAttendancePage, allowedRoles: ['STUDENT'] },
+    {
+        path: '/student/ai-chat',
+        component: AIChatPage,
+        allowedRoles: ['STUDENT', 'SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER'],
+        noLayout: true,
+    },
     { path: '/all-courses', component: AllCoursesPage, allowedRoles: ['STUDENT'], noLayout: true },
     { path: '/all-courses/:courseId', component: AllCoursesPage, allowedRoles: ['STUDENT'], noLayout: true },
     { path: '/quiz/:quizId', component: QuizPage, allowedRoles: ['STUDENT'], noLayout: true },
