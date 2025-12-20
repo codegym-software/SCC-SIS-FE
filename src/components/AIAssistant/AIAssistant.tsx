@@ -106,9 +106,9 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
             // Load session details (should be empty initially)
             const details = await getChatSessionDetails(session.sessionId);
             const formattedMessages: AIChatMessage[] = (details.messages || []).map((msg: ChatMessageResponse) => ({
-                role: msg.role,
-                content: msg.content,
-                timestamp: msg.createdAt,
+                role: msg.role || 'assistant',
+                content: msg.message,
+                timestamp: msg.timestamp,
             }));
             setMessages(formattedMessages);
         } catch (error) {
