@@ -4,6 +4,14 @@ import App from './App';
 import { keycloak } from './keycloak';
 import './index.css';
 
+// Ignore browser extension errors
+window.addEventListener('error', (e) => {
+    if (e.message?.includes('Could not establish connection')) {
+        e.stopImmediatePropagation();
+        return;
+    }
+});
+
 async function bootstrap() {
     try {
         // Clear any corrupted OAuth state

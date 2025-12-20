@@ -17,6 +17,12 @@ import {
 } from 'lucide-react';
 import { createChatSession, getChatSessions, getChatSessionDetails, sendChatMessage, deleteChatSession, type ChatSessionDTO, type ChatMessageResponse, type ChatSessionDetailsResponse } from '@/shared/api/chat';
 import type { AIChatMessage } from '@/shared/api/ai-chat';
+import { 
+    uploadKnowledgeDocument, 
+    getAllKnowledgeDocuments, 
+    deleteKnowledgeDocument,
+    type KnowledgeDocumentDTO 
+} from '@/shared/api/knowledge';
 import { useUserProfile } from '@/stores/userProfile';
 import { useToast } from '@/shared/hooks/useToast';
 
@@ -28,11 +34,14 @@ interface ChatSession {
 }
 
 interface UploadedFile {
-    id: string;
-    name: string;
-    size: number;
-    type: string;
-    uploadDate: string;
+    docId: number;
+    title: string;
+    fileName: string;
+    fileSize: number;
+    docType: string;
+    chunkCount: number;
+    createdAt: string;
+    createdByName?: string;
 }
 
 export default function AIChatPage() {
@@ -42,6 +51,7 @@ export default function AIChatPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [isLoadingSession, setIsLoadingSession] = useState(false);
+    const [isUploadingFile, setIsUploadingFile] = useState(false);
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
     const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -76,6 +86,13 @@ export default function AIChatPage() {
             loadChatHistory();
         }
     }, [profile?.userId]);
+
+    // Load saved files for admin
+    useEffect(() => {
+        if (profile && profile.roles.some(r => ['SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER'].includes(r.code))) {
+            loadSavedFiles();
+        }
+    }, [profile]);
 
     // Focus input when component mounts
     useEffect(() => {
@@ -262,11 +279,17 @@ export default function AIChatPage() {
                 'application/pdf',
                 'application/msword',
                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'text/plain',           // .txt
+                'text/markdown',        // .md
             ];
             const maxSize = 10 * 1024 * 1024; // 10MB
 
-            if (!validTypes.includes(file.type)) {
-                toast.error('Lỗi', `File ${file.name} không hợp lệ. Chỉ hỗ trợ PDF, DOC, DOCX`);
+            // Also check file extension
+            const extension = file.name.toLowerCase().split('.').pop();
+            const validExtensions = ['pdf', 'doc', 'docx', 'txt', 'md'];
+
+            if (!validTypes.includes(file.type) && !validExtensions.includes(extension || '')) {
+                toast.error('Lỗi', `File ${file.name} không hợp lệ. Chỉ hỗ trợ PDF, DOC, DOCX, TXT, MD`);
                 return false;
             }
 
@@ -288,25 +311,83 @@ export default function AIChatPage() {
         setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
     };
 
-    const handleSaveFiles = () => {
-        if (uploadedFiles.length === 0) return;
-
-        const newSavedFiles: UploadedFile[] = uploadedFiles.map((file) => ({
-            id: Math.random().toString(36).substr(2, 9),
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            uploadDate: new Date().toISOString(),
-        }));
-
-        setSavedFiles((prev) => [...prev, ...newSavedFiles]);
-        setUploadedFiles([]);
-        toast.success('Thành công', `Đã lưu ${newSavedFiles.length} file`);
+    /**
+     * Load saved knowledge documents from backend
+     */
+    const loadSavedFiles = async () => {
+        try {
+            const documents = await getAllKnowledgeDocuments();
+            const files: UploadedFile[] = documents.map(doc => ({
+                docId: doc.docId,
+                title: doc.title,
+                fileName: doc.title, // Use title as filename
+                fileSize: doc.content?.length || 0, // Estimate size from content length
+                docType: doc.docType,
+                chunkCount: doc.chunkCount,
+                createdAt: doc.createdAt,
+                createdByName: doc.createdByName,
+            }));
+            setSavedFiles(files);
+        } catch (error) {
+            console.error('Failed to load saved files:', error);
+            toast.error('Lỗi', 'Không thể tải danh sách file');
+        }
     };
 
-    const handleDeleteSavedFile = (fileId: string) => {
-        setSavedFiles((prev) => prev.filter((f) => f.id !== fileId));
-        toast.success('Thành công', 'Đã xóa file');
+    /**
+     * Upload files to backend and save to knowledge base
+     */
+    const handleSaveFiles = async () => {
+        if (uploadedFiles.length === 0) {
+            toast.info('Cảnh báo', 'Chưa có file nào để lưu');
+            return;
+        }
+
+        setIsUploadingFile(true);
+        let successCount = 0;
+        let errorCount = 0;
+
+        try {
+            // Upload each file sequentially
+            for (const file of uploadedFiles) {
+                try {
+                    await uploadKnowledgeDocument(file, file.name, 'GUIDE');
+                    successCount++;
+                } catch (error) {
+                    console.error(`Failed to upload ${file.name}:`, error);
+                    errorCount++;
+                }
+            }
+
+            // Clear uploaded files and reload saved files
+            setUploadedFiles([]);
+            await loadSavedFiles();
+
+            if (errorCount === 0) {
+                toast.success('Thành công', `Đã lưu ${successCount} file vào hệ thống`);
+            } else {
+                toast.info('Một phần thất bại', `Đã lưu ${successCount} file. ${errorCount} file thất bại.`);
+            }
+        } catch (error) {
+            console.error('Failed to save files:', error);
+            toast.error('Lỗi', 'Không thể lưu file');
+        } finally {
+            setIsUploadingFile(false);
+        }
+    };
+
+    /**
+     * Delete saved file from backend
+     */
+    const handleDeleteSavedFile = async (docId: number) => {
+        try {
+            await deleteKnowledgeDocument(docId);
+            setSavedFiles((prev) => prev.filter((f) => f.docId !== docId));
+            toast.success('Thành công', 'Đã xóa file khỏi hệ thống');
+        } catch (error) {
+            console.error('Failed to delete file:', error);
+            toast.error('Lỗi', 'Không thể xóa file');
+        }
     };
 
     const formatFileSize = (bytes: number) => {
@@ -466,9 +547,7 @@ export default function AIChatPage() {
 
                     {/* Files Management Section - Admin Only */}
                     {profile &&
-                        ['SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER'].some((r) =>
-                            profile.roles?.includes(r as any),
-                        ) && (
+                        profile.roles.some(r => ['SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER'].includes(r.code)) && (
                             <>
                                 <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
                                     <button
@@ -488,20 +567,20 @@ export default function AIChatPage() {
                                             <div className="space-y-1">
                                                 {savedFiles.map((file) => (
                                                     <div
-                                                        key={file.id}
+                                                        key={file.docId}
                                                         className="flex items-center gap-2 p-2 rounded bg-gray-50 hover:bg-gray-100 group"
                                                     >
                                                         <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-xs font-medium text-gray-700 truncate">
-                                                                {file.name}
+                                                                {file.title}
                                                             </p>
                                                             <p className="text-xs text-gray-400">
-                                                                {formatFileSize(file.size)}
+                                                                {formatFileSize(file.fileSize)} • {file.chunkCount} chunks
                                                             </p>
                                                         </div>
                                                         <button
-                                                            onClick={() => handleDeleteSavedFile(file.id)}
+                                                            onClick={() => handleDeleteSavedFile(file.docId)}
                                                             className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded"
                                                         >
                                                             <X className="h-3 w-3 text-red-500" />
@@ -641,15 +720,23 @@ export default function AIChatPage() {
                                     ))}
                                     {/* Save Files Button - Admin Only */}
                                     {profile &&
-                                        ['SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER'].some((r) =>
-                                            profile.roles?.includes(r as any),
-                                        ) && (
+                                        profile.roles.some(r => ['SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER'].includes(r.code)) && (
                                             <button
                                                 onClick={handleSaveFiles}
-                                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition-colors"
+                                                disabled={isUploadingFile}
+                                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                                             >
-                                                <Upload className="h-3.5 w-3.5" />
-                                                Lưu file
+                                                {isUploadingFile ? (
+                                                    <>
+                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        Đang lưu...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Upload className="h-3.5 w-3.5" />
+                                                        Lưu file
+                                                    </>
+                                                )}
                                             </button>
                                         )}
                                 </div>
@@ -660,21 +747,18 @@ export default function AIChatPage() {
                                     ref={fileInputRef}
                                     type="file"
                                     onChange={handleFileSelect}
-                                    accept=".pdf,.doc,.docx"
+                                    accept=".pdf,.doc,.docx,.txt,.md"
                                     multiple
                                     className="hidden"
                                     aria-label="Upload file"
                                 />
                                 {/* File Upload Button - Admin Only */}
                                 {profile &&
-                                    ['SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER'].some((r) =>
-                                        profile.roles?.includes(r as any),
-                                    ) && (
+                                    profile.roles.some(r => ['SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER'].includes(r.code)) && (
                                         <button
                                             onClick={() => fileInputRef.current?.click()}
-                                            disabled={isLoading}
-                                            className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border-2 border-gray-300 text-gray-600 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
-                                            title="Đính kèm file (PDF, DOC, DOCX)"
+                                            className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border-2 border-gray-300 text-gray-600 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300 transition-all"
+                                            title="Đính kèm file (PDF, DOC, DOCX, TXT, MD)"
                                             aria-label="Đính kèm file"
                                         >
                                             <Paperclip className="h-5 w-5" />

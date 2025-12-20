@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Trash2, Loader2, Bot, User, Maximize2, MessageSquare, Paperclip } from 'lucide-react';
+import { X, Send, Trash2, Loader2, Bot, User, Maximize2, MessageSquare, Paperclip, Upload, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createChatSession, getChatSessionDetails, sendChatMessage, deleteChatSession, type ChatMessageResponse } from '@/shared/api/chat';
+import { 
+    uploadKnowledgeDocument, 
+    getAllKnowledgeDocuments, 
+    deleteKnowledgeDocument,
+    type KnowledgeDocumentDTO 
+} from '@/shared/api/knowledge';
 import { useUserProfile } from '@/stores/userProfile';
 import { useToast } from '@/shared/hooks/useToast';
 
@@ -11,6 +17,17 @@ type AIChatMessage = {
     content: string;
     timestamp: string;
 };
+
+interface UploadedFile {
+    docId: number;
+    title: string;
+    fileName: string;
+    fileSize: number;
+    docType: string;
+    chunkCount: number;
+    createdAt: string;
+    createdByName?: string;
+}
 
 interface AIAssistantProps {
     className?: string;
@@ -27,6 +44,9 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+    const [savedFiles, setSavedFiles] = useState<UploadedFile[]>([]);
+    const [isUploadingFile, setIsUploadingFile] = useState(false);
+    const [showFilesSection, setShowFilesSection] = useState(false);
     const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -189,11 +209,17 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
                 'application/pdf',
                 'application/msword',
                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'text/plain',           // .txt
+                'text/markdown',        // .md
             ];
             const maxSize = 10 * 1024 * 1024; // 10MB
 
-            if (!validTypes.includes(file.type)) {
-                toast.error('Lỗi', `File ${file.name} không hợp lệ. Chỉ hỗ trợ PDF, DOC, DOCX`);
+            // Also check file extension
+            const extension = file.name.toLowerCase().split('.').pop();
+            const validExtensions = ['pdf', 'doc', 'docx', 'txt', 'md'];
+
+            if (!validTypes.includes(file.type) && !validExtensions.includes(extension || '')) {
+                toast.error('Lỗi', `File ${file.name} không hợp lệ. Chỉ hỗ trợ PDF, DOC, DOCX, TXT, MD`);
                 return false;
             }
 
@@ -214,6 +240,101 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
     const handleRemoveFile = (index: number) => {
         setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
     };
+
+    /**
+     * Load saved files from backend
+     */
+    const loadSavedFiles = async () => {
+        try {
+            const documents = await getAllKnowledgeDocuments();
+            const files: UploadedFile[] = documents.map(doc => ({
+                docId: doc.docId,
+                title: doc.title,
+                fileName: doc.title,
+                fileSize: doc.content?.length || 0,
+                docType: doc.docType,
+                chunkCount: doc.chunkCount,
+                createdAt: doc.createdAt,
+                createdByName: doc.createdByName,
+            }));
+            setSavedFiles(files);
+        } catch (error) {
+            console.error('Failed to load files:', error);
+            toast.error('Lỗi', 'Không thể tải danh sách file');
+        }
+    };
+
+    /**
+     * Upload files to backend and save to knowledge base
+     */
+    const handleSaveFiles = async () => {
+        if (uploadedFiles.length === 0) {
+            toast.info('Cảnh báo', 'Chưa có file nào để lưu');
+            return;
+        }
+
+        setIsUploadingFile(true);
+        let successCount = 0;
+        let errorCount = 0;
+
+        try {
+            // Upload each file sequentially
+            for (const file of uploadedFiles) {
+                try {
+                    await uploadKnowledgeDocument(file, file.name, 'GUIDE');
+                    successCount++;
+                } catch (error) {
+                    console.error(`Failed to upload ${file.name}:`, error);
+                    errorCount++;
+                }
+            }
+
+            // Clear uploaded files and reload saved files
+            setUploadedFiles([]);
+            await loadSavedFiles();
+
+            // Show result
+            if (errorCount === 0) {
+                toast.success('Thành công', `Đã lưu ${successCount} file vào hệ thống`);
+            } else {
+                toast.info('Một phần thất bại', `Đã lưu ${successCount} file. ${errorCount} file thất bại.`);
+            }
+        } catch (error) {
+            console.error('Failed to save files:', error);
+            toast.error('Lỗi', 'Không thể lưu file');
+        } finally {
+            setIsUploadingFile(false);
+        }
+    };
+
+    /**
+     * Delete saved file from backend
+     */
+    const handleDeleteSavedFile = async (docId: number) => {
+        try {
+            await deleteKnowledgeDocument(docId);
+            setSavedFiles((prev) => prev.filter((f) => f.docId !== docId));
+            toast.success('Thành công', 'Đã xóa file khỏi hệ thống');
+        } catch (error) {
+            console.error('Failed to delete file:', error);
+            toast.error('Lỗi', 'Không thể xóa file');
+        }
+    };
+
+    const formatFileSize = (bytes: number) => {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    };
+
+    // Load saved files on mount (admin only)
+    useEffect(() => {
+        if (isOpen && profile && profile.roles.some(r => 
+            ['SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER'].includes(r.code)
+        )) {
+            loadSavedFiles();
+        }
+    }, [isOpen, profile]);
 
     const handleClose = () => {
         setIsExiting(true);
@@ -295,6 +416,56 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
                         </div>
                     </div>
 
+                    {/* Files Management Section - Admin Only */}
+                    {profile &&
+                        profile.roles.some(r => ['SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER'].includes(r.code)) && (
+                            <div className="border-b border-gray-200 bg-white">
+                                <button
+                                    onClick={() => setShowFilesSection(!showFilesSection)}
+                                    className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-blue-600" />
+                                        Quản lý File ({savedFiles.length})
+                                    </span>
+                                    <Upload className="h-4 w-4" />
+                                </button>
+
+                                {showFilesSection && (
+                                    <div className="px-3 py-2 border-t border-gray-200 max-h-32 overflow-y-auto bg-gray-50">
+                                        {savedFiles.length === 0 ? (
+                                            <p className="text-xs text-gray-400 text-center py-2">Chưa có file nào</p>
+                                        ) : (
+                                            <div className="space-y-1">
+                                                {savedFiles.map((file) => (
+                                                    <div
+                                                        key={file.docId}
+                                                        className="flex items-center gap-2 p-2 rounded bg-white hover:bg-gray-50 group border border-gray-200"
+                                                    >
+                                                        <FileText className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-xs font-medium text-gray-700 truncate">
+                                                                {file.title}
+                                                            </p>
+                                                            <p className="text-xs text-gray-400">
+                                                                {formatFileSize(file.fileSize)} • {file.chunkCount} chunks
+                                                            </p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleDeleteSavedFile(file.docId)}
+                                                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded transition-opacity"
+                                                        >
+                                                            <X className="h-3 w-3 text-red-500" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
                         {isLoadingHistory ? (
                             <div className="flex items-center justify-center h-full">
@@ -373,23 +544,46 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
                     <div className="border-t border-gray-200 p-4 bg-white rounded-b-2xl">
                         {/* Uploaded Files Display */}
                         {uploadedFiles.length > 0 && (
-                            <div className="mb-3 flex flex-wrap gap-2">
-                                {uploadedFiles.map((file, index) => (
-                                    <div
-                                        key={index}
-                                        className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg text-sm border border-blue-200"
-                                    >
-                                        <Paperclip className="h-3.5 w-3.5" />
-                                        <span className="max-w-[150px] truncate">{file.name}</span>
-                                        <button
-                                            onClick={() => handleRemoveFile(index)}
-                                            className="hover:text-blue-900 transition-colors"
-                                            aria-label="Xóa file"
+                            <div className="mb-3 space-y-2">
+                                <div className="flex flex-wrap gap-2">
+                                    {uploadedFiles.map((file, index) => (
+                                        <div
+                                            key={index}
+                                            className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg text-sm border border-blue-200"
                                         >
-                                            <X className="h-3.5 w-3.5" />
+                                            <Paperclip className="h-3.5 w-3.5" />
+                                            <span className="max-w-[150px] truncate">{file.name}</span>
+                                            <button
+                                                onClick={() => handleRemoveFile(index)}
+                                                className="hover:text-blue-900 transition-colors"
+                                                aria-label="Xóa file"
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                {/* Save Files Button - Admin Only */}
+                                {profile &&
+                                    profile.roles.some(r => ['SUPER_ADMIN', 'ACADEMIC_STAFF', 'LECTURER'].includes(r.code)) && (
+                                        <button
+                                            onClick={handleSaveFiles}
+                                            disabled={isUploadingFile}
+                                            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                        >
+                                            {isUploadingFile ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    Đang lưu file...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Upload className="h-4 w-4" />
+                                                    Lưu {uploadedFiles.length} file vào hệ thống
+                                                </>
+                                            )}
                                         </button>
-                                    </div>
-                                ))}
+                                    )}
                             </div>
                         )}
 
@@ -398,16 +592,15 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
                                 ref={fileInputRef}
                                 type="file"
                                 onChange={handleFileSelect}
-                                accept=".pdf,.doc,.docx"
+                                accept=".pdf,.doc,.docx,.txt,.md"
                                 multiple
                                 className="hidden"
                                 aria-label="Upload file"
                             />
                             <button
                                 onClick={() => fileInputRef.current?.click()}
-                                disabled={isLoading}
-                                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 hover:text-blue-600 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
-                                title="Đính kèm file (PDF, DOC, DOCX)"
+                                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors"
+                                title="Đính kèm file (PDF, DOC, DOCX, TXT, MD)"
                                 aria-label="Đính kèm file"
                             >
                                 <Paperclip className="h-5 w-5" />

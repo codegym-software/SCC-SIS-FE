@@ -316,7 +316,7 @@ function AppLayout({ children }: AppLayoutProps) {
                 </div>
             </div>
 
-            {/* AI Assistant - Floating button at bottom right */}
+            {/* AI Assistant - Floating on all admin pages */}
             <AIAssistant className="bottom-6 right-6" />
         </div>
     );
