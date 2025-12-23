@@ -279,7 +279,7 @@ export default function AIChatPage() {
                             <p className="text-xs text-blue-50">Luôn sẵn sàng hỗ trợ</p>
                         </div>
                     </div>
-                    
+
                     {/* Nút Trở lại */}
                     <button
                         onClick={handleBack}

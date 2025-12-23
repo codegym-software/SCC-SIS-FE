@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Trash2, Loader2, Bot, User, Maximize2, MessageSquare, Paperclip, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { sendAIMessage, getChatHistory, clearChatHistory, getAIChatAnalytics, type AIChatMessage, type AIChatAnalytics } from '@/shared/api/ai-chat';
+import {
+    sendAIMessage,
+    getChatHistory,
+    clearChatHistory,
+    getAIChatAnalytics,
+    type AIChatMessage,
+    type AIChatAnalytics,
+} from '@/shared/api/ai-chat';
 import { useUserProfile } from '@/stores/userProfile';
 import { useToast } from '@/shared/hooks/useToast';
 
@@ -28,9 +35,7 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
     const toast = useToast();
     const navigate = useNavigate();
 
-    const isAdmin = profile?.roles?.some((role) => 
-        ['SUPER_ADMIN', 'ACADEMIC_STAFF'].includes(role.code)
-    ) ?? false;
+    const isAdmin = profile?.roles?.some((role) => ['SUPER_ADMIN', 'ACADEMIC_STAFF'].includes(role.code)) ?? false;
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -311,13 +316,17 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
                                     Xem chi tiết →
                                 </button>
                             </div>
-                            
+
                             {/* KPI Mini Cards */}
                             <div className="grid grid-cols-2 gap-2 mb-3">
                                 <div className="bg-white rounded-lg p-2.5 shadow-sm">
                                     <p className="text-xs text-gray-600 mb-0.5">Câu hỏi</p>
-                                    <p className="text-lg font-bold text-gray-900">{analytics.totalQuestions.toLocaleString()}</p>
-                                    <p className={`text-xs ${analytics.percentChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    <p className="text-lg font-bold text-gray-900">
+                                        {analytics.totalQuestions.toLocaleString()}
+                                    </p>
+                                    <p
+                                        className={`text-xs ${analytics.percentChange >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                                    >
                                         {analytics.percentChange >= 0 ? '↑' : '↓'} {Math.abs(analytics.percentChange)}%
                                     </p>
                                 </div>
@@ -328,7 +337,9 @@ export default function AIAssistant({ className = '' }: AIAssistantProps) {
                                 </div>
                                 <div className="bg-white rounded-lg p-2.5 shadow-sm">
                                     <p className="text-xs text-gray-600 mb-0.5">Avg time</p>
-                                    <p className="text-lg font-bold text-gray-900">{analytics.avgResponseTime.toFixed(1)}s</p>
+                                    <p className="text-lg font-bold text-gray-900">
+                                        {analytics.avgResponseTime.toFixed(1)}s
+                                    </p>
                                     <p className="text-xs text-red-600">↓ 15%</p>
                                 </div>
                                 <div className="bg-white rounded-lg p-2.5 shadow-sm">

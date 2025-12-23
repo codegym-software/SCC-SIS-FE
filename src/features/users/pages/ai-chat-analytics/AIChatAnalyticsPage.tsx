@@ -1,25 +1,16 @@
 // src/features/users/pages/ai-chat-analytics/AIChatAnalyticsPage.tsx
 import React, { useState, useEffect } from 'react';
-import { 
-    MessageSquare, 
-    Users, 
-    Clock, 
-    DollarSign, 
-    TrendingUp, 
+import {
+    MessageSquare,
+    Users,
+    Clock,
+    DollarSign,
+    TrendingUp,
     TrendingDown,
     AlertTriangle,
-    BarChart3
+    BarChart3,
 } from 'lucide-react';
-import { 
-    BarChart, 
-    Bar, 
-    XAxis, 
-    YAxis, 
-    CartesianGrid, 
-    Tooltip, 
-    ResponsiveContainer,
-    Cell
-} from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { getAIChatAnalytics, type AIChatAnalytics } from '@/shared/api/ai-chat';
 
 export default function AIChatAnalyticsPage() {
@@ -52,16 +43,12 @@ export default function AIChatAnalyticsPage() {
     }
 
     if (!analytics) {
-        return (
-            <div className="p-6 text-center text-gray-500">
-                Không thể tải dữ liệu thống kê
-            </div>
-        );
+        return <div className="p-6 text-center text-gray-500">Không thể tải dữ liệu thống kê</div>;
     }
 
-    const chartData = analytics.dailyChats.map(d => ({
+    const chartData = analytics.dailyChats.map((d) => ({
         date: new Date(d.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-        count: d.count
+        count: d.count,
     }));
 
     return (
@@ -69,14 +56,10 @@ export default function AIChatAnalyticsPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">
-                        CHAT AI ANALYTICS DASHBOARD
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Thống kê và phân tích hiệu suất AI Assistant
-                    </p>
+                    <h1 className="text-2xl font-bold text-gray-900">CHAT AI ANALYTICS DASHBOARD</h1>
+                    <p className="text-sm text-gray-500 mt-1">Thống kê và phân tích hiệu suất AI Assistant</p>
                 </div>
-                
+
                 {/* Days selector */}
                 <select
                     value={days}
@@ -98,9 +81,11 @@ export default function AIChatAnalyticsPage() {
                             <MessageSquare className="h-5 w-5 text-blue-600" />
                             <span className="text-sm font-medium text-gray-600">Câu hỏi</span>
                         </div>
-                        <div className={`flex items-center gap-1 text-sm ${
-                            analytics.percentChange >= 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
+                        <div
+                            className={`flex items-center gap-1 text-sm ${
+                                analytics.percentChange >= 0 ? 'text-green-600' : 'text-red-600'
+                            }`}
+                        >
                             {analytics.percentChange >= 0 ? (
                                 <TrendingUp className="h-4 w-4" />
                             ) : (
@@ -109,9 +94,7 @@ export default function AIChatAnalyticsPage() {
                             <span>{Math.abs(analytics.percentChange)}%</span>
                         </div>
                     </div>
-                    <div className="text-3xl font-bold text-gray-900">
-                        {analytics.totalQuestions.toLocaleString()}
-                    </div>
+                    <div className="text-3xl font-bold text-gray-900">{analytics.totalQuestions.toLocaleString()}</div>
                 </div>
 
                 {/* Users */}
@@ -120,12 +103,8 @@ export default function AIChatAnalyticsPage() {
                         <Users className="h-5 w-5 text-green-600" />
                         <span className="text-sm font-medium text-gray-600">Users</span>
                     </div>
-                    <div className="text-3xl font-bold text-gray-900">
-                        {analytics.totalUsers}
-                    </div>
-                    <div className="text-sm text-gray-500 mt-1">
-                        +8%
-                    </div>
+                    <div className="text-3xl font-bold text-gray-900">{analytics.totalUsers}</div>
+                    <div className="text-sm text-gray-500 mt-1">+8%</div>
                 </div>
 
                 {/* Avg time */}
@@ -134,12 +113,8 @@ export default function AIChatAnalyticsPage() {
                         <Clock className="h-5 w-5 text-purple-600" />
                         <span className="text-sm font-medium text-gray-600">Avg time</span>
                     </div>
-                    <div className="text-3xl font-bold text-gray-900">
-                        {analytics.avgResponseTime.toFixed(1)}s
-                    </div>
-                    <div className="text-sm text-red-600 mt-1">
-                        -15%
-                    </div>
+                    <div className="text-3xl font-bold text-gray-900">{analytics.avgResponseTime.toFixed(1)}s</div>
+                    <div className="text-sm text-red-600 mt-1">-15%</div>
                 </div>
 
                 {/* Chi phí */}
@@ -148,12 +123,8 @@ export default function AIChatAnalyticsPage() {
                         <DollarSign className="h-5 w-5 text-yellow-600" />
                         <span className="text-sm font-medium text-gray-600">Chi phí</span>
                     </div>
-                    <div className="text-3xl font-bold text-gray-900">
-                        ${analytics.totalCost.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-green-600 mt-1">
-                        +5%
-                    </div>
+                    <div className="text-3xl font-bold text-gray-900">${analytics.totalCost.toFixed(2)}</div>
+                    <div className="text-sm text-green-600 mt-1">+5%</div>
                 </div>
             </div>
 
@@ -163,7 +134,7 @@ export default function AIChatAnalyticsPage() {
                     <BarChart3 className="h-5 w-5 text-blue-600" />
                     <h2 className="text-lg font-semibold text-gray-900">Charts</h2>
                 </div>
-                
+
                 <div className="mb-2">
                     <h3 className="text-sm font-medium text-gray-700">Số lượng chat theo ngày</h3>
                 </div>
@@ -171,28 +142,21 @@ export default function AIChatAnalyticsPage() {
                 <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis 
-                            dataKey="date" 
-                            tick={{ fontSize: 12 }}
-                            stroke="#888"
-                        />
-                        <YAxis 
-                            tick={{ fontSize: 12 }}
-                            stroke="#888"
-                        />
-                        <Tooltip 
+                        <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#888" />
+                        <YAxis tick={{ fontSize: 12 }} stroke="#888" />
+                        <Tooltip
                             contentStyle={{
                                 backgroundColor: '#fff',
                                 border: '1px solid #e5e7eb',
                                 borderRadius: '8px',
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                             }}
                         />
                         <Bar dataKey="count" radius={[8, 8, 0, 0]}>
                             {chartData.map((entry, index) => (
-                                <Cell 
-                                    key={`cell-${index}`} 
-                                    fill={`rgba(59, 130, 246, ${0.3 + (index / chartData.length) * 0.7})`} 
+                                <Cell
+                                    key={`cell-${index}`}
+                                    fill={`rgba(59, 130, 246, ${0.3 + (index / chartData.length) * 0.7})`}
                                 />
                             ))}
                         </Bar>
@@ -204,14 +168,12 @@ export default function AIChatAnalyticsPage() {
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center gap-2 mb-4">
                     <MessageSquare className="h-5 w-5 text-green-600" />
-                    <h2 className="text-lg font-semibold text-gray-900">
-                        Top 10 câu hỏi phổ biến
-                    </h2>
+                    <h2 className="text-lg font-semibold text-gray-900">Top 10 câu hỏi phổ biến</h2>
                 </div>
 
                 <div className="space-y-3">
                     {analytics.topQuestions.map((q, index) => (
-                        <div 
+                        <div
                             key={index}
                             className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
                         >
@@ -219,9 +181,7 @@ export default function AIChatAnalyticsPage() {
                                 {index + 1}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 mb-1">
-                                    {q.question}
-                                </p>
+                                <p className="text-sm font-medium text-gray-900 mb-1">{q.question}</p>
                                 <div className="flex items-center gap-4 text-xs text-gray-500">
                                     <span>{q.count} lần</span>
                                     <span className="flex items-center gap-1">
@@ -239,14 +199,12 @@ export default function AIChatAnalyticsPage() {
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center gap-2 mb-4">
                     <AlertTriangle className="h-5 w-5 text-orange-600" />
-                    <h2 className="text-lg font-semibold text-gray-900">
-                        Câu hỏi chưa trả lời tốt (cần bổ sung KB)
-                    </h2>
+                    <h2 className="text-lg font-semibold text-gray-900">Câu hỏi chưa trả lời tốt (cần bổ sung KB)</h2>
                 </div>
 
                 <div className="space-y-2">
                     {analytics.unansweredQuestions.map((q, index) => (
-                        <div 
+                        <div
                             key={index}
                             className="flex items-center justify-between p-3 rounded-lg bg-orange-50 border border-orange-100"
                         >
@@ -254,13 +212,9 @@ export default function AIChatAnalyticsPage() {
                                 <div className="w-6 h-6 rounded-full bg-orange-200 text-orange-700 flex items-center justify-center font-semibold text-xs">
                                     {index + 1}
                                 </div>
-                                <p className="text-sm font-medium text-gray-900">
-                                    {q.question}
-                                </p>
+                                <p className="text-sm font-medium text-gray-900">{q.question}</p>
                             </div>
-                            <span className="text-sm text-orange-600 font-medium">
-                                {q.attempts} lần
-                            </span>
+                            <span className="text-sm text-orange-600 font-medium">{q.attempts} lần</span>
                         </div>
                     ))}
                 </div>
